@@ -38,7 +38,7 @@ export function rm(sen) {
 export function clockSvg(h, m) {
   const ticks = Array.from({ length: 12 }, (_, i) => {
     const a = ((i + 1) * 30 - 90) * (Math.PI / 180);
-    return `<text x="${100 + Math.cos(a) * 72}" y="${100 + Math.sin(a) * 72 + 7}" text-anchor="middle" font-size="20" font-family="Fredoka, sans-serif" font-weight="700" fill="#3b1d4a">${i + 1}</text>`;
+    return `<text x="${100 + Math.cos(a) * 72}" y="${100 + Math.sin(a) * 72 + 7}" text-anchor="middle" font-size="20" font-family="Baloo 2, sans-serif" font-weight="700" fill="#3b1d4a">${i + 1}</text>`;
   }).join("");
   const ma = (m * 6 - 90) * (Math.PI / 180);
   const ha = (((h % 12) + m / 60) * 30 - 90) * (Math.PI / 180);

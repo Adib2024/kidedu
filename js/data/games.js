@@ -3,7 +3,7 @@ import { pick, sample, shuffle } from "../util.js";
 import { FRUITS, COLORS, ANIMALS, BODY, HOME, FOOD, ACTIONS, NUMBER_WORDS, OPPOSITES } from "./lexicon.js";
 import { SHAPES, shapeSvg } from "./visuals.js";
 import {
-  Q, make, fromBank, genTimes, genDivide, genAdd, genSub, genMissing, genMixed100, genStory, genCount, genBiggest,
+  Q, make, fromBank, TF, blend, oddOne, spread, NOT_ANIMAL, NOT_FOOD, genTimes, genDivide, genAdd, genSub, genMissing, genMixed100, genStory, genCount, genBiggest,
   genPattern, genBeforeAfter, genPlace, genFraction, genColorName, genColorFind, genColorObject, genColorMix, RAINBOW_BANK,
   genFruitName, genFruitPick,
 } from "./questions.js";
@@ -27,9 +27,20 @@ const FRUIT_FACTS = [
   ["Makan buah setiap hari membuat badan…", "Sihat & kuat", ["Sakit", "Mengantuk", "Lemah"], "💪"],
   ["Buah mana kulitnya coklat berbulu & isinya hijau?", "Kiwi", ["Pear", "Mangga", "Oren"], "🥝"],
 ];
-const fruitColor = () => { const f = pick(FRUITS); return Q(`Apakah warna buah ${f.ms}?`, f.e, f.warna, COLORS.map((c) => c.ms)); };
-const fruitLetter = () => { const f = pick(FRUITS); return Q(`${f.ms} bermula dengan huruf…`, f.e, f.ms[0], "ABCDEGKMNOPST".split("")); };
-const fruitEn = () => { const f = pick(FRUITS); return Q(`Apa nama ${f.ms} dalam English?`, f.e, f.en, FRUITS.map((x) => x.en), { say: `Apa nama ${f.ms} dalam bahasa Inggeris?` }); };
+const fruitColor = blend(
+  [7, () => { const f = pick(FRUITS); return Q(`Apakah warna buah ${f.ms}?`, f.e, f.warna, COLORS.map((c) => c.ms)); }],
+  [3, () => { const f = pick(FRUITS), w = Math.random() < 0.5 ? f.warna : pick(COLORS).ms; return TF(`${f.ms} berwarna ${w}`, w === f.warna, f.e); }],
+);
+const fruitLetter = blend(
+  [6, () => { const f = pick(FRUITS); return Q(`${f.ms} bermula dengan huruf…`, f.e, f.ms[0], "ABCDEGKMNOPST".split("")); }],
+  [4, () => { const L = pick([...new Set(FRUITS.map((f) => f.ms[0]))]); const ok = FRUITS.filter((f) => f.ms[0] === L);
+    return Q(`Buah mana bermula dengan huruf <b>${L}</b>?`, "", pick(ok).e, FRUITS.filter((f) => f.ms[0] !== L).map((f) => f.e), { optCls: "big-emoji", say: `Buah mana bermula dengan huruf ${L}?` }); }],
+);
+const fruitEn = blend(
+  [6, () => { const f = pick(FRUITS); return Q(`Apa nama ${f.ms} dalam English?`, f.e, f.en, FRUITS.map((x) => x.en), { say: `Apa nama ${f.ms} dalam bahasa Inggeris?` }); }],
+  [2, () => { const f = pick(FRUITS); return Q(`Find: <b>${f.en}</b>`, "", f.e, FRUITS.map((x) => x.e), { lang: "en", optCls: "big-emoji", say: `Find the ${f.en}` }); }],
+  [2, () => { const f = pick(FRUITS), g = Math.random() < 0.5 ? f : pick(FRUITS); return TF(`This is a ${g.en.toLowerCase()}`, f === g, f.e, { lang: "en" }); }],
+);
 
 // ---------- weather ----------
 const WEATHER = [
@@ -42,7 +53,10 @@ const WEATHER = [
   { e: "🌈", ms: "Pelangi", bawa: "📷 Kamera untuk bergambar", pakai: "👕 Baju biasa" },
   { e: "🌫️", ms: "Berkabus", bawa: "🔦 Lampu suluh", pakai: "😷 Topeng muka (jika berjerebu)" },
 ];
-const wName = () => { const w = pick(WEATHER); return Q("Cuaca apakah ini?", w.e, w.ms, WEATHER.map((x) => x.ms)); };
+const wName = blend(
+  [7, () => { const w = pick(WEATHER); return Q("Cuaca apakah ini?", w.e, w.ms, WEATHER.map((x) => x.ms)); }],
+  [3, () => { const w = pick(WEATHER), g = Math.random() < 0.5 ? w : pick(WEATHER); return TF(`Gambar ini cuaca ${g.ms}`, w === g, w.e); }],
+);
 const wBring = () => { const w = pick(WEATHER.slice(0, 6)); return Q(`Cuaca ${w.ms}. Apa yang sesuai?`, w.e, w.bawa, WEATHER.map((x) => x.bawa)); };
 const wPick = () => { const w = pick(WEATHER); return Q(`Cari gambar cuaca <b>${w.ms}</b>!`, "", w.e, WEATHER.map((x) => x.e), { optCls: "big-emoji", say: `Cari cuaca ${w.ms}` }); };
 const wWear = () => { const w = pick([WEATHER[0], WEATHER[1], WEATHER[5], WEATHER[4]]); return Q(`Cuaca ${w.ms}. Pakaian yang sesuai?`, w.e, w.pakai, WEATHER.map((x) => x.pakai)); };
@@ -86,11 +100,17 @@ const WEATHER_SAFE = [
 ];
 
 // ---------- English ----------
-const vocab = (list, q = "What is this?") => () => { const w = pick(list); return Q(q, w.e, w.en, list.map((x) => x.en), { lang: "en" }); };
+const ODD = new Map([[ANIMALS, NOT_ANIMAL], [FOOD, NOT_FOOD]]);
+const vocab = (list, q = "What is this?") => blend(
+  [6, () => { const w = pick(list); return Q(q, w.e, w.en, list.map((x) => x.en), { lang: "en" }); }],
+  [2, () => { const w = pick(list); const L = w.en[0].toUpperCase(); return Q(`<b>${w.en}</b> starts with the letter…`, w.e, L, "ABCDEFGHIKLMNOPRSTW".split(""), { lang: "en", say: `${w.en} starts with which letter?` }); }],
+  [2, () => { const w = pick(list), g = Math.random() < 0.5 ? w : pick(list); return TF(`This picture shows "${g.en.toLowerCase()}"`, w === g, w.e, { lang: "en" }); }],
+  ...(ODD.has(list) ? [[1, () => oddOne("Which one is <b>different</b>?", list.map((x) => x.e), ODD.get(list), { lang: "en", say: "Which one is different?" })]] : []),
+);
 const vocabPick = (list) => () => { const w = pick(list); return Q(`Find: <b>${w.en}</b>`, "", w.e, list.map((x) => x.e), { lang: "en", optCls: "big-emoji", say: `Find the ${w.en}` }); };
 const mixVocab = (a, b) => () => (Math.random() < 0.5 ? a() : b());
-const numberWord = () => { const n = Math.floor(Math.random() * 21); return Q(`How do you spell <b>${n}</b>?`, "", NUMBER_WORDS[n], NUMBER_WORDS, { lang: "en", say: `How do you spell ${n}?` }); };
-const spelling = () => {
+const numberWord0 = () => { const n = Math.floor(Math.random() * 21); return Q(`How do you spell <b>${n}</b>?`, "", NUMBER_WORDS[n], NUMBER_WORDS, { lang: "en", say: `How do you spell ${n}?` }); };
+const spelling0 = () => {
   const all = [...ANIMALS, ...FOOD, ...HOME].filter((w) => /^[A-Za-z]{3,7}$/.test(w.en));
   const w = pick(all);
   const i = Math.floor(Math.random() * w.en.length);
@@ -98,10 +118,39 @@ const spelling = () => {
   const shown = w.en.split("").map((c, j) => (j === i ? "_" : c)).join("");
   return Q(`Missing letter: <b>${shown}</b>`, w.e, letter, "abcdefghilmnoprstuw".split(""), { lang: "en", say: `Which letter is missing in ${w.en}?` });
 };
-const opposite = () => { const [a, b] = pick(OPPOSITES); const flip = Math.random() < 0.5; const [x, y] = flip ? [b, a] : [a, b]; return Q(`The opposite of <b>${x}</b> is…`, "↔️", y, OPPOSITES.flat(), { lang: "en", say: `What is the opposite of ${x}?` }); };
+const opposite0 = () => { const [a, b] = pick(OPPOSITES); const flip = Math.random() < 0.5; const [x, y] = flip ? [b, a] : [a, b]; return Q(`The opposite of <b>${x}</b> is…`, "↔️", y, OPPOSITES.flat(), { lang: "en", say: `What is the opposite of ${x}?` }); };
+
+const numberWord = blend(
+  [6, numberWord0],
+  [4, () => { const n = Math.floor(Math.random() * 21); return Q(`<b>${NUMBER_WORDS[n]}</b> = ?`, "", n, [n + 1, n - 1, n + 2, n + 10].filter((x) => x >= 0 && x <= 30), { lang: "en", say: `Which number is ${NUMBER_WORDS[n]}?` }); }],
+);
+const misspell = (w) => {
+  const i = Math.floor(Math.random() * (w.length - 1)) + 1;
+  const k = Math.random();
+  if (k < 0.33) return w.slice(0, i) + w[i] + w.slice(i); // double a letter
+  if (k < 0.66) return w.slice(0, i) + w.slice(i + 1); // drop a letter
+  return w.slice(0, i - 1) + w[i] + w[i - 1] + w.slice(i + 1); // swap two letters
+};
+const spelling = blend(
+  [6, spelling0],
+  [4, () => {
+    const all = [...ANIMALS, ...FOOD, ...HOME].filter((w) => /^[A-Za-z]{4,8}$/.test(w.en));
+    const w = pick(all), right = w.en.toLowerCase();
+    const wrongs = [...new Set(Array.from({ length: 6 }, () => misspell(right)))].filter((x) => x !== right);
+    return Q("Which spelling is <b>correct</b>?", w.e, right, wrongs, { lang: "en", say: "Which spelling is correct?" });
+  }],
+);
+const opposite = blend(
+  [7, opposite0],
+  [3, () => { const [a, b] = pick(OPPOSITES), g = Math.random() < 0.5 ? b : pick(OPPOSITES.flat().filter((x) => x !== a)); return TF(`The opposite of "${a}" is "${g}"`, g === b, "↔️", { lang: "en" }); }],
+);
 
 // ---------- shapes ----------
-const shapeName = () => { const s = pick(SHAPES); return Q("Apakah nama bentuk ini?", shapeSvg(s.id, pick(["#ff8cc6", "#7ccf2e", "#3db6ff", "#ffd23f", "#a78bfa"])), s.ms, SHAPES.map((x) => x.ms)); };
+const shapeName0 = () => { const s = pick(SHAPES); return Q("Apakah nama bentuk ini?", shapeSvg(s.id, pick(["#ff8cc6", "#7ccf2e", "#3db6ff", "#ffd23f", "#a78bfa"])), s.ms, SHAPES.map((x) => x.ms)); };
+const shapeName = blend(
+  [7, shapeName0],
+  [3, () => { const sh = pick(SHAPES), g = Math.random() < 0.5 ? sh : pick(SHAPES); return TF(`Ini bentuk ${g.ms}`, sh === g, shapeSvg(sh.id, pick(["#ff8cc6", "#7ccf2e", "#3db6ff", "#ffd23f"]))); }],
+);
 const shapeSides = () => { const s = pick(SHAPES.filter((x) => [3, 4, 5, 6].includes(x.sides))); return Q("Berapa sisi bentuk ini?", shapeSvg(s.id), s.sides, [3, 4, 5, 6, 8].filter((x) => x !== s.sides)); };
 
 // ---------- Simpulan Bahasa ----------
@@ -150,7 +199,14 @@ export const SIMPULAN = [
 const simpBank = (from, to) => SIMPULAN.slice(from, to);
 const simpMeaning = (from, to) => () => {
   const pool = simpBank(from, to);
-  return sample(pool, N).map(([s, m]) => Q(`Apakah maksud <b>"${s}"</b>?`, "📜", m, SIMPULAN.map((x) => x[1]), { say: `Apakah maksud ${s}?` }));
+  return spread(sample(pool, N).map(([s, m], i) => {
+    if (i % 4 === 3) {
+      const truth = Math.random() < 0.5;
+      const shown = truth ? m : pick(SIMPULAN.filter((x) => x[1] !== m))[1];
+      return TF(`"${s}" bermaksud ${shown}`, truth, "📜");
+    }
+    return Q(`Apakah maksud <b>"${s}"</b>?`, "📜", m, SIMPULAN.map((x) => x[1]), { say: `Apakah maksud ${s}?` });
+  }));
 };
 const simpReverse = () => sample(SIMPULAN, N).map(([s, m]) => Q(`Simpulan bahasa yang bermaksud <b>"${m}"</b>?`, "🔎", s, SIMPULAN.map((x) => x[0])));
 const simpSentence = () => sample(SIMPULAN, N).map(([s, , ayat]) => Q(`Lengkapkan ayat:<br><span style="font-weight:500">${ayat}</span>`, "✍️", s, SIMPULAN.map((x) => x[0])));

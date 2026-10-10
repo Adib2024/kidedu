@@ -26,7 +26,7 @@ function traceText(text, { size = 70, width = 700, height = 100, x = 10 } = {}) 
     <line x1="0" y1="${height * 0.2}" x2="${width}" y2="${height * 0.2}" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 6"/>
     <line x1="0" y1="${height * 0.5}" x2="${width}" y2="${height * 0.5}" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 6"/>
     <line x1="0" y1="${height * 0.8}" x2="${width}" y2="${height * 0.8}" stroke="#94a3b8" stroke-width="2"/>
-    <text x="${x}" y="${height * 0.8}" font-size="${size}" font-family="Fredoka, 'Comic Sans MS', sans-serif" font-weight="500"
+    <text x="${x}" y="${height * 0.8}" font-size="${size}" font-family="Andika, 'Comic Sans MS', sans-serif" font-weight="700"
       fill="none" stroke="#9ca3af" stroke-width="2" stroke-dasharray="3 4" letter-spacing="6">${esc(text)}</text>
   </svg>`;
 }
@@ -95,7 +95,7 @@ const GEN = {
         <div style="flex:1;min-width:200px" class="center"><div style="font-size:64px">${L[2]}</div><b style="font-size:1.4rem">${L[0]} is for ${esc(L[1])}</b><div style="font-size:48px;margin-top:6px">${L[4]}</div><b>${L[0]} untuk ${esc(L[3])}</b></div>
       </div>
       ${traceText(`${L[0]} ${L[0]} ${L[0]} ${L[0].toLowerCase()} ${L[0].toLowerCase()} ${L[0].toLowerCase()}`, { size: 64, height: 90 })}
-      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:10px;font-family:Fredoka,sans-serif;font-size:30px;text-align:center">
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:10px;font-family:Andika,sans-serif;font-size:30px;text-align:center">
         ${grid.map((c) => `<div style="border:2px solid #ddd;border-radius:10px;padding:4px">${c}</div>`).join("")}
       </div>`;
   },
@@ -109,7 +109,7 @@ const GEN = {
     });
     opt.op = op;
     return `${head(`Latihan Matematik: ${op[0].toUpperCase() + op.slice(1)} (${ops[op]})`, "Jawab semua soalan. Masa sasaran: 10 minit ⏱️")}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 30px;font-size:1.3rem;font-weight:700;font-family:Fredoka,sans-serif">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 30px;font-size:1.3rem;font-weight:700;font-family:Andika,sans-serif">
         ${qs.map(([q], i) => `<div>${i + 1}) ${q} = <span style="display:inline-block;width:80px;border-bottom:2px solid #333"></span></div>`).join("")}
       </div>
       <div class="print-only" style="page-break-before:always"><h3>Skema jawapan</h3><p>${qs.map(([q, a], i) => `${i + 1}) ${a}`).join(" &nbsp; ")}</p></div>

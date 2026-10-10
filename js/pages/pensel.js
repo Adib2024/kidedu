@@ -159,11 +159,11 @@ function drawingBoard(host, { W = 800, H = 500, background, toolbarExtra = "", s
 }
 
 // ---------------------------------------------------------------- tracing
-const FONT = "Fredoka, 'Comic Sans MS', 'Trebuchet MS', sans-serif";
+const FONT = "Andika, 'Comic Sans MS', 'Trebuchet MS', sans-serif";
 function fitFont(ctx, text, W, H) {
   let size = text.length <= 1 ? 360 : text.length === 2 ? 300 : Math.min(260, (W * 1.5) / text.length);
-  ctx.font = `600 ${size}px ${FONT}`;
-  while (ctx.measureText(text).width > W * 0.86 && size > 40) { size -= 10; ctx.font = `600 ${size}px ${FONT}`; }
+  ctx.font = `700 ${size}px ${FONT}`;
+  while (ctx.measureText(text).width > W * 0.86 && size > 40) { size -= 10; ctx.font = `700 ${size}px ${FONT}`; }
   return size;
 }
 function templateMask(text, W, H, widen) {
@@ -202,7 +202,7 @@ function scoreTrace(drawCtx, text, W, H) {
 async function traceActivity(el, p, query) {
   let idx = Math.max(0, p.items.indexOf(query.item));
   if (idx < 0) idx = 0;
-  try { await document.fonts?.load?.(`600 100px Fredoka`); } catch {}
+  try { await document.fonts?.load?.(`700 100px Andika`); } catch {}
   const draw = () => {
     const item = p.items[idx];
     const letter = p.id === "meet-letter" ? ABC.find((a) => a[0] === item) : null;
