@@ -1,4 +1,4 @@
-# 🐼 Pelangi Pop Land
+# 🐼 Cilikopia
 
 Platform pembelajaran kanak-kanak (BM/English) — **belajar sambil bermain** — dengan zon khas untuk ibu.
 Web app statik (PWA) tanpa build step: HTML + CSS + JavaScript ES modules. Boleh dipasang ke skrin utama telefon.
@@ -43,20 +43,46 @@ Kunci *anon/publishable* selamat diletak di frontend — semua data dilindungi R
 
 Mana-mana hosting statik: GitHub Pages, Netlify, Vercel, Cloudflare Pages. Muat naik semua fail apa adanya (tiada build). HTTPS diperlukan untuk PWA & service worker.
 
+## Ujian & semakan
+
+Tiada dependency npm diperlukan (Node 20+ sahaja; E2E perlukan Chrome/Chromium).
+
+```bash
+npm run check      # sintaks, import, fail luar talian (SW), CSP (tiada handler inline), imbasan rahsia
+npm test           # ujian unit (node:test): penjana soalan, storan, auth demo, carian, utiliti
+npm run test:e2e   # 27 senario E2E dalam Chromium headless, termasuk mod Supabase (pelayan tiruan)
+npm run verify     # semua di atas
+```
+
+`CHROME_PATH=/path/to/chrome` untuk menukar pelayar E2E. CI GitHub Actions (`.github/workflows/ci.yml`) menjalankan ketiga-tiganya.
+
+## Keselamatan & privasi
+
+- **RLS Supabase** pada setiap jadual: ibu/bapa hanya membaca/menulis data sendiri; kemajuan hanya boleh ditulis untuk anak sendiri.
+- **CSP** dalam `index.html`: skrip hanya dari domain sendiri, API hanya ke `*.supabase.co`, tiada pengendali inline.
+- Semua teks pengguna dipaparkan selepas diloloskan (`esc()`) atau melalui `textContent`.
+- Data anak yang disimpan: **nama panggilan, umur (pilihan), avatar & kemajuan** sahaja.
+- Mod Demo: kata laluan disimpan sebagai hash PBKDF2 bergaram, dalam pelayar itu sahaja.
+- Kunci *anon/publishable* Supabase memang untuk frontend; **jangan sekali-kali** letak kunci `service_role` dalam `config.js`.
+
 ## Struktur
 
 ```
 index.html, config.js, manifest.webmanifest, sw.js
 css/style.css            — design system
-js/main.js               — router, shell, auth, hub, anak, ganjaran, laporan, tetapan
+js/main.js               — router, shell, auth, hub (+carian), anak, ganjaran, laporan, tetapan, 404
+js/feedback.js           — borang maklum balas penguji (db artifact claude.ai / Supabase)
 js/store.js              — lapisan data: Mod Demo (localStorage) / Supabase REST
 js/engine.js             — enjin kuiz, keputusan, memory, objek tersembunyi
 js/data/*                — kosa kata, penjana soalan, games, peta, buku, gambar, tips
 js/pages/*               — setiap seksyen
-supabase/schema.sql      — skema pangkalan data
+supabase/schema.sql      — skema pangkalan data (idempotent; selamat dijalankan semula)
+scripts/check.mjs        — semakan statik ("build")
+tests/unit, tests/e2e    — ujian
 ```
 
 ## Nota
 
 - Bacaan suara guna Web Speech API pelayar; kualiti suara BM bergantung pada peranti (Android/Chrome biasanya ada suara Bahasa Melayu/Indonesia).
-- Pembayaran & sistem affiliate belum disertakan (boleh ditambah kemudian, cth: ToyyibPay/Billplz + jadual `orders`/`referrals`).
+- Pembayaran/premium & affiliate **tidak dilaksanakan** (keputusan produk). Untuk menambahnya kelak: gateway (cth: ToyyibPay/Billplz) + webhook pelayan (Supabase Edge Function) yang mengesahkan bayaran sebelum memberi hak akses — jangan sekali-kali bergantung pada mesej "berjaya" di pihak klien.
+- Kunci `localStorage` bermula dengan `ppl_` (warisan nama lama) sengaja dikekalkan supaya data pengguna sedia ada tidak hilang.

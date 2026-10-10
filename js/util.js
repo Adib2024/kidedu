@@ -77,6 +77,7 @@ export const starStr = (n, max = 3) => "⭐".repeat(n) + "☆".repeat(Math.max(0
 // ---------- toast ----------
 let toastTimer;
 export function toast(msg, ms = 2200) {
+  if (typeof document === "undefined") return;
   const el = document.getElementById("toast");
   if (!el) return;
   el.textContent = msg;
@@ -90,10 +91,14 @@ export function modal(html, { onMount, dismissable = true } = {}) {
   const bg = document.createElement("div");
   bg.className = "modal-bg";
   bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
-  const close = () => bg.remove();
+  const prevFocus = document.activeElement;
+  const onKey = (e) => { if (e.key === "Escape" && dismissable) close(); };
+  const close = () => { bg.remove(); document.removeEventListener("keydown", onKey); prevFocus?.focus?.(); };
   if (dismissable) bg.addEventListener("click", (e) => { if (e.target === bg) close(); });
+  document.addEventListener("keydown", onKey);
   document.body.appendChild(bg);
   onMount?.(bg.firstElementChild, close);
+  bg.querySelector("button, input, select, textarea, a[href]")?.focus();
   return close;
 }
 export function confirmBox(msg, okLabel = "Ya") {
@@ -140,11 +145,11 @@ export function sfx(kind) {
 // ---------- speech (Web Speech API) ----------
 let voices = [];
 function loadVoices() { voices = window.speechSynthesis?.getVoices?.() || []; }
-if ("speechSynthesis" in window) {
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
   loadVoices();
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
-export const canSpeak = () => "speechSynthesis" in window;
+export const canSpeak = () => typeof window !== "undefined" && "speechSynthesis" in window;
 export function pickVoice(lang = "ms") {
   if (!voices.length) loadVoices();
   const prefs = lang === "en" ? ["en-GB", "en-US", "en"] : ["ms-MY", "ms", "id-ID", "id"];
@@ -195,3 +200,16 @@ export function download(filename, dataUrl) {
   a.click();
   a.remove();
 }
+
+/** Friendly 404 used by the router and by pages whose item id does not exist. */
+export function notFound(el, backHref = "#/app", backLabel = "Kembali") {
+  el.innerHTML = `<div class="wrap page center" style="max-width:560px">
+    <div class="card pad-lg stack">
+      <div style="font-size:4rem">🐼❓</div>
+      <h1 style="color:var(--pink)">Alamak! Halaman tidak dijumpai</h1>
+      <p>Pautan ini mungkin salah atau sudah tiada. Jom kembali dan teruskan bermain!</p>
+      <div class="row" style="justify-content:center"><a class="btn" href="${esc(backHref)}">← ${esc(backLabel)}</a><a class="btn ghost" href="#/">🏠 Laman utama</a></div>
+    </div></div>`;
+}
+/** Only allow in-app hash paths for post-login redirects. */
+export const safeNext = (next) => (typeof next === "string" && /^\/[a-z0-9\-/?=&]*$/i.test(next) && !next.startsWith("//") ? next : "/app");

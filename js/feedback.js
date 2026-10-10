@@ -103,6 +103,8 @@ export async function openFeedback() {
     const d = Object.fromEntries(new FormData(f));
     const err = m.querySelector("[data-err]");
     err.hidden = true;
+    const last = Number(sessionStorage.getItem("ppl_fb_last") || 0);
+    if (Date.now() - last < 20000) { err.textContent = "Anda baru sahaja menghantar maklum balas. Tunggu sebentar sebelum menghantar lagi."; err.hidden = false; return; }
     if (!st.rating) { err.textContent = "Sila pilih satu wajah untuk penilaian keseluruhan."; err.hidden = false; return; }
     if (!d.suka.trim() && !d.baiki.trim()) { err.textContent = "Tulis sekurang-kurangnya satu komen (apa yang disukai atau perlu diperbaiki)."; err.hidden = false; return; }
     const btn = f.querySelector("[type=submit]");
@@ -114,7 +116,7 @@ export async function openFeedback() {
     };
     try {
       await submit(entry);
-      try { sessionStorage.removeItem(draftKey); } catch {}
+      try { sessionStorage.removeItem(draftKey); sessionStorage.setItem("ppl_fb_last", String(Date.now())); } catch {}
       m.innerHTML = `<div class="center stack"><div style="font-size:4rem">🎉</div><h2>Terima kasih!</h2><p>Maklum balas anda telah dihantar. Anda boleh hantar lagi bila-bila masa.</p><button class="btn" data-ok>Kembali ke app</button></div>`;
       m.querySelector("[data-ok]").onclick = () => { bg.remove(); document.removeEventListener("keydown", onKey); };
       sfx("win"); confetti(30, ["💬", "⭐", "💖"]);

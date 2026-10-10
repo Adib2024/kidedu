@@ -1,5 +1,5 @@
 import { store } from "../store.js";
-import { esc, starStr, starsFor } from "../util.js";
+import { esc, starStr, starsFor, notFound } from "../util.js";
 import { GAMES, gameById, MEMORY_SETS } from "../data/games.js";
 import { runQuiz, runMemory, memoryStars, showResult } from "../engine.js";
 import { pick } from "../util.js";
@@ -28,7 +28,7 @@ export function gamesList(el) {
 
 export function gamePlay(el, { id }, query) {
   const g = gameById(id);
-  if (!g) { location.hash = "/games"; return; }
+  if (!g) return notFound(el, "#/games");
   const lvIdx = query.lv != null ? Number(query.lv) : null;
   if (lvIdx == null || !g.levels[lvIdx] || !unlocked(g, lvIdx)) return levelSelect(el, g);
   const view = document.createElement("div");
@@ -52,7 +52,7 @@ export function gamePlay(el, { id }, query) {
       onDone: async (moves, pairs, secs) => {
         const stars = memoryStars(moves, pairs);
         const r = await store.record(gameAid(id, lvIdx), "games", { stars, score: pairs, total: pairs });
-        showResult(view, { earned: stars, newSticker: r.newSticker, message: `Siap dalam <b>${moves}</b> langkah (${secs} saat).`, actions: actions(stars) });
+        showResult(view, { earned: stars, newSticker: r.newSticker, saveFailed: r.saveFailed, message: `Siap dalam <b>${moves}</b> langkah (${secs} saat).`, actions: actions(stars) });
       },
     });
     return;

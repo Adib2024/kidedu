@@ -35,7 +35,7 @@ export function runQuiz(el, opts) {
     el.querySelector("[data-exit]").onclick = () => { stopSpeak(); opts.onExit?.(); };
     const sayIt = () => speak(q.say, { lang: q.lang });
     el.querySelector("[data-say]").onclick = sayIt;
-    if (autoSpeakOn()) setTimeout(sayIt, 150);
+    if (autoSpeakOn()) setTimeout(() => { if (el.isConnected) sayIt(); }, 150);
     el.querySelectorAll(".opt").forEach((b) => (b.onclick = () => answer(+b.dataset.k)));
   };
 
@@ -60,6 +60,7 @@ export function runQuiz(el, opts) {
       fb.innerHTML = `<span style="color:#b4235f">${pick(ENCOURAGE)}</span>${q.explain ? `<div class="small muted">${q.explain}</div>` : ""}`;
     }
     setTimeout(() => {
+      if (!el.isConnected) return; // player left the game — stop here (no stray speech/saves)
       i++;
       if (i < qs.length) render();
       else finish();
@@ -71,14 +72,14 @@ export function runQuiz(el, opts) {
     el.innerHTML = `<div class="card center">Menyimpan keputusan… ⏳</div>`;
     const res = (await opts.onDone?.(score, qs.length)) || {};
     const earned = opts.starsOf ? opts.starsOf(score, qs.length) : starsFor(score, qs.length);
-    showResult(el, { score, total: qs.length, earned, newSticker: res.newSticker, actions: opts.resultActions?.(score, qs.length) || [] });
+    showResult(el, { score, total: qs.length, earned, newSticker: res.newSticker, saveFailed: res.saveFailed, actions: opts.resultActions?.(score, qs.length) || [] });
   };
 
   render();
 }
 
 /** Celebration / result card. actions: [{label, cls, onClick}] */
-export function showResult(el, { score, total, earned, newSticker, actions = [], message }) {
+export function showResult(el, { score, total, earned, newSticker, actions = [], message, saveFailed }) {
   const s = earned ?? 0;
   if (s >= 1) { sfx("win"); confetti(s * 18); }
   const title = s === 3 ? "Cemerlang!" : s === 2 ? "Bagus sekali!" : s === 1 ? "Syabas, teruskan!" : "Cuba lagi ya!";
@@ -89,6 +90,7 @@ export function showResult(el, { score, total, earned, newSticker, actions = [],
       ${total ? `<p style="font-size:1.3rem;font-weight:800">Markah: ${score} / ${total}</p>` : ""}
       ${message ? `<p>${message}</p>` : ""}
       ${s === 0 ? `<p class="muted">Dapatkan sekurang-kurangnya separuh betul untuk 1 bintang & buka tahap seterusnya.</p>` : ""}
+      ${saveFailed ? `<div class="alert" style="margin:12px 0">⚠️ Keputusan ini belum disimpan. Semak sambungan internet, kemudian main semula untuk menyimpan bintang.</div>` : ""}
       ${newSticker ? `<div class="alert ok" style="margin:12px 0">🎁 Pelekat baru dibuka: <span style="font-size:2rem;vertical-align:middle">${newSticker}</span></div>` : ""}
       <div class="row" style="justify-content:center;margin-top:10px">
         ${actions.map((a, k) => `<button class="btn ${a.cls || ""}" data-a="${k}">${a.label}</button>`).join("")}
@@ -133,7 +135,7 @@ export function runMemory(el, { pairs, cols, set, onDone, onExit }) {
       open.forEach((x) => el.querySelector(`[data-i="${x.i}"]`).classList.add("done"));
       open = [];
       bar.style.width = (matched / pairs) * 100 + "%";
-      if (matched === pairs) setTimeout(() => onDone(moves, pairs, Math.round((Date.now() - t0) / 1000)), 600);
+      if (matched === pairs) setTimeout(() => { if (el.isConnected) onDone(moves, pairs, Math.round((Date.now() - t0) / 1000)); }, 600);
     } else {
       busy = true;
       setTimeout(() => {
@@ -196,7 +198,7 @@ export function runHidden(el, { scene, count = 5, onDone, onExit, title = "Cari 
       b.classList.add("found");
       el.querySelector(`[data-t="${it.e}"]`).classList.add("ok");
       bar.style.width = (found.size / targets.length) * 100 + "%";
-      if (found.size === targets.length) setTimeout(() => onDone(wrong, hints), 700);
+      if (found.size === targets.length) setTimeout(() => { if (el.isConnected) onDone(wrong, hints); }, 700);
     } else if (!it.target) {
       wrong++;
       sfx("wrong");

@@ -47,15 +47,25 @@ export function make(n, fn) {
   }
   return spread(out);
 }
-/** Shuffle, then nudge items so equal answers are not adjacent. */
+/**
+ * Random order in which the same answer never appears twice in a row whenever that is possible:
+ * at each step take an item from the largest remaining answer-group that differs from the last one
+ * (ties broken randomly), so no group is left over at the end.
+ */
 export function spread(list) {
-  const a = shuffle(list);
-  for (let i = 1; i < a.length; i++) {
-    if (a[i].answer !== a[i - 1].answer) continue;
-    const j = a.findIndex((x, k) => k > i && x.answer !== a[i - 1].answer && (k + 1 >= a.length || a[k + 1].answer !== a[i].answer));
-    if (j > 0) [a[i], a[j]] = [a[j], a[i]];
+  const groups = new Map();
+  for (const q of shuffle(list)) (groups.get(q.answer) || groups.set(q.answer, []).get(q.answer)).push(q);
+  const out = [];
+  let last;
+  while (out.length < list.length) {
+    const cands = [...groups.entries()].filter(([a, g]) => g.length && a !== last);
+    const pool = cands.length ? cands : [...groups.entries()].filter(([, g]) => g.length);
+    const max = Math.max(...pool.map(([, g]) => g.length));
+    const [a, g] = pick(pool.filter(([, gg]) => gg.length === max));
+    out.push(g.pop());
+    last = a;
   }
-  return a;
+  return out;
 }
 export const mix = (...gens) => () => pick(gens)();
 /** Weighted mix: [[weight, gen], ...] */

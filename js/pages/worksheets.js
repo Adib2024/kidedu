@@ -1,5 +1,5 @@
 // Printable worksheets (A4). Each worksheet is generated fresh — "Jana Baru" gives a new variation.
-import { esc, pick, rnd, sample, shuffle } from "../util.js";
+import { esc, pick, rnd, sample, shuffle, notFound } from "../util.js";
 import { PICTURES, pictureSvg, OBJECTS, objectSvg, COLOUR_HEX } from "../data/pictures.js";
 import { SHAPES, shapePath } from "../data/visuals.js";
 import { ABC, KATA, ANIMALS, FRUITS } from "../data/lexicon.js";
@@ -18,7 +18,7 @@ const head = (title, instr) => `
   <h2>${esc(title)}</h2>
   <div class="meta"><span>Nama:</span><span style="max-width:160px">Tarikh:</span></div>
   ${instr ? `<div class="instr">${instr}</div>` : ""}`;
-const foot = `<div class="foot">Pelangi Pop Land · Lembaran kerja percuma untuk kegunaan peribadi</div>`;
+const foot = `<div class="foot">Cilikopia · Lembaran kerja percuma untuk kegunaan peribadi</div>`;
 
 /** Dashed tracing text (SVG). */
 function traceText(text, { size = 70, width = 700, height = 100, x = 10 } = {}) {
@@ -129,7 +129,7 @@ export function worksheetList(el) {
 
 export function worksheetView(el, { id }) {
   const w = WORKSHEETS.find((x) => x.id === id);
-  if (!w) { location.hash = "/worksheet"; return; }
+  if (!w) return notFound(el, "#/worksheet");
   const opt = {};
   const controls = {
     "mewarna-nombor": () => `<select class="input" data-o="pic" style="width:auto">${PICTURES.map((p) => `<option value="${p.id}">${p.emoji} ${p.name}</option>`).join("")}</select>`,
@@ -160,6 +160,5 @@ export function worksheetView(el, { id }) {
     if (id === "meet-letter") { el.querySelector("[data-o=letter]").value = pick(ABC)[0]; }
     draw();
   };
-  el.querySelector("[data-print]").onclick = () => window.print();
   draw();
 }

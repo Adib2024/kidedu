@@ -1,6 +1,6 @@
 // Games untuk Ibu — self-reflection quizzes, mood log, journal, vision board, challenge, wellbeing check.
 import { store } from "../store.js";
-import { esc, toast, todayKey, prettyDate, uid, confetti, sfx, pick, shuffle, confirmBox, addDays, HARI_PENDEK } from "../util.js";
+import { esc, toast, todayKey, prettyDate, uid, confetti, sfx, pick, shuffle, confirmBox, addDays, HARI_PENDEK, notFound } from "../util.js";
 
 export const IBU = [
   { id: "emosi-ibu", title: "Emosi Ibu", emoji: "🌦️", color: "#fce7f3", desc: "Daftar perasaan harian & lihat corak emosi." },
@@ -26,7 +26,7 @@ export function ibuList(el) {
 
 export function ibuView(el, { id }) {
   const g = IBU.find((x) => x.id === id);
-  if (!g) { location.hash = "/ibu"; return; }
+  if (!g) return notFound(el, "#/ibu");
   const frame = (inner) => `<div class="wrap page stack" style="max-width:760px">
     <div class="pagehead"><a class="back" href="#/ibu" aria-label="Kembali">←</a><h1 style="font-size:1.35rem">${g.emoji} ${esc(g.title)}</h1></div>${inner}</div>`;
   const fn = { "emosi-ibu": emosi, "bahasa-cinta": () => personality(QUIZ_LOVE), "karakter-ibu": () => personality(QUIZ_CHAR), "gaya-ibu": () => personality(QUIZ_STYLE), "impian-ibu": impian, "luahan-ibu": luahan, "glow-up": glowup, "ibu-okay": okay }[id];
@@ -70,11 +70,11 @@ export function ibuView(el, { id }) {
         <h3>💡 Tips untuk anda</h3><ul>${top.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
         <h3>Pecahan keputusan</h3>
         ${ranked.map(([k, v]) => `<div style="margin-bottom:8px"><div class="row between small"><b>${Qz.types[k].emoji} ${esc(Qz.types[k].name)}</b><span>${Math.round((v / total) * 100)}%</span></div><div class="bar"><i style="width:${(v / total) * 100}%"></i></div></div>`).join("")}
-        <div class="row" style="margin-top:14px"><button class="btn sun" data-again>🔁 Ulang kuiz</button><button class="btn ghost" onclick="window.print()">🖨️ Cetak</button><button class="btn ghost" data-share>📤 Kongsi</button></div>
+        <div class="row" style="margin-top:14px"><button class="btn sun" data-again>🔁 Ulang kuiz</button><button class="btn ghost" data-print>🖨️ Cetak</button><button class="btn ghost" data-share>📤 Kongsi</button></div>
       </div>`);
       el.querySelector("[data-again]").onclick = () => { i = 0; Object.keys(scores).forEach((k) => (scores[k] = 0)); ask(); };
       el.querySelector("[data-share]").onclick = async () => {
-        const text = `${Qz.resultLabel} ${top.name} ${top.emoji} — cuba kuiz ini di Pelangi Pop Land!`;
+        const text = `${Qz.resultLabel} ${top.name} ${top.emoji} — cuba kuiz ini di Cilikopia!`;
         try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast("Disalin ke papan klip 📋"); } } catch {}
       };
     };
@@ -253,7 +253,7 @@ async function impian(el, g, frame) {
           ${d.step ? `<div class="small">👣 ${esc(d.step)}</div>` : ""}
           ${d.year ? `<div class="small muted">🎯 ${esc(d.year)}</div>` : ""}
         </button>`; }).join("")}</div>
-      <div class="row no-print"><button class="btn ghost" onclick="window.print()">🖨️ Cetak vision board</button></div>
+      <div class="row no-print"><button class="btn ghost" data-print>🖨️ Cetak vision board</button></div>
       <div data-edit></div>`);
     el.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { editing = b.dataset.k; form(); }));
   };

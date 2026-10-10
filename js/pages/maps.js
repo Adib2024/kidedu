@@ -1,5 +1,5 @@
 import { store } from "../store.js";
-import { esc, starsFor, confetti, sfx, toast } from "../util.js";
+import { esc, starsFor, confetti, sfx, toast, notFound } from "../util.js";
 import { MAPS, mapById } from "../data/maps.js";
 import { runQuiz, runHidden, hiddenStars, showResult } from "../engine.js";
 
@@ -41,7 +41,7 @@ function roadPath(pts) {
 
 export function mapView(el, { id }, query) {
   const m = mapById(id);
-  if (!m) { location.hash = "/peta"; return; }
+  if (!m) return notFound(el, "#/peta");
   const sIdx = query.s != null ? Number(query.s) : null;
   if (sIdx != null && m.stations[sIdx] && unlocked(m, sIdx)) return playStation(el, m, sIdx);
 
@@ -111,7 +111,7 @@ function playStation(el, m, k) {
       onDone: async (wrong, hints) => {
         const stars = hiddenStars(wrong, hints);
         const r = await store.record(mapAid(m.id, k), "peta", { stars, score: 5, total: 5 });
-        showResult(view, { earned: stars, newSticker: r.newSticker, message: `Salah tekan: ${wrong} · Bantuan: ${hints}`, actions: actions(stars) });
+        showResult(view, { earned: stars, newSticker: r.newSticker, saveFailed: r.saveFailed, message: `Salah tekan: ${wrong} · Bantuan: ${hints}`, actions: actions(stars) });
         if (finishedMap()) setTimeout(() => confetti(60, ["🏆", "🎉", "⭐"]), 600);
       },
     });

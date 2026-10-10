@@ -27,3 +27,18 @@ export function sectionProgress(s, childId) {
   if (!["games", "peta", "buku", "pensel"].includes(s.key)) return null;
   return Object.values(store.progress[childId] || {}).filter((r) => r.category === s.key).reduce((a, r) => a + r.stars, 0);
 }
+
+/** Search across every topic in every section (title, description, level names). */
+export function searchTopics(q) {
+  const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const out = [];
+  for (const s of SECTIONS) {
+    for (const it of s.list) {
+      const hay = norm([it.title, it.desc, s.title, ...(it.levels || []).map((l) => l.name), ...(it.stations || []).map((x) => x.name)].join(" "));
+      if (words.every((w) => hay.includes(w))) out.push({ s, it, score: norm(it.title).includes(words[0]) ? 0 : 1 });
+    }
+  }
+  return out.sort((a, b) => a.score - b.score);
+}

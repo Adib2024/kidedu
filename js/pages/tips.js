@@ -1,5 +1,5 @@
 import { store } from "../store.js";
-import { esc, canSpeak, pickVoice, stopSpeak, toast, sfx } from "../util.js";
+import { esc, canSpeak, pickVoice, stopSpeak, toast, sfx, notFound } from "../util.js";
 import { TIPS, tipById } from "../data/tips.js";
 
 const DONE = "tips:done";
@@ -16,7 +16,7 @@ export async function tipsList(el) {
 
 export async function tipsView(el, { id }) {
   const t = tipById(id);
-  if (!t) { location.hash = "/tips"; return; }
+  if (!t) return notFound(el, "#/tips");
   const n = TIPS.indexOf(t);
   const done = await store.kv(DONE, []);
 

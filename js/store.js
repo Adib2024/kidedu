@@ -5,7 +5,7 @@
 
 import { uid } from "./util.js";
 
-const CFG = window.PPL_CONFIG || {};
+const CFG = globalThis.window?.PPL_CONFIG || {};
 const CLOUD = Boolean(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY);
 
 const ERR_MS = {
@@ -20,7 +20,7 @@ const msErr = (m) => {
 };
 
 async function sha256(text) {
-  if (window.crypto?.subtle) {
+  if (globalThis.crypto?.subtle) {
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
   }
@@ -30,10 +30,36 @@ async function sha256(text) {
   return "fnv" + (h >>> 0).toString(16);
 }
 
+export class StorageFullError extends Error {
+  constructor() { super("Storan peranti penuh. Padam beberapa lukisan di Galeri atau kosongkan ruang pelayar, kemudian cuba lagi."); this.code = "storage_full"; }
+}
+/** Salted PBKDF2 (demo accounts live on this device only, but don't keep weak hashes). */
+async function pbkdf2(password, saltHex) {
+  if (!globalThis.crypto?.subtle) return null;
+  const salt = new Uint8Array(saltHex.match(/../g).map((h) => parseInt(h, 16)));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" }, key, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const randomHex = (n = 16) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+async function hashPassword(email, password) {
+  const salt = globalThis.crypto?.getRandomValues ? randomHex() : null;
+  const h = salt ? await pbkdf2(password, salt) : null;
+  return h ? { pw2: h, salt } : { pw: await sha256(email + ":" + password) };
+}
+async function checkPassword(u, email, password) {
+  if (u.pw2) return (await pbkdf2(password, u.salt)) === u.pw2;
+  return u.pw === (await sha256(email + ":" + password)); // legacy v1.0 accounts
+}
+
 const ls = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn("storage full", e); } },
-  del(k) { localStorage.removeItem(k); },
+  /** Throws StorageFullError instead of silently dropping the write. */
+  set(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); }
+    catch (e) { console.warn("storage write failed", e); throw new StorageFullError(); }
+  },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
 };
 
 // =====================================================================
@@ -52,7 +78,7 @@ const demo = {
     if (password.length < 6) throw new Error(ERR_MS["Password should be at least 6 characters"]);
     const users = ls.get("ppl_users", {});
     if (users[email]) throw new Error(ERR_MS["User already registered"]);
-    const u = { id: uid(), name: name.trim(), email, pw: await sha256(email + ":" + password), created: Date.now() };
+    const u = { id: uid(), name: name.trim(), email, ...(await hashPassword(email, password)), created: Date.now() };
     users[email] = u;
     ls.set("ppl_users", users);
     ls.set("ppl_session", { userId: u.id });
@@ -62,7 +88,11 @@ const demo = {
     email = email.trim().toLowerCase();
     const users = ls.get("ppl_users", {});
     const u = users[email];
-    if (!u || u.pw !== (await sha256(email + ":" + password))) throw new Error(ERR_MS["Invalid login credentials"]);
+    if (!u || !(await checkPassword(u, email, password))) throw new Error(ERR_MS["Invalid login credentials"]);
+    if (!u.pw2) { // upgrade legacy hash on successful login
+      const up = await hashPassword(email, password);
+      if (up.pw2) { delete u.pw; Object.assign(u, up); users[email] = u; ls.set("ppl_users", users); }
+    }
     ls.set("ppl_session", { userId: u.id });
     return { id: u.id, email, name: u.name };
   },
@@ -99,11 +129,21 @@ const demo = {
     (db.progress[row.child_id] ||= {})[row.activity_id] = row;
     this._save(userId, db);
   },
-  async kvGet(userId, key) { return this._db(userId).kv[key]; },
+  _kvKey: (userId, key) => `ppl_kv_${userId}_${key}`,
+  async kvGet(userId, key) {
+    const v = ls.get(this._kvKey(userId, key));
+    if (v !== undefined) return v;
+    return this._db(userId).kv?.[key]; // legacy location (v1.0)
+  },
   async kvSet(userId, key, value) {
+    if (value === undefined) ls.del(this._kvKey(userId, key));
+    else ls.set(this._kvKey(userId, key), value);
     const db = this._db(userId);
-    if (value === undefined) delete db.kv[key]; else db.kv[key] = value;
-    this._save(userId, db);
+    if (db.kv && key in db.kv) { delete db.kv[key]; this._save(userId, db); }
+  },
+  async kvDeletePrefix(userId, prefix) {
+    const p = this._kvKey(userId, prefix);
+    Object.keys(localStorage).filter((k) => k.startsWith(p)).forEach((k) => ls.del(k));
   },
 };
 
@@ -135,7 +175,11 @@ const cloud = {
     try {
       this._store(await this._auth("token?grant_type=refresh_token", { refresh_token: this._s.refresh_token }));
       return true;
-    } catch { this._store(null); return false; }
+    } catch {
+      this._store(null);
+      onSessionExpired();
+      return false;
+    }
   },
   async _token() {
     if (!this._s) return null;
@@ -238,6 +282,10 @@ const cloud = {
     });
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || `Ralat pelayan (${r.status})`); }
   },
+  async kvDeletePrefix(_u, prefix) {
+    // PostgREST: `*` is the LIKE wildcard in URLs; our keys never contain % or _ wildcards of their own
+    await this._rest(`user_kv?key=like.${encodeURIComponent(prefix)}*`, { method: "DELETE" });
+  },
   async kvGet(_u, key) {
     const rows = await this._rest(`user_kv?select=value&key=eq.${encodeURIComponent(key)}`);
     return rows?.[0]?.value;
@@ -255,6 +303,20 @@ const cloud = {
   },
 };
 
+let sessionExpiredHandled = false;
+function onSessionExpired() {
+  if (sessionExpiredHandled || !store.user) return;
+  sessionExpiredHandled = true;
+  store.user = null;
+  store.children = [];
+  store.progress = {};
+  kvCache.clear();
+  toastLater("Sesi anda telah tamat. Sila log masuk semula.");
+  const here = location.hash.slice(1) || "/app";
+  location.hash = `/masuk?next=${encodeURIComponent(here)}`;
+  store.emit();
+}
+
 // =====================================================================
 // Public store (with in-memory cache + listeners)
 // =====================================================================
@@ -263,6 +325,8 @@ const listeners = new Set();
 const kvCache = new Map();
 const kvTimers = new Map();
 const kvPending = new Map();
+// Keys whose server value could not be loaded: writing them would overwrite real data.
+const kvUnsafe = new Set();
 
 export const STICKERS = ["🐼", "🦄", "🍭", "🌈", "🚀", "🦋", "🐳", "🍩", "🎈", "🦊", "🐢", "🍓", "🌻", "🐝", "🦁", "🍦", "🐙", "🎠", "🧁", "🐬", "🌟", "🦖", "🍉", "🐧", "🎨", "🏰", "🐨", "🍒", "🪐", "👑"];
 export const STARS_PER_STICKER = 6;
@@ -304,6 +368,7 @@ export const store = {
   },
   async signIn(data) {
     this.user = await be.signIn(data);
+    sessionExpiredHandled = false;
     await this.load();
     this.emit();
     return this.user;
@@ -314,6 +379,7 @@ export const store = {
     this.children = [];
     this.progress = {};
     kvCache.clear();
+    kvUnsafe.clear();
     this.emit();
   },
   resetPassword: (email) => be.resetPassword(email),
@@ -340,6 +406,11 @@ export const store = {
   },
   async removeChild(id) {
     await be.removeChild(this.user.id, id);
+    // per-child private data (gallery, routines, timetable) goes with the profile
+    for (const prefix of [`gallery:${id}`, `planner:rutin:${id}:`, `planner:rutin:cfg:${id}`, `planner:jadual:${id}`]) {
+      try { await be.kvDeletePrefix(this.user.id, prefix); } catch (e) { console.warn(e); }
+      [...kvCache.keys()].filter((k) => k.startsWith(prefix)).forEach((k) => kvCache.delete(k));
+    }
     this.children = this.children.filter((c) => c.id !== id);
     delete this.progress[id];
     this.emit();
@@ -372,8 +443,16 @@ export const store = {
     };
     (this.progress[child.id] ||= {})[activityId] = row;
     const after = this.stickerCount(child.id);
+    try { await be.saveProgress(this.user.id, row); }
+    catch (e) {
+      console.warn(e);
+      toastLater(e?.code === "storage_full" ? e.message : "Kemajuan tidak dapat disimpan. Semak sambungan internet dan cuba lagi.");
+      // keep memory consistent with what is actually stored
+      if (prev) this.progress[child.id][activityId] = prev; else delete this.progress[child.id][activityId];
+      this.emit();
+      return { stars: prev?.stars || 0, improved: false, newSticker: null, saveFailed: true };
+    }
     this.emit();
-    try { await be.saveProgress(this.user.id, row); } catch (e) { console.warn(e); toastLater("Gagal simpan ke awan — akan cuba lagi bila disimpan semula."); }
     return { stars: row.stars, improved: stars > (prev?.stars || 0), newSticker: after > before ? STICKERS[after - 1] : null };
   },
 
@@ -381,15 +460,36 @@ export const store = {
   async kv(key, fallback) {
     if (kvCache.has(key)) return kvCache.get(key) ?? fallback;
     let v;
-    try { v = await be.kvGet(this.user.id, key); } catch (e) { console.warn(e); }
-    kvCache.set(key, v);
-    return v ?? fallback;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        v = await be.kvGet(this.user.id, key);
+        kvCache.set(key, v);
+        kvUnsafe.delete(key);
+        return v ?? fallback;
+      } catch (e) {
+        console.warn(e);
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 400 + Math.random() * 400));
+      }
+    }
+    // Could not load: show the fallback but refuse to save over the unknown server value.
+    kvUnsafe.add(key);
+    if (!this.user) return fallback; // session expired: the login prompt already explains what happened
+    toastLater("Gagal memuatkan data. Semak internet & muat semula halaman — perubahan tidak akan disimpan buat masa ini.");
+    return fallback;
   },
   /** Saves (debounced for cloud) — cache updates immediately. */
   setKv(key, value, { immediate = false } = {}) {
+    if (kvUnsafe.has(key)) {
+      toastLater("Tidak disimpan: data asal belum dimuatkan. Muat semula halaman dan cuba lagi.");
+      return Promise.resolve(false);
+    }
     kvCache.set(key, value);
     clearTimeout(kvTimers.get(key));
-    const run = () => be.kvSet(this.user.id, key, value).catch((e) => { console.warn(e); toastLater("Gagal menyimpan. Semak sambungan internet."); });
+    const run = () => be.kvSet(this.user.id, key, value).then(() => true).catch((e) => {
+      console.warn(e);
+      toastLater(e?.code === "storage_full" ? e.message : "Gagal menyimpan. Semak sambungan internet.");
+      return false;
+    });
     if (immediate || !CLOUD) { kvPending.delete(key); return run(); }
     kvPending.set(key, run);
     kvTimers.set(key, setTimeout(() => { kvPending.delete(key); run(); }, 600));
@@ -408,5 +508,7 @@ function flushKv() {
   kvPending.forEach((run) => run());
   kvPending.clear();
 }
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushKv(); });
-window.addEventListener("pagehide", flushKv);
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushKv(); });
+  window.addEventListener("pagehide", flushKv);
+}

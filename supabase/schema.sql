@@ -1,4 +1,4 @@
--- Pelangi Pop Land — Supabase schema
+-- Cilikopia — Supabase schema (idempotent: safe to re-run; never drops data)
 -- Run in Supabase Dashboard → SQL Editor (or `supabase db push`).
 -- Every table is protected by Row Level Security: a parent can only see their own rows.
 
@@ -88,5 +88,6 @@ create table if not exists public.feedback (
 alter table public.feedback enable row level security;
 drop policy if exists "feedback: anyone can send" on public.feedback;
 create policy "feedback: anyone can send" on public.feedback
-  for insert to anon, authenticated with check (true);
+  -- nobody can attribute feedback to another account
+  for insert to anon, authenticated with check (user_id is null or user_id = (select auth.uid()));
 grant insert on public.feedback to anon, authenticated;

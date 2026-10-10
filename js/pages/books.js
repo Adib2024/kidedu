@@ -1,5 +1,5 @@
 import { store } from "../store.js";
-import { esc, speak, stopSpeak, canSpeak, starStr, sfx } from "../util.js";
+import { esc, speak, stopSpeak, canSpeak, starStr, sfx, notFound } from "../util.js";
 import { BOOKS, bookById } from "../data/books.js";
 import { runQuiz } from "../engine.js";
 import { Q } from "../data/questions.js";
@@ -24,7 +24,7 @@ export function booksList(el) {
 
 export function bookRead(el, { id }) {
   const b = bookById(id);
-  if (!b) { location.hash = "/buku"; return; }
+  if (!b) return notFound(el, "#/buku");
   let i = 0;
   let auto = false;
   const pages = [...b.pages, { art: "🌟📖🌟", bg: "#fef9c3", text: `<b>Pengajaran:</b> ${b.moral}`, end: true }];

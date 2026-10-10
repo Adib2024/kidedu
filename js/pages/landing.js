@@ -10,7 +10,7 @@ export function landing(el) {
 
   el.innerHTML = `
   <header class="topbar"><div class="wrap">
-    <a class="brand" href="#/"><span class="logo">🐼</span><span>Pelangi Pop Land</span></a><span class="spacer"></span>
+    <a class="brand" href="#/"><span class="logo">🐼</span><span>Cilikopia</span></a><span class="spacer"></span>
     ${logged ? `<a class="btn sm sun" href="#/app">Buka App</a>` : `<a class="btn sm sun" href="#/masuk">Log Masuk</a>`}
   </div></header>
   <main class="wrap">
@@ -19,7 +19,7 @@ export function landing(el) {
         <span class="float" style="left:4%;top:6%">🐰</span><span class="float" style="right:5%;top:8%;animation-delay:-1s">🍭</span>
         <span class="float" style="left:6%;bottom:30%;animation-delay:-2s">🧒</span><span class="float" style="right:6%;bottom:32%;animation-delay:-3s">👧</span>
         <div style="font-size:4rem" class="boot-logo">🐼</div>
-        <div class="logo-type"><span class="a">Pelangi</span><span class="b">Pop Land</span></div>
+        <div class="logo-type"><span class="a">Cilik</span><span class="b">opia</span></div>
         <div class="tag">Belajar melalui <b>Games Online</b>, <b>Worksheet</b>, <b>Buku Cerita</b>, <b>Planner</b> & <b>Zon Ibu</b></div>
         <div class="feature-row">
           <div class="feature"><div class="ic" style="background:var(--pink-3)">📖</div><b>${TOTAL_TOPICS} Topik Premium</b></div>
@@ -79,7 +79,7 @@ export function landing(el) {
       <div class="row" style="justify-content:center">${cta}</div>
     </div>
   </main>
-  <footer class="footer">🐼 Pelangi Pop Land · Belajar sambil bermain<br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
+  <footer class="footer">🐼 Cilikopia · Belajar sambil bermain<br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
 
   el.querySelectorAll("[data-guest]").forEach((b) => (b.onclick = async () => {
     b.disabled = true;

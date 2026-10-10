@@ -1,6 +1,6 @@
 // Planner untuk Ibu & Anak — all data persisted per account via store.kv.
 import { store } from "../store.js";
-import { esc, toast, todayKey, prettyDate, addDays, uid, sfx, confetti, confirmBox, monthName, HARI_PENDEK } from "../util.js";
+import { esc, toast, todayKey, prettyDate, addDays, uid, sfx, confetti, confirmBox, monthName, HARI_PENDEK, notFound } from "../util.js";
 
 export const PLANNERS = [
   { id: "harian", title: "Planner Harian Mekar", emoji: "🌸", color: "#fce7f3", desc: "Keutamaan, jadual, tugasan & air." },
@@ -24,10 +24,10 @@ export function plannerList(el) {
 
 export function plannerView(el, { id }, query) {
   const p = PLANNERS.find((x) => x.id === id);
-  if (!p) { location.hash = "/planner"; return; }
+  if (!p) return notFound(el, "#/planner");
   const frame = (inner, extra = "") => `<div class="wrap page stack" style="max-width:820px">
     <div class="pagehead"><a class="back" href="#/planner" aria-label="Kembali">←</a><h1 style="font-size:1.35rem">${p.emoji} ${esc(p.title)}</h1>${extra}</div>${inner}
-    <div class="row no-print"><button class="btn sm ghost" onclick="window.print()">🖨️ Cetak</button></div></div>`;
+    <div class="row no-print"><button class="btn sm ghost" data-print>🖨️ Cetak</button></div></div>`;
   return { harian, tabiat, rutin, syukur, matlamat, tenang, jadual, menu }[id](el, frame, query);
 }
 
@@ -92,6 +92,11 @@ async function tabiat(el, frame) {
     const ym = `${y}-${String(m + 1).padStart(2, "0")}`;
     const habits = await store.kv(K("tabiat:senarai"), ["Minum 8 gelas air", "Senaman 15 minit", "Baca buku", "Tidur awal"]);
     const marks = await store.kv(K(`tabiat:${ym}`), {});
+    // v1.0 keyed marks by list position, so deleting a habit shifted ticks onto the next one.
+    // Marks are now keyed by habit name; migrate old numeric keys once.
+    for (const k of Object.keys(marks)) {
+      if (/^\d+$/.test(k) && habits[+k] && !marks[habits[+k]]) { marks[habits[+k]] = marks[k]; delete marks[k]; }
+    }
     const days = new Date(y, m + 1, 0).getDate();
     const isToday = (d) => y === now.getFullYear() && m === now.getMonth() && d === now.getDate();
     el.innerHTML = frame(`
@@ -100,16 +105,17 @@ async function tabiat(el, frame) {
       <div class="card table-scroll"><table class="habit-table">
         <thead><tr><th></th>${Array.from({ length: days }, (_, d) => `<th style="${isToday(d + 1) ? "color:var(--pink)" : ""}">${d + 1}</th>`).join("")}<th>%</th></tr></thead>
         <tbody>${habits.map((h, hi) => {
-          const n = Object.values(marks[hi] || {}).filter(Boolean).length;
-          return `<tr><td class="nm">${esc(h)}</td>${Array.from({ length: days }, (_, d) => `<td><button class="${marks[hi]?.[d + 1] ? "on" : ""}" data-h="${hi}" data-day="${d + 1}" aria-label="${esc(h)} hari ${d + 1}">${marks[hi]?.[d + 1] ? "✓" : ""}</button></td>`).join("")}<td><b>${Math.round((n / days) * 100)}</b></td></tr>`;
+          const n = Object.values(marks[h] || {}).filter(Boolean).length;
+          return `<tr><td class="nm">${esc(h)}</td>${Array.from({ length: days }, (_, d) => `<td><button class="${marks[h]?.[d + 1] ? "on" : ""}" data-h="${hi}" data-day="${d + 1}" aria-pressed="${!!marks[h]?.[d + 1]}" aria-label="${esc(h)} hari ${d + 1}">${marks[h]?.[d + 1] ? "✓" : ""}</button></td>`).join("")}<td><b>${Math.round((n / days) * 100)}</b></td></tr>`;
         }).join("")}</tbody></table></div>
       <div class="card no-print"><h3>Urus tabiat</h3>
         <div class="stack">${habits.map((h, i) => `<div class="list-item"><span class="grow">${esc(h)}</span><button class="x-btn" data-rm="${i}" aria-label="Buang">✕</button></div>`).join("")}</div>
         <form class="row" data-add style="margin-top:8px"><input class="input" style="flex:1" maxlength="60" placeholder="Tabiat baru…"><button class="btn sm">+</button></form></div>`);
     el.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { m += +b.dataset.m; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } draw(); }));
     el.querySelectorAll("[data-h]").forEach((b) => (b.onclick = () => {
-      const hi = b.dataset.h, d = b.dataset.day;
+      const hi = habits[+b.dataset.h], d = b.dataset.day;
       (marks[hi] ||= {})[d] = !marks[hi][d];
+      b.setAttribute("aria-pressed", marks[hi][d]);
       store.setKv(K(`tabiat:${ym}`), marks);
       b.classList.toggle("on"); b.textContent = marks[hi][d] ? "✓" : "";
       if (marks[hi][d]) sfx("pop");
@@ -124,6 +130,7 @@ async function tabiat(el, frame) {
       e.preventDefault();
       const v = e.target.querySelector("input").value.trim();
       if (!v) return;
+      if (habits.some((h) => h.toLowerCase() === v.toLowerCase())) { toast("Tabiat itu sudah ada dalam senarai"); return; }
       habits.push(v);
       store.setKv(K("tabiat:senarai"), habits, { immediate: true });
       draw();
@@ -144,14 +151,19 @@ async function rutin(el, frame) {
   const draw = async () => {
     const cfg = await store.kv(K(`rutin:cfg:${child.id}`), structuredClone(DEFAULT_RUTIN));
     const k = K(`rutin:${child.id}:${date}`);
-    const d = await store.kv(k, { pagi: [], malam: [] });
+    const d = await store.kv(k, { pagi: {}, malam: {} });
+    // v1.0 stored ticks as arrays by position; convert to {taskText: true}
+    for (const part of ["pagi", "malam"]) {
+      if (Array.isArray(d[part])) d[part] = Object.fromEntries(d[part].map((v, i) => [cfg[part][i], v]).filter(([t, v]) => t && v));
+      d[part] ||= {};
+    }
     const streak = await calcStreak();
     el.innerHTML = frame(`${dayNav(date)}
       <div class="mascot-say"><div class="m">${esc(child.avatar || "🐼")}</div><div class="bubble">Siapkan rutin, ${esc(child.name)}! Lengkapkan semua untuk dapat ⭐. 🔥 Berturut-turut: <b>${streak} hari</b></div></div>
       ${["pagi", "malam"].map((part) => {
-        const all = cfg[part].length && cfg[part].every((_, i) => d[part][i]);
+        const all = cfg[part].length && cfg[part].every((t) => d[part][t]);
         return `<div class="card"><h3>${part === "pagi" ? "🌞 Rutin Pagi" : "🌙 Rutin Malam"} ${all ? "⭐" : ""}</h3>
-          <div class="stack">${cfg[part].map((t, i) => `<label class="check ${d[part][i] ? "done" : ""}" style="font-size:1.15rem"><input type="checkbox" data-p="${part}" data-i="${i}" ${d[part][i] ? "checked" : ""}><span>${esc(t)}</span></label>`).join("")}</div></div>`;
+          <div class="stack">${cfg[part].map((t, i) => `<label class="check ${d[part][t] ? "done" : ""}" style="font-size:1.15rem"><input type="checkbox" data-p="${part}" data-i="${i}" ${d[part][t] ? "checked" : ""}><span>${esc(t)}</span></label>`).join("")}</div></div>`;
       }).join("")}
       <details class="card no-print"><summary style="font-weight:800;cursor:pointer">⚙️ Ubah senarai rutin</summary>
         ${["pagi", "malam"].map((part) => `<h4 style="margin-top:10px">${part === "pagi" ? "Pagi" : "Malam"}</h4>
@@ -161,10 +173,11 @@ async function rutin(el, frame) {
     bindDayNav(el, () => date, (v) => { date = v; draw(); });
     el.querySelectorAll("[data-p]").forEach((c) => (c.onchange = async () => {
       const part = c.dataset.p;
-      d[part][+c.dataset.i] = c.checked;
+      const task = cfg[part][+c.dataset.i];
+      if (c.checked) d[part][task] = true; else delete d[part][task];
       store.setKv(k, d, { immediate: true });
       if (c.checked) sfx("right");
-      const all = cfg[part].every((_, i) => d[part][i]);
+      const all = cfg[part].every((t) => d[part][t]);
       if (all && c.checked) {
         const r = await store.record(`rutin:${date}:${part}`, "rutin", { stars: 1, score: 1, total: 1 });
         confetti(40); toast(`Rutin ${part} lengkap! +⭐${r.newSticker ? " · Pelekat baru " + r.newSticker : ""}`);
@@ -172,7 +185,7 @@ async function rutin(el, frame) {
       draw();
     }));
     el.querySelectorAll("[data-rm]").forEach((b) => (b.onclick = () => { const [part, i] = b.dataset.rm.split(":"); cfg[part].splice(+i, 1); store.setKv(K(`rutin:cfg:${child.id}`), cfg, { immediate: true }); draw(); }));
-    el.querySelectorAll("[data-add]").forEach((f) => (f.onsubmit = (e) => { e.preventDefault(); const v = f.querySelector("input").value.trim(); if (!v) return; cfg[f.dataset.add].push(v); store.setKv(K(`rutin:cfg:${child.id}`), cfg, { immediate: true }); draw(); }));
+    el.querySelectorAll("[data-add]").forEach((f) => (f.onsubmit = (e) => { e.preventDefault(); const v = f.querySelector("input").value.trim(); if (!v) return; if (cfg[f.dataset.add].includes(v)) { toast("Rutin itu sudah ada"); return; } cfg[f.dataset.add].push(v); store.setKv(K(`rutin:cfg:${child.id}`), cfg, { immediate: true }); draw(); }));
   };
   async function calcStreak() {
     let n = 0, day = todayKey();

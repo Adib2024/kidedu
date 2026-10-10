@@ -1,6 +1,6 @@
 // Pensel Warna Digital — tracing with automatic checking, SVG colouring, free drawing & gallery.
 import { store } from "../store.js";
-import { esc, sfx, toast, confetti, download, uid, todayKey, pick, shuffle, sample, starStr, speak } from "../util.js";
+import { esc, sfx, toast, confetti, download, uid, todayKey, pick, shuffle, sample, starStr, speak, notFound, confirmBox } from "../util.js";
 import { PICTURES, pictureSvg } from "../data/pictures.js";
 import { SHAPES, shapePath } from "../data/visuals.js";
 import { ABC, KATA, COLORS } from "../data/lexicon.js";
@@ -46,6 +46,7 @@ async function renderGallery(box) {
   if (!items.length) { box.innerHTML = `<p class="muted">Belum ada lukisan. Simpan lukisan anda untuk dipaparkan di sini! 🎨</p>`; return; }
   box.innerHTML = `<div class="gallery">${items.map((g) => `<figure><img src="${g.src}" alt="${esc(g.title)}"><figcaption>${esc(g.title)}<br>${esc(g.date)}</figcaption><button class="del" data-del="${g.id}" aria-label="Padam">✕</button></figure>`).join("")}</div>`;
   box.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    if (!(await confirmBox("Padam lukisan ini dari galeri?", "Padam"))) return;
     const list = (await store.kv(galKey(), [])).filter((g) => g.id !== b.dataset.del);
     store.setKv(galKey(), list, { immediate: true });
     renderGallery(box);
@@ -62,14 +63,15 @@ async function saveToGallery(canvas, title) {
   const src = t.toDataURL("image/jpeg", 0.72);
   const list = await store.kv(galKey(), []);
   list.unshift({ id: uid(), src, title, date: todayKey() });
-  await store.setKv(galKey(), list.slice(0, 24), { immediate: true });
-  toast("Disimpan ke galeri 🖼️");
+  const ok = await store.setKv(galKey(), list.slice(0, 24), { immediate: true });
+  if (ok) toast("Disimpan ke galeri 🖼️");
+  return ok;
 }
 
 // ---------------------------------------------------------------- router
 export function penselView(el, { id }, query) {
   const p = PENSEL.find((x) => x.id === id);
-  if (!p) { location.hash = "/pensel"; return; }
+  if (!p) return notFound(el, "#/pensel");
   if (p.kind === "trace") return traceActivity(el, p, query);
   if (p.kind === "free") return freeDraw(el, p);
   if (p.kind === "colour") return colourActivity(el, p, query);
@@ -261,6 +263,7 @@ async function traceActivity(el, p, query) {
       sfx("win"); confetti(r.stars * 12);
       res.innerHTML = `<div class="card center" style="margin-top:12px"><div class="bigstars" style="font-size:2.4rem">${starStr(r.stars)}</div>
         <p><b>${r.stars === 3 ? "Cantiknya tulisan!" : r.stars === 2 ? "Bagus! Hampir sempurna." : "Syabas! Cuba lagi untuk lebih bintang."}</b> Liputan ${Math.round(r.coverage * 100)}%</p>
+        ${rec.saveFailed ? `<div class="alert">⚠️ Bintang belum disimpan. Semak sambungan & cuba lagi.</div>` : ""}
         ${rec.newSticker ? `<div class="alert ok">🎁 Pelekat baru: ${rec.newSticker}</div>` : ""}
         <div class="row" style="justify-content:center"><button class="btn sm sun" data-again>🔁 Cuba lagi</button>
         ${idx < p.items.length - 1 ? `<button class="btn sm lime" data-go>Seterusnya ➡️</button>` : ""}
@@ -392,7 +395,7 @@ function colourActivity(el, p, query) {
       wrongIdx.forEach((i) => svg.querySelector(`[data-r="${i}"]`).animate([{ opacity: 1 }, { opacity: 0.2 }, { opacity: 1 }], { duration: 500, iterations: 3 }));
       if (!stars) { sfx("wrong"); res.innerHTML = `<div class="alert" style="margin-top:12px">${right}/${total} betul. Bahagian yang berkelip perlu diwarna semula 🙂</div>`; return; }
       const rec = await store.record(aid(p.id, pic.id), "pensel", { stars, score: right, total });
-      showResult(res, { score: right, total, earned: stars, newSticker: rec.newSticker, actions: [{ label: "Gambar lain ➡️", cls: "lime", onClick: () => { pic = PICTURES[(PICTURES.indexOf(pic) + 1) % PICTURES.length]; render(); } }] });
+      showResult(res, { score: right, total, earned: stars, newSticker: rec.newSticker, saveFailed: rec.saveFailed, actions: [{ label: "Gambar lain ➡️", cls: "lime", onClick: () => { pic = PICTURES[(PICTURES.indexOf(pic) + 1) % PICTURES.length]; render(); } }] });
     });
   };
   render();
@@ -442,7 +445,7 @@ function shapeActivity(el, p) {
       const res = el.querySelector("[data-res]");
       if (!stars) { sfx("wrong"); res.innerHTML = `<div class="alert" style="margin-top:12px">${right}/${total} betul. Semak bentuk yang berkelip! 🔍</div>`; return; }
       const rec = await store.record(aid(p.id, "latihan"), "pensel", { stars, score: right, total });
-      showResult(res, { score: right, total, earned: stars, newSticker: rec.newSticker, actions: [{ label: "🔄 Cabaran baru", cls: "lime", onClick: render }] });
+      showResult(res, { score: right, total, earned: stars, newSticker: rec.newSticker, saveFailed: rec.saveFailed, actions: [{ label: "🔄 Cabaran baru", cls: "lime", onClick: render }] });
     };
   };
   render();

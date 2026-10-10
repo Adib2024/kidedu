@@ -1,0 +1,22 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Static checks (syntax, imports, offline files, CSP, secrets)
+        run: node scripts/check.mjs
+      - name: Unit tests
+        run: node --test tests/unit/*.test.mjs
+      - name: End-to-end tests (headless Chrome)
+        run: node tests/e2e/run.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome

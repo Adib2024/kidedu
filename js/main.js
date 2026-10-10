@@ -1,8 +1,8 @@
 // App shell: router, layout, auth pages, hub, children, rewards, report, settings.
 import { store, STICKERS, STARS_PER_STICKER } from "./store.js";
-import { $, esc, toast, stopSpeak, confirmBox, isSoundOn, setSound, todayKey } from "./util.js";
+import { $, esc, toast, stopSpeak, confirmBox, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
 import { autoSpeakOn, setAutoSpeak } from "./engine.js";
-import { SECTIONS, sectionProgress } from "./sections.js";
+import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
 import { landing } from "./pages/landing.js";
 import { gamesList, gamePlay } from "./pages/games.js";
 import { mapsList, mapView } from "./pages/maps.js";
@@ -67,12 +67,19 @@ async function render() {
   cleanup = null;
   const { path, query } = parse();
   let route = routes.find((r) => r.re.test(path));
-  if (!route) { go("/"); return; }
+  if (!route) {
+    app.innerHTML = `<div id="bare"></div>`;
+    notFound($("#bare"), store.user ? "#/app" : "#/", store.user ? "Ke laman app" : "Laman utama");
+    app.insertAdjacentHTML("beforeend", fabHtml("low"));
+    revealFab(app);
+    document.title = "Halaman tidak dijumpai · Cilikopia";
+    return;
+  }
   const m = path.match(route.re);
   const params = Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
 
   if (route.meta.auth && !store.user) { go(`/masuk?next=${encodeURIComponent(path)}`); return; }
-  if ((path === "/masuk" || path === "/daftar") && store.user) { go(query.next || "/app"); return; }
+  if ((path === "/masuk" || path === "/daftar") && store.user) { go(safeNext(query.next)); return; }
   if (route.meta.child && store.user && !store.children.length) { go("/anak?baru=1"); return; }
 
   let mount = app;
@@ -87,8 +94,11 @@ async function render() {
   window.scrollTo(0, 0);
   if (!app.querySelector("[data-fb]")) app.insertAdjacentHTML("beforeend", fabHtml(route.meta.shell === false ? "low" : ""));
   revealFab(app);
+  mount.innerHTML = `<div class="loading" role="status"><div class="spin"></div>Memuatkan…</div>`;
   try {
     cleanup = await route.fn(mount, params, query);
+    const h1 = mount.querySelector("h1")?.textContent.trim();
+    document.title = h1 ? `${h1} · Cilikopia` : "Cilikopia — Belajar Sambil Bermain";
   } catch (e) {
     console.error(e);
     mount.innerHTML = `<div class="wrap page"><div class="alert">Maaf, ada ralat: ${esc(e.message)}</div><p><a href="#/app">← Kembali ke laman utama</a></p></div>`;
@@ -103,7 +113,7 @@ function shell(nav) {
   return `
   <header class="topbar no-print">
     <div class="wrap">
-      <a class="brand" href="#/app"><span class="logo">🐼</span><span class="txt">Pelangi Pop</span></a>
+      <a class="brand" href="#/app"><span class="logo">🐼</span><span class="txt">Cilikopia</span></a>
       <span class="spacer"></span>
       ${c ? `<a class="child-chip" href="#/anak" title="Tukar profil anak"><span class="av">${esc(c.avatar || "🧒")}</span><span class="nm">${esc(c.name)}</span><span class="star-pill">⭐ ${stars}</span></a>` : ""}
       <a class="icon-btn" href="#/tetapan" aria-label="Tetapan">⚙️</a>
@@ -134,7 +144,7 @@ function authFrame(inner) {
   return `<div class="wrap page" style="max-width:480px">
     <p style="margin-top:8px"><a href="#/" style="text-decoration:none;font-weight:800">← Laman utama</a></p>
     <div class="center" style="margin:10px 0 16px"><div style="font-size:4rem" class="boot-logo">🐼</div>
-      <div class="logo-type" style="font-size:2.4rem;margin:0"><span class="b">Pelangi Pop</span><span class="a">Land</span></div></div>
+      <div class="logo-type" style="font-size:2.4rem;margin:0"><span class="a">Cilik</span><span class="b">opia</span></div></div>
     <div class="card pad-lg">${inner}</div>
     ${store.mode === "demo" ? `<p class="small muted center" style="margin-top:12px">🧪 Mod Demo — akaun disimpan dalam pelayar ini sahaja.</p>` : ""}
   </div>`;
@@ -151,7 +161,7 @@ function loginPage(el, _p, query) {
     <p class="center" style="margin-top:14px">Belum ada akaun? <a href="#/daftar${query.next ? "?next=" + encodeURIComponent(query.next) : ""}">Daftar percuma</a><br><a href="#/lupa" class="small">Lupa kata laluan?</a></p>`);
   formHandler(el, async (d) => {
     await store.signIn(d);
-    go(query.next || "/app");
+    go(safeNext(query.next));
   });
 }
 function signupPage(el, _p, query) {
@@ -247,13 +257,45 @@ function hubPage(el) {
       </div>
       <p class="small" style="margin:8px 0 0">Kumpul <b>${toNext}</b> ⭐ lagi untuk pelekat seterusnya!</p>
     </section>
+    <div class="search" role="search">
+      <span class="ic" aria-hidden="true">🔍</span>
+      <label for="topic-q" class="sr-only">Cari topik</label>
+      <input id="topic-q" class="input" type="search" placeholder="Cari topik: sifir, warna, cerita, planner…" autocomplete="off" maxlength="40">
+      <button class="btn sm ghost clear" data-clear hidden aria-label="Kosongkan carian">✕</button>
+    </div>
+    <div data-results hidden></div>
+    <div data-zones>
     <h2 style="margin-top:22px">🧒 Zon Anak</h2>
     <div class="grid">${kids.map(tile).join("")}</div>
     <h2 style="margin-top:22px">👩 Zon Ibu</h2>
     <div class="grid">${mom.map(tile).join("")}
       <a class="tile" href="#/laporan" style="--tile:#e8f7ff"><span class="em">📊</span><span class="tt">Laporan Anak</span><span class="ds">Lihat kemajuan</span></a>
     </div>
+    </div>
   </div>`;
+  bindTopicSearch(el);
+}
+
+function bindTopicSearch(el) {
+  const input = el.querySelector("#topic-q");
+  const box = el.querySelector("[data-results]");
+  const zones = el.querySelector("[data-zones]");
+  const clear = el.querySelector("[data-clear]");
+  const run = () => {
+    const q = input.value.trim();
+    clear.hidden = !q;
+    if (!q) { box.hidden = true; zones.hidden = false; return; }
+    const res = searchTopics(q);
+    zones.hidden = true;
+    box.hidden = false;
+    box.innerHTML = res.length
+      ? `<p class="small muted" style="margin:12px 0 8px">${res.length} topik dijumpai</p><div class="grid">${res.map(({ s, it }) => `<a class="tile" href="${s.href}/${it.id}" style="--tile:${it.color || s.color}"><span class="em">${it.emoji}</span><span class="tt">${esc(it.title)}</span><span class="ds">${esc(s.title)}</span></a>`).join("")}</div>`
+      : `<div class="card center" style="margin-top:12px"><div style="font-size:2.6rem">🔎</div><p><b>Tiada topik untuk "<span data-q></span>"</b><br><span class="small muted">Cuba perkataan lain, cth: sifir, buah, warna, cerita, cuaca.</span></p></div>`;
+    const qs = box.querySelector("[data-q]");
+    if (qs) qs.textContent = q;
+  };
+  input.addEventListener("input", run);
+  clear.onclick = () => { input.value = ""; run(); input.focus(); };
 }
 
 function momZonePage(el) {
@@ -401,7 +443,7 @@ function reportPage(el) {
         </details>
       </div>`;
     }).join("")}
-    <button class="btn ghost no-print" onclick="window.print()">🖨️ Cetak laporan</button>
+    <button class="btn ghost no-print" data-print>🖨️ Cetak laporan</button>
   </div>`;
 }
 function activityLabel(id) {
@@ -438,7 +480,7 @@ function settingsPage(el) {
       <h3>💬 Maklum balas pilot</h3>
       <div class="row"><button class="btn sm lime" data-fb>Hantar maklum balas</button><a class="btn sm ghost" href="#/maklum-balas" data-fbadmin hidden>📋 Lihat semua maklum balas</a></div>
     </div>
-    <p class="small muted center">Pelangi Pop Land · v1.1 · ${todayKey()}</p>
+    <p class="small muted center">Cilikopia · v1.2 · ${todayKey()}</p>
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);
@@ -456,7 +498,10 @@ function settingsPage(el) {
 let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstall = e; });
 window.addEventListener("hashchange", render);
-document.addEventListener("click", (e) => { if (e.target.closest("[data-fb]")) { e.preventDefault(); openFeedback(); } });
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-fb]")) { e.preventDefault(); openFeedback(); }
+  else if (e.target.closest("[data-print]")) { e.preventDefault(); window.print(); }
+});
 store.init().then(render);
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
