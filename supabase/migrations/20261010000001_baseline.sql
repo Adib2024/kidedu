@@ -1,4 +1,4 @@
--- Cilikopia — Supabase schema (idempotent: safe to re-run; never drops data)
+-- Playora — 0001 baseline: children, progress, key/value store, feedback (idempotent)
 -- Run in Supabase Dashboard → SQL Editor (or `supabase db push`).
 -- Every table is protected by Row Level Security: a parent can only see their own rows.
 

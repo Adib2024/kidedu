@@ -1,4 +1,4 @@
-# 🐼 Cilikopia
+# 🐼 Playora
 
 Platform pembelajaran kanak-kanak (BM/English) — **belajar sambil bermain** — dengan zon khas untuk ibu.
 Web app statik (PWA) tanpa build step: HTML + CSS + JavaScript ES modules. Boleh dipasang ke skrin utama telefon.

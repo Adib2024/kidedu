@@ -74,7 +74,7 @@ export function ibuView(el, { id }) {
       </div>`);
       el.querySelector("[data-again]").onclick = () => { i = 0; Object.keys(scores).forEach((k) => (scores[k] = 0)); ask(); };
       el.querySelector("[data-share]").onclick = async () => {
-        const text = `${Qz.resultLabel} ${top.name} ${top.emoji} — cuba kuiz ini di Cilikopia!`;
+        const text = `${Qz.resultLabel} ${top.name} ${top.emoji} — cuba kuiz ini di Playora!`;
         try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast("Disalin ke papan klip 📋"); } } catch {}
       };
     };

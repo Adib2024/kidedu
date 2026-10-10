@@ -48,10 +48,10 @@ const playQuiz = async (b, max = 25) => {
 };
 
 // ------------------------------------------------------------------ navigation & shell
-await scenario("landing renders with Cilikopia branding, no CSP violations", async (b) => {
+await scenario("landing renders with Playora branding, no CSP violations", async (b) => {
   await b.goto(URL_);
-  assert.match(await b.eval("document.title"), /Cilikopia/);
-  assert.match(await b.text(".logo-type"), /Cilik\s*opia/);
+  assert.match(await b.eval("document.title"), /Playora/);
+  assert.match(await b.text(".logo-type"), /Play\s*ora/);
   assert.ok((await b.eval("document.querySelectorAll('.tile').length")) >= 70);
 });
 

@@ -8,7 +8,7 @@ const CANDIDATES = [process.env.CHROME_PATH, "/opt/pw-browsers/chromium-1194/chr
 export const chromePath = () => CANDIDATES.find((p) => existsSync(p));
 
 export async function launch({ width = 412, height = 900, port = 9400 + Math.floor(Math.random() * 500), mobile = width < 600 } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), "cilikopia-e2e-"));
+  const dir = mkdtempSync(join(tmpdir(), "playora-e2e-"));
   const proc = spawn(chromePath(), ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   let targets = [];
   for (let i = 0; i < 80 && !targets.length; i++) {

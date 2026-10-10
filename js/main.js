@@ -72,7 +72,7 @@ async function render() {
     notFound($("#bare"), store.user ? "#/app" : "#/", store.user ? "Ke laman app" : "Laman utama");
     app.insertAdjacentHTML("beforeend", fabHtml("low"));
     revealFab(app);
-    document.title = "Halaman tidak dijumpai · Cilikopia";
+    document.title = "Halaman tidak dijumpai · Playora";
     return;
   }
   const m = path.match(route.re);
@@ -98,7 +98,7 @@ async function render() {
   try {
     cleanup = await route.fn(mount, params, query);
     const h1 = mount.querySelector("h1")?.textContent.trim();
-    document.title = h1 ? `${h1} · Cilikopia` : "Cilikopia — Belajar Sambil Bermain";
+    document.title = h1 ? `${h1} · Playora` : "Playora — Belajar Sambil Bermain";
   } catch (e) {
     console.error(e);
     mount.innerHTML = `<div class="wrap page"><div class="alert">Maaf, ada ralat: ${esc(e.message)}</div><p><a href="#/app">← Kembali ke laman utama</a></p></div>`;
@@ -113,7 +113,7 @@ function shell(nav) {
   return `
   <header class="topbar no-print">
     <div class="wrap">
-      <a class="brand" href="#/app"><span class="logo">🐼</span><span class="txt">Cilikopia</span></a>
+      <a class="brand" href="#/app"><span class="logo">🐼</span><span class="txt">Playora</span></a>
       <span class="spacer"></span>
       ${c ? `<a class="child-chip" href="#/anak" title="Tukar profil anak"><span class="av">${esc(c.avatar || "🧒")}</span><span class="nm">${esc(c.name)}</span><span class="star-pill">⭐ ${stars}</span></a>` : ""}
       <a class="icon-btn" href="#/tetapan" aria-label="Tetapan">⚙️</a>
@@ -144,7 +144,7 @@ function authFrame(inner) {
   return `<div class="wrap page" style="max-width:480px">
     <p style="margin-top:8px"><a href="#/" style="text-decoration:none;font-weight:800">← Laman utama</a></p>
     <div class="center" style="margin:10px 0 16px"><div style="font-size:4rem" class="boot-logo">🐼</div>
-      <div class="logo-type" style="font-size:2.4rem;margin:0"><span class="a">Cilik</span><span class="b">opia</span></div></div>
+      <div class="logo-type" style="font-size:2.4rem;margin:0"><span class="a">Play</span><span class="b">ora</span></div></div>
     <div class="card pad-lg">${inner}</div>
     ${store.mode === "demo" ? `<p class="small muted center" style="margin-top:12px">🧪 Mod Demo — akaun disimpan dalam pelayar ini sahaja.</p>` : ""}
   </div>`;
@@ -480,7 +480,7 @@ function settingsPage(el) {
       <h3>💬 Maklum balas pilot</h3>
       <div class="row"><button class="btn sm lime" data-fb>Hantar maklum balas</button><a class="btn sm ghost" href="#/maklum-balas" data-fbadmin hidden>📋 Lihat semua maklum balas</a></div>
     </div>
-    <p class="small muted center">Cilikopia · v1.2 · ${todayKey()}</p>
+    <p class="small muted center">Playora · v1.2 · ${todayKey()}</p>
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);

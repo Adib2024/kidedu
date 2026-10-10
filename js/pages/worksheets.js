@@ -18,7 +18,7 @@ const head = (title, instr) => `
   <h2>${esc(title)}</h2>
   <div class="meta"><span>Nama:</span><span style="max-width:160px">Tarikh:</span></div>
   ${instr ? `<div class="instr">${instr}</div>` : ""}`;
-const foot = `<div class="foot">Cilikopia · Lembaran kerja percuma untuk kegunaan peribadi</div>`;
+const foot = `<div class="foot">Playora · Lembaran kerja percuma untuk kegunaan peribadi</div>`;
 
 /** Dashed tracing text (SVG). */
 function traceText(text, { size = 70, width = 700, height = 100, x = 10 } = {}) {
