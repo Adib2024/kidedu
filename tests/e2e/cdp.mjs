@@ -56,7 +56,11 @@ export async function launch({ width = 412, height = 900, port = 9400 + Math.flo
       await api.eval(`document.querySelector(${JSON.stringify(sel)}).click()`);
       await api.wait(250);
     },
-    text: (sel = "body") => api.eval(`(document.querySelector(${JSON.stringify(sel)})?.innerText || "")`),
+    /** innerText of a selector; waits (≤5 s) for the element so slow CI runners don't read an empty page. */
+    async text(sel = "body") {
+      if (sel !== "body") await api.waitFor(sel).catch(() => {});
+      return api.eval(`(document.querySelector(${JSON.stringify(sel)})?.innerText || "")`);
+    },
     exists: (sel) => api.eval(`!!document.querySelector(${JSON.stringify(sel)})`),
     async shot(path) { const r = await send("Page.captureScreenshot", { format: "png" }); writeFileSync(path, Buffer.from(r.result.data, "base64")); },
     addInitScript: (source) => send("Page.addScriptToEvaluateOnNewDocument", { source }),

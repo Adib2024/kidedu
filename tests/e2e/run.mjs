@@ -51,6 +51,7 @@ const playQuiz = async (b, max = 25) => {
 // ------------------------------------------------------------------ navigation & shell
 await scenario("landing renders with Playora branding, no CSP violations", async (b) => {
   await b.goto(URL_);
+  await b.waitFor(".logo-type");
   assert.match(await b.eval("document.title"), /Playora/);
   assert.match(await b.text(".logo-type"), /Play\s*ora/);
   assert.ok((await b.eval("document.querySelectorAll('.tile').length")) >= 70);
