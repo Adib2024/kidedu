@@ -12,6 +12,7 @@ import { penselList, penselView } from "./pages/pensel.js";
 import { ibuList, ibuView } from "./pages/ibu.js";
 import { plannerList, plannerView } from "./pages/planner.js";
 import { tipsList, tipsView } from "./pages/tips.js";
+import { openFeedback, fabHtml, revealFab, feedbackAdminPage, feedbackBackend } from "./feedback.js";
 
 const app = document.getElementById("app");
 let cleanup = null;
@@ -28,6 +29,7 @@ const routes = [
   ["/ganjaran", rewardsPage, { auth: true, child: true, nav: "rewards" }],
   ["/laporan", reportPage, { auth: true, nav: "ibu" }],
   ["/tetapan", settingsPage, { auth: true, nav: "ibu" }],
+  ["/maklum-balas", feedbackAdminPage, { nav: "ibu" }],
   ["/zon-ibu", momZonePage, { auth: true, nav: "ibu" }],
   ["/games", gamesList, { auth: true, child: true, nav: "games" }],
   ["/games/:id", gamePlay, { auth: true, child: true, nav: "games" }],
@@ -75,13 +77,16 @@ async function render() {
 
   let mount = app;
   if (route.meta.shell === false) {
-    app.innerHTML = "";
+    app.innerHTML = `<div id="bare"></div>`;
+    mount = $("#bare");
   } else {
     app.innerHTML = shell(route.meta.nav);
     mount = $("#view");
     bindShell();
   }
   window.scrollTo(0, 0);
+  if (!app.querySelector("[data-fb]")) app.insertAdjacentHTML("beforeend", fabHtml(route.meta.shell === false ? "low" : ""));
+  revealFab(app);
   try {
     cleanup = await route.fn(mount, params, query);
   } catch (e) {
@@ -429,11 +434,20 @@ function settingsPage(el) {
       <p class="small">Android/Chrome: tekan menu ⋮ → <b>Tambah ke skrin utama</b>. iPhone/Safari: butang Kongsi → <b>Add to Home Screen</b>.</p>
       <button class="btn sm sky" data-install hidden>Pasang sekarang</button>
     </div>
-    <p class="small muted center">Pelangi Pop Land · v1.0 · ${todayKey()}</p>
+    <div class="card" data-fbcard hidden>
+      <h3>💬 Maklum balas pilot</h3>
+      <div class="row"><button class="btn sm lime" data-fb>Hantar maklum balas</button><a class="btn sm ghost" href="#/maklum-balas" data-fbadmin hidden>📋 Lihat semua maklum balas</a></div>
+    </div>
+    <p class="small muted center">Pelangi Pop Land · v1.1 · ${todayKey()}</p>
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);
   el.querySelector("[data-out]").onclick = async () => { await store.signOut(); toast("Anda telah log keluar"); go("/"); };
+  feedbackBackend().then(async (be) => {
+    if (!be) return;
+    el.querySelector("[data-fbcard]").hidden = false;
+    if (be.kind === "claude" && (await be.user.isOwner())) el.querySelector("[data-fbadmin]").hidden = false;
+  });
   const ib = el.querySelector("[data-install]");
   if (deferredInstall) { ib.hidden = false; ib.onclick = () => { deferredInstall.prompt(); deferredInstall = null; ib.hidden = true; }; }
 }
@@ -442,6 +456,7 @@ function settingsPage(el) {
 let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstall = e; });
 window.addEventListener("hashchange", render);
+document.addEventListener("click", (e) => { if (e.target.closest("[data-fb]")) { e.preventDefault(); openFeedback(); } });
 store.init().then(render);
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("sw.js").catch(() => {});

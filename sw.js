@@ -1,8 +1,8 @@
 // Service worker: offline app shell + stale-while-revalidate for same-origin assets.
-const VERSION = "ppl-v2";
+const VERSION = "ppl-v3";
 const SHELL = [
   "./", "index.html", "config.js", "css/style.css", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png",
-  "js/main.js", "js/util.js", "js/store.js", "js/engine.js", "js/sections.js",
+  "js/main.js", "js/feedback.js", "js/util.js", "js/store.js", "js/engine.js", "js/sections.js",
   "js/data/lexicon.js", "js/data/visuals.js", "js/data/questions.js", "js/data/games.js", "js/data/maps.js",
   "js/data/books.js", "js/data/pictures.js", "js/data/tips.js",
   "js/pages/landing.js", "js/pages/games.js", "js/pages/maps.js", "js/pages/books.js", "js/pages/worksheets.js",

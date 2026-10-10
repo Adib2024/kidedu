@@ -77,3 +77,16 @@ create trigger user_kv_size_guard before insert or update on public.user_kv
   for each row execute function public.user_kv_size_guard();
 
 grant select, insert, update, delete on public.children, public.progress, public.user_kv to authenticated;
+
+-- ---------------------------------------------------------------- pilot feedback (insert-only; read it in the Dashboard)
+create table if not exists public.feedback (
+  id          bigint generated always as identity primary key,
+  user_id     uuid default auth.uid() references auth.users(id) on delete set null,
+  payload     jsonb not null check (pg_column_size(payload) < 20000),
+  created_at  timestamptz not null default now()
+);
+alter table public.feedback enable row level security;
+drop policy if exists "feedback: anyone can send" on public.feedback;
+create policy "feedback: anyone can send" on public.feedback
+  for insert to anon, authenticated with check (true);
+grant insert on public.feedback to anon, authenticated;

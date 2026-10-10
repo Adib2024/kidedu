@@ -229,6 +229,15 @@ const cloud = {
       prefer: "resolution=merge-duplicates,return=minimal",
     });
   },
+  async submitFeedback(entry) {
+    const token = this._s ? await this._token() : null;
+    const r = await fetch(`${SB}/rest/v1/feedback`, {
+      method: "POST",
+      headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: `Bearer ${token || CFG.SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ payload: entry }),
+    });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || `Ralat pelayan (${r.status})`); }
+  },
   async kvGet(_u, key) {
     const rows = await this._rest(`user_kv?select=value&key=eq.${encodeURIComponent(key)}`);
     return rows?.[0]?.value;
@@ -308,6 +317,7 @@ export const store = {
     this.emit();
   },
   resetPassword: (email) => be.resetPassword(email),
+  submitFeedback: (entry) => (CLOUD ? cloud.submitFeedback(entry) : Promise.reject(new Error("Tidak tersedia dalam Mod Demo"))),
   updatePassword: (pw) => (CLOUD ? cloud.updatePassword(pw) : Promise.reject(new Error("Tidak tersedia dalam Mod Demo"))),
 
   // ----- children -----
