@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { launch, chromePath } from "./cdp.mjs";
 import { staticServer, mockSupabase } from "./servers.mjs";
+import { buildCatalog } from "../../scripts/activity-catalog.mjs";
 
 if (!chromePath()) { console.log("SKIP: no Chromium found (set CHROME_PATH)"); process.exit(0); }
 
@@ -10,7 +11,7 @@ const servers = [
   await staticServer(APP),
   await staticServer(CLOUD_APP, { stripCsp: true, config: `window.PPL_CONFIG = { SUPABASE_URL: "http://127.0.0.1:${SB}", SUPABASE_ANON_KEY: "anon-test" };` }),
 ];
-const sb = await mockSupabase(SB);
+const sb = await mockSupabase(SB, { catalog: await buildCatalog() });
 servers.push(sb);
 const URL_ = `http://127.0.0.1:${APP}/`;
 const CLOUD = `http://127.0.0.1:${CLOUD_APP}/`;
@@ -380,8 +381,95 @@ await scenario("cloud mode: expired session sends the user to login (no silent f
   assert.match(await b.text("#toast"), /Sesi anda telah tamat/);
 }, { allow: /status of (401|400) .*\/(rest\/v1\/user_kv|auth\/v1\/token)/ });
 
+// ------------------------------------------------------------------ learning dashboard, worksheets, admin
+await scenario("hub: daily missions, XP and data-based recommendations update after playing", async (b) => {
+  await guest(b);
+  await b.waitFor(".mission");
+  assert.match(await b.text("[data-missions]"), /0\/2/);
+  assert.match(await b.text("[data-recs]"), /Sesuai untuk umur 5/);
+  await b.hash("/games/ingat-padan?lv=0");
+  await b.eval(`(async()=>{const by={}; document.querySelectorAll('.mem-card').forEach(c=>(by[c.querySelector('.front-f').textContent] ||= []).push(c));
+    for (const [a,c] of Object.values(by)) { a.click(); await new Promise(r=>setTimeout(r,120)); c.click(); await new Promise(r=>setTimeout(r,250)); }})()`);
+  await b.waitFor(".result");
+  assert.match(await b.text(".result"), /\+35 XP/);
+  await b.hash("/app");
+  await b.waitFor(".mission");
+  assert.match(await b.text("[data-missions]"), /1\/2/);
+  assert.match(await b.text(".xp-bar"), /35 \/ 100 XP/);
+  assert.match(await b.text("[data-recs]"), /Ingat & Padan: 6 Pasang/);
+});
+
+await scenario("parent report: real attempts, weekly goal saved", async (b) => {
+  await guest(b);
+  await b.hash("/games/bijak-sifir?lv=0");
+  await playQuiz(b);
+  await b.hash("/laporan");
+  await b.waitFor("[data-goal]");
+  assert.match(await b.text("#view"), /Bijak Sifir — Sifir 2/);
+  assert.match(await b.text("#view"), /1 \/ 5 aktiviti sejak Isnin/);
+  await b.eval(`(()=>{const s=document.querySelector('[data-goal]'); s.value='3'; s.dispatchEvent(new Event('change'))})()`);
+  await b.wait(600);
+  await b.reload();
+  await b.waitFor("[data-goal]");
+  assert.equal(await b.eval("document.querySelector('[data-goal]').value"), "3");
+});
+
+await scenario("worksheet library: search, combined filters, favourites, empty state, reset", async (b) => {
+  await guest(b);
+  await b.hash("/worksheet");
+  await b.waitFor("[data-fav]");
+  await b.eval(`(()=>{const i=document.querySelector('#ws-q'); i.value='huruf'; i.dispatchEvent(new Event('input'))})()`);
+  assert.match(await b.text("[data-count]"), /^1 daripada 7/);
+  await b.eval(`(()=>{const i=document.querySelector('#ws-q'); i.value=''; i.dispatchEvent(new Event('input'))})()`);
+  await b.click('[data-subj="matematik"]');
+  await b.eval(`(()=>{const s=document.querySelector('#ws-age'); s.value='9'; s.dispatchEvent(new Event('change'))})()`);
+  assert.match(await b.text("[data-count]"), /^1 daripada 7/, "matematik + umur 9");
+  await b.click('[data-fav="latihan-matematik"]');
+  await b.wait(300);
+  await b.click("[data-reset]");
+  await b.waitFor("[data-favonly]");
+  await b.click("[data-favonly]");
+  assert.match(await b.text("[data-count]"), /^1 daripada 7/, "favourite persisted");
+  await b.eval(`(()=>{const i=document.querySelector('#ws-q'); i.value='zzz'; i.dispatchEvent(new Event('input'))})()`);
+  assert.match(await b.text("[data-list]"), /Tiada worksheet sepadan/);
+});
+
+await scenario("admin page is refused for parents (demo and cloud)", async (b) => {
+  await guest(b);
+  await b.hash("/admin");
+  await b.waitFor("h1");
+  assert.match(await b.text("#view"), /Akses ditolak/);
+});
+
+await scenario("cloud: quiz is scored by the server; admin can hide an activity for everyone", async (b) => {
+  await b.goto(CLOUD + "#/daftar");
+  await b.eval("localStorage.setItem('ppl_autospeak','off')");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Admin'; f.email.value='admin@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  await b.wait(1200);
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Adik'; f.requestSubmit();})()`);
+  await b.wait(900);
+  await b.hash("/games/bijak-sifir?lv=0");
+  await playQuiz(b);
+  assert.match(await b.text(".result"), /XP/, "server accepted the answer log");
+  assert.equal(sb.db.attempts.at(-1).answers.length, 10);
+  await b.hash("/admin");
+  assert.match(await b.text("#view"), /Akses ditolak/, "not admin yet");
+  sb.makeAdmin("admin@e2e.my");
+  await b.reload();
+  await b.hash("/admin");
+  await b.waitFor('[data-pub="game:simpulan-bahasa"]');
+  await b.click('[data-pub="game:simpulan-bahasa"]');
+  await b.wait(500);
+  assert.equal(sb.db.activities.get("game:simpulan-bahasa").published, false);
+  assert.match(await b.text("[data-audit]"), /game:simpulan-bahasa/);
+  await b.hash("/games");
+  assert.doesNotMatch(await b.text("#view"), /Simpulan Bahasa/);
+  await b.hash("/games/simpulan-bahasa");
+  assert.match(await b.text(), /Halaman tidak dijumpai/);
+});
+
 // ------------------------------------------------------------------ layout
-const ROUTES = ["/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/hook", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
+const ROUTES = ["/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/hook", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
 for (const width of [360, 1280]) {
   await scenario(`no horizontal overflow on ${ROUTES.length} routes at ${width}px`, async (b) => {
     await guest(b);

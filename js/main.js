@@ -3,6 +3,10 @@ import { store, STICKERS, STARS_PER_STICKER } from "./store.js";
 import { $, esc, toast, stopSpeak, confirmBox, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
 import { autoSpeakOn, setAutoSpeak } from "./engine.js";
 import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
+import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf } from "./progression.js";
+import { GAMES } from "./data/games.js";
+import { MAPS } from "./data/maps.js";
+import { BOOKS } from "./data/books.js";
 import { landing } from "./pages/landing.js";
 import { gamesList, gamePlay } from "./pages/games.js";
 import { mapsList, mapView } from "./pages/maps.js";
@@ -30,6 +34,7 @@ const routes = [
   ["/laporan", reportPage, { auth: true, nav: "ibu" }],
   ["/tetapan", settingsPage, { auth: true, nav: "ibu" }],
   ["/maklum-balas", feedbackAdminPage, { nav: "ibu" }],
+  ["/admin", adminPage, { auth: true, nav: "ibu" }],
   ["/zon-ibu", momZonePage, { auth: true, nav: "ibu" }],
   ["/games", gamesList, { auth: true, child: true, nav: "games" }],
   ["/games/:id", gamePlay, { auth: true, child: true, nav: "games" }],
@@ -256,7 +261,12 @@ function hubPage(el) {
         <a class="star-pill" style="font-size:1.1rem;background:#fff;text-decoration:none" href="#/ganjaran">🎁 ${stick}/${STICKERS.length} pelekat</a>
       </div>
       <p class="small" style="margin:8px 0 0">Kumpul <b>${toNext}</b> ⭐ lagi untuk pelekat seterusnya!</p>
+      ${xpBar(store.xpOf(c.id))}
     </section>
+    <div class="grid two" data-learn>
+      <div class="card"><h2 style="font-size:1.2rem">🎯 Misi Hari Ini</h2><div data-missions><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
+      <div class="card"><h2 style="font-size:1.2rem">✨ Cadangan untuk ${esc(c.name)}</h2><div data-recs><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
+    </div>
     <div class="search" role="search">
       <span class="ic" aria-hidden="true">🔍</span>
       <label for="topic-q" class="sr-only">Cari topik</label>
@@ -274,6 +284,35 @@ function hubPage(el) {
     </div>
   </div>`;
   bindTopicSearch(el);
+  fillLearning(el, c);
+}
+
+function xpBar(xp) {
+  const L = levelInfo(xp);
+  return `<div class="xp-bar" title="${xp} XP">
+    <div class="row between small" style="font-weight:800"><span>🏅 Tahap ${L.level} · ${esc(levelTitle(L.level))}</span><span>${xp} / ${L.next} XP</span></div>
+    <div class="progress"><i style="width:${L.pct}%"></i></div></div>`;
+}
+const CATALOG = { games: GAMES, maps: MAPS, books: BOOKS };
+async function fillLearning(el, c) {
+  const mBox = el.querySelector("[data-missions]");
+  const rBox = el.querySelector("[data-recs]");
+  let attempts = [];
+  try { attempts = await store.attempts(c.id); }
+  catch (e) {
+    console.warn(e);
+    mBox.innerHTML = rBox.innerHTML = `<p class="small muted">Tidak dapat memuatkan aktiviti terkini. Semak sambungan internet.</p>`;
+    return;
+  }
+  if (!mBox.isConnected) return;
+  const ms = dailyMissions(attempts);
+  const allDone = ms.every((m) => m.complete);
+  mBox.innerHTML = `<div class="stack">${ms.map((m) => `<div class="mission ${m.complete ? "done" : ""}"><span class="e" aria-hidden="true">${m.complete ? "✅" : m.emoji}</span><span class="grow">${esc(m.text)}</span><b>${m.done}/${m.need}</b></div>`).join("")}</div>
+    <p class="small muted" style="margin:10px 0 0">${allDone ? "Hebat! Semua misi hari ini selesai 🎉" : "Misi baharu setiap hari — tiada denda jika terlepas."}</p>`;
+  const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: CATALOG, isPublished: (f) => store.isPublished(f) });
+  rBox.innerHTML = recs.length
+    ? `<div class="stack">${recs.map((r) => `<a class="rec" href="${r.href}"><span class="e" aria-hidden="true">${r.emoji}</span><span class="grow"><b>${esc(r.title)}</b><span class="small muted" style="display:block">${esc(r.reason)}</span></span><span aria-hidden="true">➡️</span></a>`).join("")}</div>`
+    : `<p class="muted">Teruskan bermain — cadangan akan muncul berdasarkan aktiviti ${esc(c.name)}.</p>`;
 }
 
 function bindTopicSearch(el) {
@@ -416,38 +455,74 @@ function rewardsPage(el) {
 }
 
 // ---------------------------------------------------------------- report
-function reportPage(el) {
+async function reportPage(el) {
   if (!store.children.length) { el.innerHTML = `<div class="wrap page"><div class="alert info">Tiada profil anak lagi. <a href="#/anak?baru=1">Tambah sekarang</a></div></div>`; return; }
-  const cats = { games: "🎮 Games Online", peta: "🗺️ Peta Kartun", buku: "📚 Buku Cerita", pensel: "🖍️ Pensel Warna" };
+  const cats = { games: "🎮 Games Online", peta: "🗺️ Peta Kartun", buku: "📚 Buku Cerita", pensel: "🖍️ Pensel Warna", rutin: "🌞 Rutin" };
   el.innerHTML = `<div class="wrap page stack">
     <div class="pagehead"><a class="back" href="#/zon-ibu" aria-label="Kembali">←</a><h1>Laporan Kemajuan</h1></div>
-    ${store.children.map((c) => {
-      const rows = Object.values(store.progress[c.id] || {}).sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
-      const total = rows.reduce((s, r) => s + r.stars, 0);
-      const plays = rows.reduce((s, r) => s + (r.plays || 0), 0);
-      const week = rows.filter((r) => r.updated_at && Date.now() - new Date(r.updated_at) < 7 * 864e5).length;
-      const by = Object.keys(cats).map((k) => { const rr = rows.filter((r) => r.category === k); return { k, n: rr.length, s: rr.reduce((a, r) => a + r.stars, 0), max: rr.length * 3 }; });
-      const weak = rows.filter((r) => r.stars <= 1 && r.total).slice(0, 5);
-      return `<div class="card stack">
-        <div class="row"><span style="font-size:2.4rem">${esc(c.avatar || "🧒")}</span><div class="grow"><h2 style="margin:0">${esc(c.name)}</h2><span class="muted small">${c.age ? esc(c.age) + " tahun" : ""}</span></div></div>
-        <div class="grid">
-          <div class="panel center"><div style="font-size:1.8rem;font-weight:800">⭐ ${total}</div><div class="small muted">Jumlah bintang</div></div>
-          <div class="panel center"><div style="font-size:1.8rem;font-weight:800">${rows.length}</div><div class="small muted">Aktiviti dicuba</div></div>
-          <div class="panel center"><div style="font-size:1.8rem;font-weight:800">${plays}</div><div class="small muted">Kali bermain</div></div>
-          <div class="panel center"><div style="font-size:1.8rem;font-weight:800">${week}</div><div class="small muted">Aktif 7 hari lepas</div></div>
-        </div>
-        <div>${by.map((b) => `<div style="margin-bottom:10px"><div class="row between small"><b>${cats[b.k]}</b><span>${b.n} aktiviti · ⭐ ${b.s}</span></div><div class="bar"><i style="width:${b.max ? (b.s / b.max) * 100 : 0}%"></i></div></div>`).join("")}</div>
-        ${weak.length ? `<div class="alert info small"><b>Perlu latihan lagi:</b> ${weak.map((w) => esc(activityLabel(w.activity_id))).join(", ")}</div>` : ""}
-        <details><summary style="font-weight:800;cursor:pointer">Aktiviti terkini</summary>
-          <div class="stack" style="margin-top:8px">${rows.slice(0, 15).map((r) => `<div class="list-item small"><span class="grow">${esc(activityLabel(r.activity_id))}</span><span>${"⭐".repeat(r.stars) || "—"}</span><span class="muted">${r.updated_at ? new Date(r.updated_at).toLocaleDateString("ms-MY") : ""}</span></div>`).join("") || `<p class="muted">Belum ada aktiviti.</p>`}</div>
-        </details>
-      </div>`;
-    }).join("")}
+    <p class="small muted">Semua angka dikira daripada aktiviti yang benar-benar direkodkan. Laporan ini menunjukkan latihan, bukan penilaian rasmi penguasaan.</p>
+    <div data-kids class="stack"></div>
     <button class="btn ghost no-print" data-print>🖨️ Cetak laporan</button>
   </div>`;
+  const box = el.querySelector("[data-kids]");
+  for (const c of store.children) {
+    const card = document.createElement("div");
+    card.className = "card stack";
+    card.innerHTML = `<div class="loading" style="padding:20px 0"><div class="spin"></div>Memuatkan ${esc(c.name)}…</div>`;
+    box.appendChild(card);
+    let attempts = [];
+    let failed = false;
+    try { attempts = await store.attempts(c.id); } catch (e) { console.warn(e); failed = true; }
+    if (!card.isConnected) return;
+    const rows = Object.values(store.progress[c.id] || {}).sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+    const total = rows.reduce((s, r) => s + r.stars, 0);
+    const L = levelInfo(store.xpOf(c.id));
+    const wk = weeklyProgress(attempts, c.weekly_goal || 5);
+    const by = Object.keys(cats).map((k) => { const rr = rows.filter((r) => r.category === k); return { k, n: rr.length, s: rr.reduce((a, r) => a + r.stars, 0), max: rr.length * 3 }; }).filter((b) => b.n);
+    const weak = weakSpots(attempts);
+    const lowStars = rows.filter((r) => r.stars <= 1 && r.category !== "rutin").slice(0, 5);
+    const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: CATALOG, isPublished: (f) => store.isPublished(f) });
+    card.innerHTML = `
+      <div class="row"><span style="font-size:2.4rem">${esc(c.avatar || "🧒")}</span><div class="grow"><h2 style="margin:0">${esc(c.name)}</h2><span class="muted small">${c.age ? esc(c.age) + " tahun · " : ""}Tahap ${L.level} ${esc(levelTitle(L.level))}</span></div></div>
+      ${failed ? `<div class="alert">Sejarah aktiviti tidak dapat dimuat. Angka di bawah mungkin tidak lengkap.</div>` : ""}
+      <div class="grid">
+        <div class="panel center"><div class="kpi">⭐ ${total}</div><div class="small muted">Jumlah bintang</div></div>
+        <div class="panel center"><div class="kpi">${store.xpOf(c.id)}</div><div class="small muted">XP</div></div>
+        <div class="panel center"><div class="kpi">${rows.length}</div><div class="small muted">Aktiviti dicuba</div></div>
+        <div class="panel center"><div class="kpi">${attempts.length}${attempts.length >= 200 ? "+" : ""}</div><div class="small muted">Percubaan direkod</div></div>
+      </div>
+      <div>
+        <div class="row between"><b>🎯 Matlamat minggu ini</b>
+          <label class="small no-print">Sasaran <select class="input" data-goal style="width:auto;padding:4px 8px;display:inline-block" aria-label="Sasaran aktiviti seminggu">${[3, 5, 7, 10, 14, 20, 30].map((g) => `<option ${g === (c.weekly_goal || 5) ? "selected" : ""}>${g}</option>`).join("")}</select> aktiviti</label></div>
+        <div class="progress" style="margin-top:6px"><i style="width:${wk.pct}%"></i></div>
+        <p class="small muted" style="margin:4px 0 0">${wk.count} / ${wk.goal} aktiviti sejak Isnin${wk.reached ? " — sasaran tercapai 🎉" : ""}</p>
+      </div>
+      ${by.length ? `<div>${by.map((b) => `<div style="margin-bottom:10px"><div class="row between small"><b>${cats[b.k]}</b><span>${b.n} aktiviti · ⭐ ${b.s}${b.k === "rutin" ? "" : "/" + b.max}</span></div><div class="bar"><i style="width:${b.max ? (b.s / b.max) * 100 : 0}%"></i></div></div>`).join("")}</div>` : `<p class="muted">Belum ada aktiviti. Jom mula dengan cadangan di bawah!</p>`}
+      ${weak.length || lowStars.length ? `<div class="alert info small"><b>Perlu lebih latihan</b>
+        <ul style="margin:6px 0 0;padding-left:18px">${weak.map((w) => `<li>${esc(familyLabel(w.family))}: ${w.wrong}/${w.answered} jawapan salah (14 hari)${w.examples.length ? ` — cth: <i>${w.examples.map(esc).join("; ")}</i>` : ""}</li>`).join("")}
+        ${lowStars.map((r) => `<li>${esc(activityLabel(r.activity_id))}: bintang terbaik ${r.stars}/3</li>`).join("")}</ul></div>` : ""}
+      ${recs.length ? `<div><b>✨ Cadangan seterusnya</b><div class="stack" style="margin-top:6px">${recs.map((r) => `<a class="rec" href="${r.href}"><span class="e">${r.emoji}</span><span class="grow"><b>${esc(r.title)}</b><span class="small muted" style="display:block">${esc(r.reason)}</span></span></a>`).join("")}</div></div>` : ""}
+      <details><summary style="font-weight:800;cursor:pointer">Percubaan terkini</summary>
+        <div class="table-scroll" style="margin-top:8px"><table class="report-table"><thead><tr><th>Tarikh</th><th>Aktiviti</th><th>Markah</th><th>Bintang</th><th>XP</th></tr></thead>
+        <tbody>${attempts.slice(0, 25).map((a) => `<tr><td>${new Date(a.created_at).toLocaleDateString("ms-MY")}</td><td>${esc(activityLabel(a.activity_id))}</td><td>${a.answers ? `${a.score}/${a.total}` : "—"}</td><td>${"⭐".repeat(a.stars) || "—"}</td><td>+${a.xp}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">Belum ada percubaan.</td></tr>`}</tbody></table></div>
+      </details>`;
+    card.querySelector("[data-goal]").onchange = async (e) => {
+      const goal = Number(e.target.value);
+      e.target.disabled = true;
+      try { await store.updateChild(c.id, { weekly_goal: goal }); toast("Sasaran mingguan dikemas kini"); reportPage(el); }
+      catch (ex) { toast(ex.message); e.target.disabled = false; }
+    };
+  }
+}
+function familyLabel(fam) {
+  const [cat, id] = fam.split(":");
+  const sec = SECTIONS.find((s) => s.key === (cat === "game" ? "games" : cat));
+  return sec?.list.find((x) => x.id === id)?.title || fam;
 }
 function activityLabel(id) {
-  const [cat, a, b] = id.split(":");
+  const [cat0, a, b] = id.split(":");
+  if (cat0 === "rutin") return `Rutin ${b === "pagi" ? "pagi" : "malam"} (${a})`;
+  const cat = cat0 === "game" ? "games" : cat0;
   const sec = SECTIONS.find((s) => s.key === cat);
   const item = sec?.list.find((x) => x.id === a);
   if (!item) return id;
@@ -469,7 +544,7 @@ function settingsPage(el) {
       <h3>Akaun</h3>
       <p><b>${esc(store.user.name)}</b><br><span class="muted">${esc(store.user.email)}</span></p>
       <p class="small muted">Mod: ${store.mode === "cloud" ? "☁️ Awan (Supabase) — data disegerakkan" : "🧪 Demo — data dalam pelayar ini sahaja"}</p>
-      <div class="row"><a class="btn sm ghost" href="#/anak">👨‍👩‍👧 Urus profil anak</a><button class="btn sm" data-out>Log keluar</button></div>
+      <div class="row"><a class="btn sm ghost" href="#/anak">👨‍👩‍👧 Urus profil anak</a><a class="btn sm grape" href="#/admin" data-admin hidden>🛠️ Pentadbiran kandungan</a><button class="btn sm" data-out>Log keluar</button></div>
     </div>
     <div class="card">
       <h3>Pasang sebagai App 📱</h3>
@@ -485,6 +560,7 @@ function settingsPage(el) {
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);
   el.querySelector("[data-out]").onclick = async () => { await store.signOut(); toast("Anda telah log keluar"); go("/"); };
+  store.isAdmin().then((yes) => { const a = el.querySelector("[data-admin]"); if (yes && a) a.hidden = false; });
   feedbackBackend().then(async (be) => {
     if (!be) return;
     el.querySelector("[data-fbcard]").hidden = false;
@@ -492,6 +568,43 @@ function settingsPage(el) {
   });
   const ib = el.querySelector("[data-install]");
   if (deferredInstall) { ib.hidden = false; ib.onclick = () => { deferredInstall.prompt(); deferredInstall = null; ib.hidden = true; }; }
+}
+
+// ---------------------------------------------------------------- admin (content publishing)
+async function adminPage(el) {
+  if (!(await store.isAdmin())) {
+    el.innerHTML = `<div class="wrap page"><div class="card pad-lg center"><div style="font-size:3rem">🔒</div><h1>Akses ditolak</h1><p>Halaman ini hanya untuk pentadbir kandungan.${store.mode === "demo" ? " (Tidak tersedia dalam Mod Demo.)" : ""}</p><a class="btn" href="#/app">Kembali</a></div></div>`;
+    return;
+  }
+  await store.loadCatalog();
+  const rows = [...(store.catalog?.values() || [])];
+  const groups = { games: "🎮 Games", peta: "🗺️ Peta", buku: "📚 Buku", pensel: "🖍️ Pensel", rutin: "🌞 Rutin" };
+  el.innerHTML = `<div class="wrap page stack">
+    <div class="pagehead"><a class="back" href="#/tetapan" aria-label="Kembali">←</a><h1>Pentadbiran Kandungan</h1></div>
+    <div class="alert info small">Aktiviti yang dinyahterbit disembunyikan daripada semua pengguna dan tidak boleh direkod (dikuatkuasa oleh pangkalan data). Setiap perubahan direkod dalam log audit.</div>
+    ${Object.entries(groups).map(([k, label]) => `<div class="card"><h2 style="font-size:1.15rem">${label}</h2><div class="stack">${rows.filter((r) => r.category === k).map((r) => `
+      <label class="check"><input type="checkbox" data-pub="${esc(r.id)}" ${r.published ? "checked" : ""}><span class="grow">${esc(r.title)} <span class="small muted">${esc(r.id)}</span></span><span class="small" data-state="${esc(r.id)}">${r.published ? "Diterbitkan" : "Tersembunyi"}</span></label>`).join("")}</div></div>`).join("")}
+    <div class="card"><h2 style="font-size:1.15rem">🧾 Log audit terkini</h2><div data-audit class="small muted">Memuatkan…</div></div>
+  </div>`;
+  const loadAudit = async () => {
+    const box = el.querySelector("[data-audit]");
+    try {
+      const a = await store.adminAudit();
+      box.innerHTML = a.length ? `<div class="table-scroll"><table class="report-table"><thead><tr><th>Masa</th><th>Aktiviti</th><th>Perubahan</th></tr></thead><tbody>${a.map((x) => `<tr><td>${new Date(x.created_at).toLocaleString("ms-MY")}</td><td>${esc(x.row_id)}</td><td>${x.old_value?.published !== x.new_value?.published ? (x.new_value?.published ? "Diterbitkan" : "Disembunyikan") : "Dikemas kini"}</td></tr>`).join("")}</tbody></table></div>` : "Tiada perubahan lagi.";
+    } catch (e) { box.textContent = "Log audit tidak dapat dimuat: " + e.message; }
+  };
+  el.querySelectorAll("[data-pub]").forEach((cb) => (cb.onchange = async () => {
+    const id = cb.dataset.pub, want = cb.checked;
+    cb.disabled = true;
+    try {
+      await store.setPublished(id, want);
+      el.querySelector(`[data-state="${CSS.escape(id)}"]`).textContent = want ? "Diterbitkan" : "Tersembunyi";
+      toast(want ? "Aktiviti diterbitkan" : "Aktiviti disembunyikan");
+      loadAudit();
+    } catch (e) { cb.checked = !want; toast(e.message); }
+    finally { cb.disabled = false; }
+  }));
+  loadAudit();
 }
 
 // ---------------------------------------------------------------- boot

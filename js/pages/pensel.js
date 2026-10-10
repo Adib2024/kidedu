@@ -31,7 +31,7 @@ export async function penselList(el) {
     <section class="banner"><span class="deco" style="left:12px;top:10px">✏️</span><span class="deco" style="right:12px;top:10px">🖍️</span>
       <h1>Topik Pensel Warna Digital</h1><span class="sub">🖌️ Surih, warna & lukis terus di skrin</span></section>
     <div class="grid">
-      ${PENSEL.map((p) => {
+      ${PENSEL.filter((p) => store.isPublished(`pensel:${p.id}`)).map((p) => {
         const done = p.items ? p.items.filter((it) => store.starsOf(aid(p.id, it)) > 0).length : null;
         return `<a class="tile" href="#/pensel/${p.id}" style="--tile:${p.color}"><span class="em">${p.emoji}</span><span class="tt">${esc(p.title)}</span><span class="ds">${esc(p.desc)}</span>${done != null ? `<span class="stars">✅ ${done}/${p.items.length}</span>` : ""}</a>`;
       }).join("")}
@@ -71,7 +71,7 @@ async function saveToGallery(canvas, title) {
 // ---------------------------------------------------------------- router
 export function penselView(el, { id }, query) {
   const p = PENSEL.find((x) => x.id === id);
-  if (!p) return notFound(el, "#/pensel");
+  if (!p || !store.isPublished(`pensel:${p.id}`)) return notFound(el, "#/pensel");
   if (p.kind === "trace") return traceActivity(el, p, query);
   if (p.kind === "free") return freeDraw(el, p);
   if (p.kind === "colour") return colourActivity(el, p, query);
@@ -259,7 +259,7 @@ async function traceActivity(el, p, query) {
         res.innerHTML = `<div class="alert" style="margin-top:12px">${r.coverage < 0.3 ? "Surih lebih banyak garisan ya! ✏️" : "Cuba ikut garisan putus-putus dengan lebih teliti 🙂"} (liputan ${Math.round(r.coverage * 100)}%)</div>`;
         return;
       }
-      const rec = await store.record(aid(p.id, item), "pensel", { stars: r.stars, score: Math.round(r.coverage * 100), total: 100 });
+      const rec = await store.record(aid(p.id, item), "pensel", { stars: r.stars });
       sfx("win"); confetti(r.stars * 12);
       res.innerHTML = `<div class="card center" style="margin-top:12px"><div class="bigstars" style="font-size:2.4rem">${starStr(r.stars)}</div>
         <p><b>${r.stars === 3 ? "Cantiknya tulisan!" : r.stars === 2 ? "Bagus! Hampir sempurna." : "Syabas! Cuba lagi untuk lebih bintang."}</b> Liputan ${Math.round(r.coverage * 100)}%</p>
@@ -304,7 +304,7 @@ function freeDraw(el, p) {
     el.querySelectorAll("[data-scene]").forEach((b) => (b.onclick = () => { scene = b.dataset.scene; render(); }));
     el.querySelector("[data-save]").onclick = async () => {
       await saveToGallery(board.merged(), prompt);
-      const r = await store.record(aid(p.id, todayKey()), "pensel", { stars: 3, score: 1, total: 1 });
+      const r = await store.record(aid(p.id, todayKey()), "pensel", { stars: 3 });
       sfx("win"); confetti(30);
       if (r.newSticker) toast(`🎁 Pelekat baru: ${r.newSticker}`);
     };
@@ -394,7 +394,7 @@ function colourActivity(el, p, query) {
       const wrongIdx = fills.map((f, i) => (f.toLowerCase() !== pic.palette[pic.regions[i][2] - 1].hex.toLowerCase() ? i : -1)).filter((i) => i >= 0);
       wrongIdx.forEach((i) => svg.querySelector(`[data-r="${i}"]`).animate([{ opacity: 1 }, { opacity: 0.2 }, { opacity: 1 }], { duration: 500, iterations: 3 }));
       if (!stars) { sfx("wrong"); res.innerHTML = `<div class="alert" style="margin-top:12px">${right}/${total} betul. Bahagian yang berkelip perlu diwarna semula 🙂</div>`; return; }
-      const rec = await store.record(aid(p.id, pic.id), "pensel", { stars, score: right, total });
+      const rec = await store.record(aid(p.id, pic.id), "pensel", { stars });
       showResult(res, { score: right, total, earned: stars, newSticker: rec.newSticker, saveFailed: rec.saveFailed, actions: [{ label: "Gambar lain ➡️", cls: "lime", onClick: () => { pic = PICTURES[(PICTURES.indexOf(pic) + 1) % PICTURES.length]; render(); } }] });
     });
   };
@@ -444,7 +444,7 @@ function shapeActivity(el, p) {
       const stars = right === total ? 3 : right >= total - 2 ? 2 : right >= total / 2 ? 1 : 0;
       const res = el.querySelector("[data-res]");
       if (!stars) { sfx("wrong"); res.innerHTML = `<div class="alert" style="margin-top:12px">${right}/${total} betul. Semak bentuk yang berkelip! 🔍</div>`; return; }
-      const rec = await store.record(aid(p.id, "latihan"), "pensel", { stars, score: right, total });
+      const rec = await store.record(aid(p.id, "latihan"), "pensel", { stars });
       showResult(res, { score: right, total, earned: stars, newSticker: rec.newSticker, saveFailed: rec.saveFailed, actions: [{ label: "🔄 Cabaran baru", cls: "lime", onClick: render }] });
     };
   };

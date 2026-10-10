@@ -11,7 +11,7 @@ export function mapsList(el) {
     <div class="pagehead"><a class="back" href="#/games" aria-label="Kembali">←</a><h1>Peta Kartun</h1></div>
     <section class="banner"><h1>Topik Cartoon Maps Games</h1><span class="sub">🗺️ ${MAPS.length} peta pengembaraan</span></section>
     <div class="grid lg">
-      ${MAPS.map((m) => {
+      ${MAPS.filter((m) => store.isPublished(`peta:${m.id}`)).map((m) => {
         const done = m.stations.filter((_s, k) => store.starsOf(mapAid(m.id, k)) > 0).length;
         const stars = m.stations.reduce((a, _s, k) => a + store.starsOf(mapAid(m.id, k)), 0);
         return `<a class="tile" href="#/peta/${m.id}" style="--tile:${m.color}">
@@ -41,7 +41,7 @@ function roadPath(pts) {
 
 export function mapView(el, { id }, query) {
   const m = mapById(id);
-  if (!m) return notFound(el, "#/peta");
+  if (!m || !store.isPublished(`peta:${m.id}`)) return notFound(el, "#/peta");
   const sIdx = query.s != null ? Number(query.s) : null;
   if (sIdx != null && m.stations[sIdx] && unlocked(m, sIdx)) return playStation(el, m, sIdx);
 
@@ -110,8 +110,8 @@ function playStation(el, m, k) {
       scene: st.scene, count: 5, onExit: back,
       onDone: async (wrong, hints) => {
         const stars = hiddenStars(wrong, hints);
-        const r = await store.record(mapAid(m.id, k), "peta", { stars, score: 5, total: 5 });
-        showResult(view, { earned: stars, newSticker: r.newSticker, saveFailed: r.saveFailed, message: `Salah tekan: ${wrong} · Bantuan: ${hints}`, actions: actions(stars) });
+        const r = await store.record(mapAid(m.id, k), "peta", { stars });
+        showResult(view, { earned: stars, newSticker: r.newSticker, saveFailed: r.saveFailed, xpGained: r.xpGained, totalXp: r.totalXp, message: `Salah tekan: ${wrong} · Bantuan: ${hints}`, actions: actions(stars) });
         if (finishedMap()) setTimeout(() => confetti(60, ["🏆", "🎉", "⭐"]), 600);
       },
     });
@@ -120,8 +120,8 @@ function playStation(el, m, k) {
   runQuiz(play, {
     questions: st.gen(),
     onExit: back,
-    onDone: async (score, total) => {
-      const r = await store.record(mapAid(m.id, k), "peta", { stars: starsFor(score, total), score, total });
+    onDone: async (score, total, answers, durationMs) => {
+      const r = await store.record(mapAid(m.id, k), "peta", { score, total, answers, durationMs });
       if (finishedMap()) setTimeout(() => confetti(60, ["🏆", "🎉", "⭐"]), 600);
       return r;
     },

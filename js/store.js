@@ -4,6 +4,7 @@
 //   - "demo":  localStorage — works offline with no setup (data stays in this browser)
 
 import { uid } from "./util.js";
+import { starsFor, xpFor, mytDay } from "./progression.js";
 
 const CFG = globalThis.window?.PPL_CONFIG || {};
 const CLOUD = Boolean(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY);
@@ -98,11 +99,36 @@ const demo = {
   },
   async signOut() { ls.del("ppl_session"); },
   async resetPassword() { throw new Error("Mod Demo: tetapan semula kata laluan tidak tersedia. Daftar akaun baru atau sambungkan Supabase."); },
-  _db(userId) { return ls.get("ppl_data_" + userId, { children: [], progress: {}, kv: {} }); },
+  _db(userId) { return ls.get("ppl_data_" + userId, { children: [], progress: {}, kv: {}, attempts: [] }); },
   _save(userId, db) { ls.set("ppl_data_" + userId, db); },
   async loadAll(userId) {
     const db = this._db(userId);
-    return { children: db.children, progress: db.progress };
+    const xp = {};
+    for (const a of db.attempts || []) xp[a.child_id] = (xp[a.child_id] || 0) + a.xp;
+    return { children: db.children, progress: db.progress, xp };
+  },
+  /** Same rules as public.record_attempt() on the server. */
+  async recordAttempt(userId, p) {
+    const db = this._db(userId);
+    const prev = db.progress[p.childId]?.[p.activityId];
+    const stars = p.answers ? (p.category === "buku" ? Math.min(3, p.score) : starsFor(p.score, p.total)) : p.category === "rutin" ? 1 : p.stars;
+    const now = new Date().toISOString();
+    const today = mytDay(now);
+    const todayCount = (db.attempts || []).filter((a) => a.child_id === p.childId && mytDay(a.created_at) === today).length;
+    const xp = xpFor(prev?.stars, stars, todayCount);
+    const attempt = { id: uid(), child_id: p.childId, activity_id: p.activityId, category: p.category, score: p.score, total: p.total, stars, xp, answers: p.answers || null, duration_ms: p.durationMs ?? null, created_at: now };
+    db.attempts = [...(db.attempts || []), attempt].slice(-400); // keep the latest 400 per account on this device
+    const row = {
+      child_id: p.childId, activity_id: p.activityId, category: p.category,
+      stars: Math.max(prev?.stars || 0, stars), best_score: Math.max(prev?.best_score || 0, p.score),
+      total: p.total, plays: (prev?.plays || 0) + 1, updated_at: now,
+    };
+    (db.progress[p.childId] ||= {})[p.activityId] = row;
+    this._save(userId, db);
+    return { progress: row, attempt, xp, stars };
+  },
+  async attempts(userId, childId, limit = 200) {
+    return (this._db(userId).attempts || []).filter((a) => a.child_id === childId).reverse().slice(0, limit);
   },
   async addChild(userId, child) {
     const db = this._db(userId);
@@ -122,11 +148,7 @@ const demo = {
     const db = this._db(userId);
     db.children = db.children.filter((x) => x.id !== id);
     delete db.progress[id];
-    this._save(userId, db);
-  },
-  async saveProgress(userId, row) {
-    const db = this._db(userId);
-    (db.progress[row.child_id] ||= {})[row.activity_id] = row;
+    db.attempts = (db.attempts || []).filter((a) => a.child_id !== id);
     this._save(userId, db);
   },
   _kvKey: (userId, key) => `ppl_kv_${userId}_${key}`,
@@ -145,6 +167,17 @@ const demo = {
     const p = this._kvKey(userId, prefix);
     Object.keys(localStorage).filter((k) => k.startsWith(p)).forEach((k) => ls.del(k));
   },
+};
+
+// Error codes raised by our SQL functions → friendly Malay messages
+const SERVER_ERR = {
+  too_fast: "Perlahan sikit! Keputusan yang sama baru sahaja disimpan.",
+  rate_limited: "Banyak sangat percubaan dalam masa singkat. Rehat sekejap, kemudian cuba lagi.",
+  unknown_activity: "Aktiviti ini tidak tersedia buat masa ini.",
+  invalid_item: "Tahap ini tidak tersedia.",
+  child_not_found: "Profil anak tidak dijumpai. Muat semula halaman.",
+  score_mismatch: "Keputusan tidak sah dan tidak disimpan.",
+  answers_required: "Keputusan tidak lengkap dan tidak disimpan.",
 };
 
 // =====================================================================
@@ -194,7 +227,9 @@ const cloud = {
     if (r.status === 401 && retry && (await this._refresh())) return this._rest(path, { method, body, prefer }, false);
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
-      throw new Error(j.message || `Ralat pelayan (${r.status})`);
+      const e = new Error(SERVER_ERR[j.message] || j.message || `Ralat pelayan (${r.status})`);
+      e.code = j.message;
+      throw e;
     }
     return r.status === 204 ? null : r.json().catch(() => null);
   },
@@ -246,13 +281,49 @@ const cloud = {
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(msErr(j.msg || j.message)); }
   },
   async loadAll() {
-    const [children, rows] = await Promise.all([
+    const [children, rows, stats] = await Promise.all([
       this._rest("children?select=*&order=created_at.asc"),
       this._rest("progress?select=*"),
+      this._rest("child_stats?select=child_id,xp").catch(() => []),
     ]);
     const progress = {};
     for (const r of rows || []) (progress[r.child_id] ||= {})[r.activity_id] = r;
-    return { children: children || [], progress };
+    const xp = Object.fromEntries((stats || []).map((r) => [r.child_id, r.xp]));
+    return { children: children || [], progress, xp };
+  },
+  /** Scores are validated & stars/XP computed by the database (public.record_attempt). */
+  async recordAttempt(_u, p) {
+    const quiz = Array.isArray(p.answers);
+    const body = {
+      p_child: p.childId, p_activity: p.activityId,
+      p_score: quiz ? p.score : p.category === "rutin" ? 1 : p.stars,
+      p_total: quiz ? p.total : p.category === "rutin" ? 1 : 3,
+      p_answers: quiz ? p.answers : null,
+      p_duration_ms: p.durationMs ?? null,
+    };
+    const r = await this._rest("rpc/record_attempt", { method: "POST", body });
+    return { progress: r.progress, xp: r.xp, stars: r.stars, totalXp: r.total_xp, attempt: { ...r.progress, stars: r.stars, xp: r.xp, answers: body.p_answers, score: body.p_score, total: body.p_total, created_at: new Date().toISOString() } };
+  },
+  async attempts(_u, childId, limit = 200) {
+    return this._rest(`learning_attempts?select=activity_id,category,score,total,stars,xp,answers,created_at&child_id=eq.${encodeURIComponent(childId)}&order=created_at.desc&limit=${limit}`);
+  },
+  async catalog() {
+    const headers = { apikey: CFG.SUPABASE_ANON_KEY, Authorization: `Bearer ${(this._s && (await this._token())) || CFG.SUPABASE_ANON_KEY}` };
+    const r = await fetch(`${SB}/rest/v1/activities?select=id,category,title,published,sort_order&order=sort_order.asc`, { headers });
+    if (!r.ok) throw new Error(`Katalog tidak dapat dimuat (${r.status})`);
+    return r.json();
+  },
+  async isAdmin() { return (await this._rest("rpc/is_admin", { method: "POST", body: {} })) === true; },
+  async setPublished(id, published) {
+    const rows = await this._rest(`activities?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: { published }, prefer: "return=representation" });
+    if (!rows?.length) throw new Error("Tiada kebenaran untuk mengubah aktiviti ini.");
+    return rows[0];
+  },
+  async audit() { return this._rest("admin_audit?select=actor,row_id,action,old_value,new_value,created_at&order=id.desc&limit=30"); },
+  async favorites() { return (await this._rest("favorites?select=item_type,item_id")).map((f) => `${f.item_type}:${f.item_id}`); },
+  async setFavorite(_u, type, id, on) {
+    if (on) await this._rest("favorites", { method: "POST", body: { item_type: type, item_id: id }, prefer: "resolution=ignore-duplicates,return=minimal" });
+    else await this._rest(`favorites?item_type=eq.${encodeURIComponent(type)}&item_id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
   },
   async addChild(_u, child) {
     const [c] = await this._rest("children", { method: "POST", body: child, prefer: "return=representation" });
@@ -264,14 +335,6 @@ const cloud = {
   },
   async removeChild(_u, id) {
     await this._rest(`children?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
-  },
-  async saveProgress(_u, row) {
-    const { child_id, activity_id, category, stars, best_score, total, plays, updated_at } = row;
-    await this._rest("progress?on_conflict=child_id,activity_id", {
-      method: "POST",
-      body: { child_id, activity_id, category, stars, best_score, total, plays, updated_at },
-      prefer: "resolution=merge-duplicates,return=minimal",
-    });
   },
   async submitFeedback(entry) {
     const token = this._s ? await this._token() : null;
@@ -336,7 +399,11 @@ export const store = {
   user: null,
   children: [],
   progress: {},
+  xp: {},
   ready: false,
+  catalog: null,      // Map familyId → {published,title,...} (Supabase mode)
+  _attempts: {},      // childId → recent attempts (newest first)
+  _favs: null,
 
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   emit() { listeners.forEach((fn) => fn()); },
@@ -347,6 +414,7 @@ export const store = {
         const type = await cloud.consumeRedirect().catch(() => null);
         if (type) history.replaceState(null, "", location.pathname + (type === "recovery" ? "#/kata-laluan-baru" : "#/app"));
       }
+      if (CLOUD) await this.loadCatalog();
       this.user = await be.session();
       if (this.user) await this.load();
     } catch (e) {
@@ -356,10 +424,25 @@ export const store = {
     this.ready = true;
   },
   async load() {
-    const { children, progress } = await be.loadAll(this.user.id);
+    const { children, progress, xp } = await be.loadAll(this.user.id);
     this.children = children;
     this.progress = progress;
+    this.xp = xp || {};
+    this._attempts = {};
+    this._favs = null;
+    this._admin = undefined;
     kvCache.clear();
+  },
+  async loadCatalog() {
+    try {
+      const rows = await cloud.catalog();
+      this.catalog = new Map(rows.map((r) => [r.id, r]));
+    } catch (e) { console.warn(e); this.catalog = null; }
+  },
+  /** Admins can unpublish an activity family; hidden families are not shown or playable. */
+  isPublished(familyId) {
+    const r = this.catalog?.get(familyId);
+    return !r || r.published !== false;
   },
   async signUp(data) {
     const r = await be.signUp(data);
@@ -378,6 +461,10 @@ export const store = {
     this.user = null;
     this.children = [];
     this.progress = {};
+    this.xp = {};
+    this._attempts = {};
+    this._favs = null;
+    this._admin = undefined;
     kvCache.clear();
     kvUnsafe.clear();
     this.emit();
@@ -425,36 +512,74 @@ export const store = {
     return Object.values(this.progress[childId] || {}).reduce((s, r) => s + (r.stars || 0), 0);
   },
   stickerCount(childId) { return Math.min(STICKERS.length, Math.floor(this.totalStars(childId) / STARS_PER_STICKER)); },
-  /** Record a finished activity. Keeps best stars/score. Returns info for celebration UI. */
-  async record(activityId, category, { stars, score = 0, total = 0 }) {
+  xpOf(childId = this.activeChild?.id) { return this.xp[childId] || 0; },
+  /**
+   * Record a finished activity.
+   *   quiz:  { score, total, answers: [{q, a, c}] }  → stars computed from the answers
+   *   other: { stars }                              → 0–3 (tracing, colouring, memory, hidden objects)
+   * In Supabase mode the database validates & scores it; memory is only updated from the server's reply.
+   */
+  async record(activityId, category, { stars = 0, score = 0, total = 0, answers = null, durationMs = null } = {}) {
     const child = this.activeChild;
     if (!child) return { stars, improved: false, newSticker: null };
     const before = this.stickerCount(child.id);
     const prev = this.prog(activityId, child.id);
-    const row = {
-      child_id: child.id,
-      activity_id: activityId,
-      category,
-      stars: Math.max(prev?.stars || 0, stars),
-      best_score: Math.max(prev?.best_score || 0, score),
-      total: total || prev?.total || 0,
-      plays: (prev?.plays || 0) + 1,
-      updated_at: new Date().toISOString(),
-    };
-    (this.progress[child.id] ||= {})[activityId] = row;
-    const after = this.stickerCount(child.id);
-    try { await be.saveProgress(this.user.id, row); }
-    catch (e) {
+    let res;
+    try {
+      res = await be.recordAttempt(this.user.id, { childId: child.id, activityId, category, stars, score, total, answers, durationMs });
+    } catch (e) {
       console.warn(e);
-      toastLater(e?.code === "storage_full" ? e.message : "Kemajuan tidak dapat disimpan. Semak sambungan internet dan cuba lagi.");
-      // keep memory consistent with what is actually stored
-      if (prev) this.progress[child.id][activityId] = prev; else delete this.progress[child.id][activityId];
-      this.emit();
+      toastLater(e?.code === "storage_full" || SERVER_ERR[e?.code] ? e.message : "Kemajuan tidak dapat disimpan. Semak sambungan internet dan cuba lagi.");
       return { stars: prev?.stars || 0, improved: false, newSticker: null, saveFailed: true };
     }
+    (this.progress[child.id] ||= {})[activityId] = res.progress;
+    const levelBefore = this.xpOf(child.id);
+    this.xp[child.id] = res.totalXp ?? levelBefore + res.xp;
+    (this._attempts[child.id] ||= null)?.unshift(res.attempt);
+    const after = this.stickerCount(child.id);
     this.emit();
-    return { stars: row.stars, improved: stars > (prev?.stars || 0), newSticker: after > before ? STICKERS[after - 1] : null };
+    return {
+      stars: res.stars, best: res.progress.stars, improved: res.stars > (prev?.stars || 0), xpGained: res.xp, totalXp: this.xp[child.id],
+      newSticker: after > before ? STICKERS[after - 1] : null,
+    };
   },
+  /** Recent attempts for a child (newest first), cached per session. */
+  async attempts(childId = this.activeChild?.id, { refresh = false } = {}) {
+    if (!childId) return [];
+    if (!refresh && this._attempts[childId]) return this._attempts[childId];
+    const list = (await be.attempts(this.user.id, childId, 200)) || [];
+    this._attempts[childId] = list;
+    return list;
+  },
+
+  // ----- favourites -----
+  async favorites() {
+    if (this._favs) return this._favs;
+    this._favs = new Set(CLOUD ? await cloud.favorites() : await this.kv("favorites", []));
+    return this._favs;
+  },
+  async toggleFavorite(type, id) {
+    const favs = await this.favorites();
+    const key = `${type}:${id}`;
+    const on = !favs.has(key);
+    if (CLOUD) await cloud.setFavorite(null, type, id, on);
+    if (on) favs.add(key); else favs.delete(key);
+    if (!CLOUD) await this.setKv("favorites", [...favs], { immediate: true });
+    return on;
+  },
+
+  // ----- administration (Supabase mode only; enforced by RLS on the server) -----
+  async isAdmin() {
+    if (!CLOUD || !this.user) return false;
+    if (this._admin === undefined) { try { this._admin = await cloud.isAdmin(); } catch { this._admin = false; } }
+    return this._admin;
+  },
+  async setPublished(id, published) {
+    const row = await cloud.setPublished(id, published);
+    this.catalog?.set(id, { ...(this.catalog.get(id) || {}), ...row });
+    return row;
+  },
+  adminAudit: () => cloud.audit(),
 
   // ----- key/value (planner, journals, drawings, mom games) -----
   async kv(key, fallback) {

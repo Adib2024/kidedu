@@ -1,17 +1,18 @@
 // Printable worksheets (A4). Each worksheet is generated fresh — "Jana Baru" gives a new variation.
-import { esc, pick, rnd, sample, shuffle, notFound } from "../util.js";
+import { esc, pick, rnd, sample, shuffle, notFound, toast } from "../util.js";
+import { store } from "../store.js";
 import { PICTURES, pictureSvg, OBJECTS, objectSvg, COLOUR_HEX } from "../data/pictures.js";
 import { SHAPES, shapePath } from "../data/visuals.js";
 import { ABC, KATA, ANIMALS, FRUITS } from "../data/lexicon.js";
 
 export const WORKSHEETS = [
-  { id: "mewarna-nombor", title: "Jom Mewarna Ikut Nombor", emoji: "🖍️", color: "#fef3c7", desc: "Warnakan gambar mengikut kod nombor." },
-  { id: "kira-lukis", title: "Melukis, Mengira & Mewarna", emoji: "🔢", color: "#fce7f3", desc: "Kira objek, tulis nombor & lukis." },
-  { id: "bentuk", title: "Mengenali Bentuk & Warnakan", emoji: "🔺", color: "#ffedd5", desc: "Kenal pasti bentuk dan ikut arahan warna." },
-  { id: "tracing-words", title: "Tracing the Words", emoji: "✏️", color: "#dbeafe", desc: "Surih perkataan BM / English / sendiri." },
-  { id: "colour-objects", title: "Colour the Objects", emoji: "🎨", color: "#ede9fe", desc: "Read and colour — English worksheet." },
-  { id: "meet-letter", title: "Meet the Letter", emoji: "🔤", color: "#d1fae5", desc: "Kenali huruf A–Z: surih, bulatkan & sebut." },
-  { id: "latihan-matematik", title: "Latihan Matematik Pantas", emoji: "➗", color: "#e0f2fe", desc: "20 soalan tambah/tolak/darab — dengan skema jawapan." },
+  { id: "mewarna-nombor", subject: "seni", age: "3-6", title: "Jom Mewarna Ikut Nombor", emoji: "🖍️", color: "#fef3c7", desc: "Warnakan gambar mengikut kod nombor." },
+  { id: "kira-lukis", subject: "matematik", age: "4-6", title: "Melukis, Mengira & Mewarna", emoji: "🔢", color: "#fce7f3", desc: "Kira objek, tulis nombor & lukis." },
+  { id: "bentuk", subject: "matematik", age: "4-7", title: "Mengenali Bentuk & Warnakan", emoji: "🔺", color: "#ffedd5", desc: "Kenal pasti bentuk dan ikut arahan warna." },
+  { id: "tracing-words", subject: "bahasa", age: "4-7", title: "Tracing the Words", emoji: "✏️", color: "#dbeafe", desc: "Surih perkataan BM / English / sendiri." },
+  { id: "colour-objects", subject: "english", age: "4-7", title: "Colour the Objects", emoji: "🎨", color: "#ede9fe", desc: "Read and colour — English worksheet." },
+  { id: "meet-letter", subject: "english", age: "3-6", title: "Meet the Letter", emoji: "🔤", color: "#d1fae5", desc: "Kenali huruf A–Z: surih, bulatkan & sebut." },
+  { id: "latihan-matematik", subject: "matematik", age: "6-9", title: "Latihan Matematik Pantas", emoji: "➗", color: "#e0f2fe", desc: "20 soalan tambah/tolak/darab — dengan skema jawapan." },
 ];
 
 const head = (title, instr) => `
@@ -117,14 +118,69 @@ const GEN = {
   },
 };
 
-export function worksheetList(el) {
+const SUBJECTS = { matematik: "🔢 Matematik", bahasa: "📝 Bahasa Melayu", english: "🔤 English", seni: "🎨 Seni" };
+const ageFits = (range, age) => { const [a, b] = range.split("-").map(Number); return age >= a && age <= b; };
+
+export async function worksheetList(el) {
+  const st = { q: "", subject: "", age: "", fav: false, sort: "default" };
   el.innerHTML = `<div class="wrap page stack">
     <section class="banner"><h1>Worksheet for Kids</h1><span class="sub">🖨️ ${WORKSHEETS.length} jenis · jana tanpa had · cetak A4</span></section>
-    <div class="grid lg">
-      ${WORKSHEETS.map((w) => `<a class="tile" href="#/worksheet/${w.id}" style="--tile:${w.color}"><span class="em">${w.emoji}</span><span class="tt">${esc(w.title)}</span><span class="ds">${esc(w.desc)}</span></a>`).join("")}
+    <div class="card soft stack">
+      <div class="search" role="search"><span class="ic" aria-hidden="true">🔍</span><label for="ws-q" class="sr-only">Cari worksheet</label>
+        <input id="ws-q" class="input" type="search" placeholder="Cari: huruf, warna, tambah…" maxlength="40" autocomplete="off"></div>
+      <div class="chips" role="group" aria-label="Subjek">${Object.entries(SUBJECTS).map(([k, v]) => `<button class="chip" data-subj="${k}" aria-pressed="false">${v}</button>`).join("")}</div>
+      <div class="row">
+        <label class="small" for="ws-age"><b>Umur anak</b></label>
+        <select id="ws-age" class="input" style="width:auto"><option value="">Semua umur</option>${[3, 4, 5, 6, 7, 8, 9].map((a) => `<option value="${a}">${a} tahun</option>`).join("")}</select>
+        <label class="small" for="ws-sort"><b>Susun</b></label>
+        <select id="ws-sort" class="input" style="width:auto"><option value="default">Disyorkan</option><option value="az">A–Z</option><option value="age">Umur termuda</option></select>
+        <button class="chip" data-favonly aria-pressed="false">⭐ Kegemaran sahaja</button>
+        <button class="btn sm ghost" data-reset>Set semula</button>
+      </div>
     </div>
+    <p class="small muted" data-count role="status"></p>
+    <div class="grid lg" data-list></div>
     <p class="small muted center">💡 Tip: dalam tetingkap cetak, pilih "Save as PDF" untuk simpan sebagai PDF.</p>
   </div>`;
+  let favs = new Set();
+  try { favs = await store.favorites(); } catch (e) { console.warn(e); }
+  const list = el.querySelector("[data-list]");
+  const draw = () => {
+    const q = st.q.toLowerCase();
+    let items = WORKSHEETS.filter((w) =>
+      (!q || `${w.title} ${w.desc} ${SUBJECTS[w.subject]}`.toLowerCase().includes(q)) &&
+      (!st.subject || w.subject === st.subject) &&
+      (!st.age || ageFits(w.age, Number(st.age))) &&
+      (!st.fav || favs.has(`worksheet:${w.id}`)));
+    if (st.sort === "az") items = [...items].sort((a, b) => a.title.localeCompare(b.title, "ms"));
+    if (st.sort === "age") items = [...items].sort((a, b) => parseInt(a.age) - parseInt(b.age));
+    el.querySelector("[data-count]").textContent = `${items.length} daripada ${WORKSHEETS.length} worksheet`;
+    list.innerHTML = items.length ? items.map((w) => {
+      const on = favs.has(`worksheet:${w.id}`);
+      return `<div class="tile" style="--tile:${w.color};cursor:default">
+        <button class="fav" data-fav="${w.id}" aria-pressed="${on}" aria-label="${on ? "Buang dari" : "Tambah ke"} kegemaran: ${esc(w.title)}" style="position:absolute;top:6px;right:6px">⭐</button>
+        <span class="em">${w.emoji}</span><span class="tt">${esc(w.title)}</span><span class="ds">${esc(w.desc)}</span>
+        <span class="small">${SUBJECTS[w.subject]} · ${w.age} tahun</span>
+        <a class="btn sm" href="#/worksheet/${w.id}">Buka</a></div>`;
+    }).join("") : `<div class="card center" style="grid-column:1/-1"><div style="font-size:2.6rem">🔎</div><p><b>Tiada worksheet sepadan.</b><br><span class="small muted">Cuba buang beberapa penapis atau tekan "Set semula".</span></p></div>`;
+    list.querySelectorAll("[data-fav]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { await store.toggleFavorite("worksheet", b.dataset.fav); draw(); }
+      catch (e) { toast("Kegemaran tidak dapat disimpan: " + e.message); b.disabled = false; }
+    }));
+  };
+  el.querySelector("#ws-q").addEventListener("input", (e) => { st.q = e.target.value.trim(); draw(); });
+  el.querySelectorAll("[data-subj]").forEach((b) => (b.onclick = () => {
+    st.subject = st.subject === b.dataset.subj ? "" : b.dataset.subj;
+    el.querySelectorAll("[data-subj]").forEach((x) => { x.classList.toggle("on", x.dataset.subj === st.subject); x.setAttribute("aria-pressed", x.dataset.subj === st.subject); });
+    draw();
+  }));
+  el.querySelector("#ws-age").onchange = (e) => { st.age = e.target.value; draw(); };
+  el.querySelector("#ws-sort").onchange = (e) => { st.sort = e.target.value; draw(); };
+  const favBtn = el.querySelector("[data-favonly]");
+  favBtn.onclick = () => { st.fav = !st.fav; favBtn.classList.toggle("on", st.fav); favBtn.setAttribute("aria-pressed", st.fav); draw(); };
+  el.querySelector("[data-reset]").onclick = () => worksheetList(el);
+  draw();
 }
 
 export function worksheetView(el, { id }) {

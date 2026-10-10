@@ -1,5 +1,14 @@
 // Reusable play engines: multiple-choice quiz, result screen, memory match, hidden objects.
 import { esc, sfx, speak, stopSpeak, confetti, starsFor, shuffle, sample, pick, rnd } from "./util.js";
+import { levelInfo, levelTitle } from "./progression.js";
+
+function xpLine(gained, total) {
+  const L = levelInfo(total || 0);
+  const leveled = total != null && total - gained < L.start && L.level > 1;
+  return `<div class="xp-line" role="status"><b>+${gained} XP</b> · Tahap ${L.level} ${esc(levelTitle(L.level))}
+    <div class="progress" style="margin-top:6px"><i style="width:${L.pct}%"></i></div>
+    ${leveled ? `<div class="alert ok" style="margin-top:8px">🆙 Naik ke Tahap ${L.level}!</div>` : ""}</div>`;
+}
 
 export const autoSpeakOn = () => localStorage.getItem("ppl_autospeak") !== "off";
 export const setAutoSpeak = (on) => localStorage.setItem("ppl_autospeak", on ? "on" : "off");
@@ -15,6 +24,8 @@ const ENCOURAGE = ["Tak apa, cuba lagi! 💪", "Hampir betul! 🙂", "Jom belaja
 export function runQuiz(el, opts) {
   const qs = opts.questions;
   let i = 0, score = 0, locked = false;
+  const answers = []; // {q, a, c} per question — lets the server recompute the score
+  const t0 = Date.now();
 
   const render = () => {
     const q = qs[i];
@@ -46,6 +57,7 @@ export function runQuiz(el, opts) {
     const btns = [...el.querySelectorAll(".opt")];
     btns.forEach((b) => (b.disabled = true));
     const ok = q.options[k].value === q.answer;
+    answers.push({ q: String(q.say || q.prompt).replace(/<[^>]+>/g, "").slice(0, 100), a: q.options[k].value, c: q.answer });
     const fb = el.querySelector(".feedback");
     if (ok) {
       score++;
@@ -70,16 +82,16 @@ export function runQuiz(el, opts) {
   const finish = async () => {
     stopSpeak();
     el.innerHTML = `<div class="card center">Menyimpan keputusan… ⏳</div>`;
-    const res = (await opts.onDone?.(score, qs.length)) || {};
+    const res = (await opts.onDone?.(score, qs.length, answers, Date.now() - t0)) || {};
     const earned = opts.starsOf ? opts.starsOf(score, qs.length) : starsFor(score, qs.length);
-    showResult(el, { score, total: qs.length, earned, newSticker: res.newSticker, saveFailed: res.saveFailed, actions: opts.resultActions?.(score, qs.length) || [] });
+    showResult(el, { score, total: qs.length, earned, newSticker: res.newSticker, saveFailed: res.saveFailed, xpGained: res.xpGained, totalXp: res.totalXp, actions: opts.resultActions?.(score, qs.length) || [] });
   };
 
   render();
 }
 
 /** Celebration / result card. actions: [{label, cls, onClick}] */
-export function showResult(el, { score, total, earned, newSticker, actions = [], message, saveFailed }) {
+export function showResult(el, { score, total, earned, newSticker, actions = [], message, saveFailed, xpGained, totalXp }) {
   const s = earned ?? 0;
   if (s >= 1) { sfx("win"); confetti(s * 18); }
   const title = s === 3 ? "Cemerlang!" : s === 2 ? "Bagus sekali!" : s === 1 ? "Syabas, teruskan!" : "Cuba lagi ya!";
@@ -90,6 +102,7 @@ export function showResult(el, { score, total, earned, newSticker, actions = [],
       ${total ? `<p style="font-size:1.3rem;font-weight:800">Markah: ${score} / ${total}</p>` : ""}
       ${message ? `<p>${message}</p>` : ""}
       ${s === 0 ? `<p class="muted">Dapatkan sekurang-kurangnya separuh betul untuk 1 bintang & buka tahap seterusnya.</p>` : ""}
+      ${xpGained != null && !saveFailed ? xpLine(xpGained, totalXp) : ""}
       ${saveFailed ? `<div class="alert" style="margin:12px 0">⚠️ Keputusan ini belum disimpan. Semak sambungan internet, kemudian main semula untuk menyimpan bintang.</div>` : ""}
       ${newSticker ? `<div class="alert ok" style="margin:12px 0">🎁 Pelekat baru dibuka: <span style="font-size:2rem;vertical-align:middle">${newSticker}</span></div>` : ""}
       <div class="row" style="justify-content:center;margin-top:10px">

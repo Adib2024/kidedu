@@ -14,7 +14,7 @@ export function gamesList(el) {
       <h1>Topik Games Online</h1><span class="sub">🎮 ${GAMES.length} games · tahap demi tahap</span>
     </section>
     <div class="grid">
-      ${GAMES.map((g) => {
+      ${GAMES.filter((g) => store.isPublished(`game:${g.id}`)).map((g) => {
         const got = g.levels.reduce((s, _l, k) => s + store.starsOf(gameAid(g.id, k)), 0);
         const done = g.levels.filter((_l, k) => store.starsOf(gameAid(g.id, k)) > 0).length;
         return `<a class="tile" href="#/games/${g.id}" style="--tile:${g.color}">
@@ -28,7 +28,7 @@ export function gamesList(el) {
 
 export function gamePlay(el, { id }, query) {
   const g = gameById(id);
-  if (!g) return notFound(el, "#/games");
+  if (!g || !store.isPublished(`game:${g.id}`)) return notFound(el, "#/games");
   const lvIdx = query.lv != null ? Number(query.lv) : null;
   if (lvIdx == null || !g.levels[lvIdx] || !unlocked(g, lvIdx)) return levelSelect(el, g);
   const view = document.createElement("div");
@@ -51,8 +51,8 @@ export function gamePlay(el, { id }, query) {
       onExit: exit,
       onDone: async (moves, pairs, secs) => {
         const stars = memoryStars(moves, pairs);
-        const r = await store.record(gameAid(id, lvIdx), "games", { stars, score: pairs, total: pairs });
-        showResult(view, { earned: stars, newSticker: r.newSticker, saveFailed: r.saveFailed, message: `Siap dalam <b>${moves}</b> langkah (${secs} saat).`, actions: actions(stars) });
+        const r = await store.record(gameAid(id, lvIdx), "games", { stars });
+        showResult(view, { earned: stars, newSticker: r.newSticker, saveFailed: r.saveFailed, xpGained: r.xpGained, totalXp: r.totalXp, message: `Siap dalam <b>${moves}</b> langkah (${secs} saat).`, actions: actions(stars) });
       },
     });
     return;
@@ -62,7 +62,7 @@ export function gamePlay(el, { id }, query) {
   runQuiz(play, {
     questions: lvl.gen(),
     onExit: exit,
-    onDone: (score, total) => store.record(gameAid(id, lvIdx), "games", { stars: starsFor(score, total), score, total }),
+    onDone: (score, total, answers, durationMs) => store.record(gameAid(id, lvIdx), "games", { score, total, answers, durationMs }),
     resultActions: (score, total) => actions(starsFor(score, total)),
   });
 }

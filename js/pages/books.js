@@ -11,7 +11,7 @@ export function booksList(el) {
     <section class="banner"><span class="deco" style="left:12px;top:8px">📚</span><span class="deco" style="right:12px;top:10px">🐰</span>
       <h1>Koleksi Buku Cerita</h1><span class="sub">📖 ${BOOKS.length} cerita · boleh dengar audio</span></section>
     <div class="grid">
-      ${BOOKS.map((b) => {
+      ${BOOKS.filter((b) => store.isPublished(`buku:${b.id}`)).map((b) => {
         const s = store.starsOf(aid(b.id));
         return `<a class="book-cover" href="#/buku/${b.id}" style="background:linear-gradient(160deg,#fff,${b.color})">
           <span class="em">${b.emoji}</span><span class="tt">${esc(b.title)}</span>
@@ -24,7 +24,7 @@ export function booksList(el) {
 
 export function bookRead(el, { id }) {
   const b = bookById(id);
-  if (!b) return notFound(el, "#/buku");
+  if (!b || !store.isPublished(`buku:${b.id}`)) return notFound(el, "#/buku");
   let i = 0;
   let auto = false;
   const pages = [...b.pages, { art: "🌟📖🌟", bg: "#fef9c3", text: `<b>Pengajaran:</b> ${b.moral}`, end: true }];
@@ -107,7 +107,7 @@ export function bookRead(el, { id }) {
       questions: qs,
       starsOf: (score) => score,
       onExit: () => draw(),
-      onDone: (score) => store.record(aid(b.id), "buku", { stars: score, score, total: qs.length }),
+      onDone: (score, total, answers, durationMs) => store.record(aid(b.id), "buku", { score, total, answers, durationMs }),
       resultActions: () => [
         { label: "📖 Baca semula", cls: "sun", onClick: () => { i = 0; draw(); } },
         { label: "📚 Buku lain", cls: "ghost", onClick: () => (location.hash = "/buku") },
