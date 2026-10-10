@@ -8,7 +8,7 @@ create table if not exists public.children (
   parent_id   uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name        text not null check (char_length(name) between 1 and 30),
   age         smallint check (age between 1 and 18),
-  avatar      text default '🐼',
+  avatar      text,
   created_at  timestamptz not null default now()
 );
 create index if not exists children_parent_idx on public.children(parent_id);
@@ -42,26 +42,35 @@ alter table public.children enable row level security;
 alter table public.progress enable row level security;
 alter table public.user_kv  enable row level security;
 
-drop policy if exists "children: own rows" on public.children;
-create policy "children: own rows" on public.children
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'children' and policyname = 'children: own rows') then
+    create policy "children: own rows" on public.children
   for all to authenticated
   using (parent_id = (select auth.uid()))
   with check (parent_id = (select auth.uid()));
+  end if;
+end $pol$;
 
-drop policy if exists "progress: own rows" on public.progress;
-create policy "progress: own rows" on public.progress
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'progress' and policyname = 'progress: own rows') then
+    create policy "progress: own rows" on public.progress
   for all to authenticated
   using (parent_id = (select auth.uid()))
   with check (
     parent_id = (select auth.uid())
     and exists (select 1 from public.children c where c.id = child_id and c.parent_id = (select auth.uid()))
   );
+  end if;
+end $pol$;
 
-drop policy if exists "kv: own rows" on public.user_kv;
-create policy "kv: own rows" on public.user_kv
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'user_kv' and policyname = 'kv: own rows') then
+    create policy "kv: own rows" on public.user_kv
   for all to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+  end if;
+end $pol$;
 
 -- Limit stored blob size (gallery images are compressed client-side; this is a safety net, ~2 MB).
 create or replace function public.user_kv_size_guard() returns trigger
@@ -72,8 +81,7 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists user_kv_size_guard on public.user_kv;
-create trigger user_kv_size_guard before insert or update on public.user_kv
+create or replace trigger user_kv_size_guard before insert or update on public.user_kv
   for each row execute function public.user_kv_size_guard();
 
 grant select, insert, update, delete on public.children, public.progress, public.user_kv to authenticated;
@@ -86,8 +94,11 @@ create table if not exists public.feedback (
   created_at  timestamptz not null default now()
 );
 alter table public.feedback enable row level security;
-drop policy if exists "feedback: anyone can send" on public.feedback;
-create policy "feedback: anyone can send" on public.feedback
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'feedback' and policyname = 'feedback: anyone can send') then
+    create policy "feedback: anyone can send" on public.feedback
   -- nobody can attribute feedback to another account
   for insert to anon, authenticated with check (user_id is null or user_id = (select auth.uid()));
+  end if;
+end $pol$;
 grant insert on public.feedback to anon, authenticated;

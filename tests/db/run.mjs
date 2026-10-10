@@ -157,6 +157,18 @@ try {
     denied(`delete from public.feedback`, A);
     denied(`insert into public.feedback (user_id, payload) values ('${B}', '{}')`, A);
   });
+  t("trigger functions cannot be called directly via RPC", () => {
+    denied(`select public.handle_new_user()`, A, /permission denied|trigger functions can only be called as triggers/);
+    denied(`select public.limit_children()`, A, /permission denied|trigger functions can only be called as triggers/);
+    denied(`select public.is_admin()`, null, /permission denied/);
+  });
+  t("triggers still work after revoking EXECUTE (signup profile, audit, child limit)", () => {
+    const C = psql(`insert into auth.users (email, raw_user_meta_data) values ('c@t.my', '{"name":"Ibu C"}') returning id`);
+    assert.equal(psql(`select display_name from public.profiles where id = '${C}'`, { as: C }), "Ibu C");
+    psql(`insert into public.children (name) values ('Adik C')`, { as: C });
+    assert.equal(psql(`with u as (update public.activities set published = true where id = 'game:simpulan-bahasa' returning 1) select count(*) from u`, { as: ADM }), "1");
+    assert.ok(Number(psql(`select count(*) from public.admin_audit`, { as: ADM })) >= 2);
+  });
   t("deleting a child removes its attempts and progress (cascade)", () => {
     psql(`delete from public.children where id = '${childA}'`, { as: A });
     assert.equal(psql(`select count(*) from public.learning_attempts where child_id = '${childA}'`), "0");

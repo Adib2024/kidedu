@@ -18,11 +18,17 @@ create table if not exists public.profiles (
   updated_at    timestamptz not null default now()
 );
 alter table public.profiles enable row level security;
-drop policy if exists "profiles: read own" on public.profiles;
-create policy "profiles: read own" on public.profiles for select to authenticated using (id = (select auth.uid()));
-drop policy if exists "profiles: update own" on public.profiles;
-create policy "profiles: update own" on public.profiles for update to authenticated
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'profiles' and policyname = 'profiles: read own') then
+    create policy "profiles: read own" on public.profiles for select to authenticated using (id = (select auth.uid()));
+  end if;
+end $pol$;
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'profiles' and policyname = 'profiles: update own') then
+    create policy "profiles: update own" on public.profiles for update to authenticated
   using (id = (select auth.uid())) with check (id = (select auth.uid()));
+  end if;
+end $pol$;
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
 grant update (display_name) on public.profiles to authenticated;   -- only this column is user-editable
@@ -35,8 +41,7 @@ begin
   on conflict (id) do nothing;
   return new;
 end $$;
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+create or replace trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 insert into public.profiles (id, display_name)
   select id, left(coalesce(raw_user_meta_data->>'name', ''), 60) from auth.users
   on conflict (id) do nothing;
@@ -74,12 +79,18 @@ create table if not exists public.activities (
   constraint quiz_needs_count check (kind <> 'quiz' or question_count is not null)
 );
 alter table public.activities enable row level security;
-drop policy if exists "activities: read published" on public.activities;
-create policy "activities: read published" on public.activities for select to anon, authenticated
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'activities' and policyname = 'activities: read published') then
+    create policy "activities: read published" on public.activities for select to anon, authenticated
   using (published or (select public.is_admin()));
-drop policy if exists "activities: admin update" on public.activities;
-create policy "activities: admin update" on public.activities for update to authenticated
+  end if;
+end $pol$;
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'activities' and policyname = 'activities: admin update') then
+    create policy "activities: admin update" on public.activities for update to authenticated
   using ((select public.is_admin())) with check ((select public.is_admin()));
+  end if;
+end $pol$;
 revoke all on public.activities from anon, authenticated;
 grant select on public.activities to anon, authenticated;
 grant update (published, title, sort_order) on public.activities to authenticated;  -- RLS limits to admins
@@ -95,8 +106,11 @@ create table if not exists public.admin_audit (
   created_at  timestamptz not null default now()
 );
 alter table public.admin_audit enable row level security;
-drop policy if exists "audit: admins read" on public.admin_audit;
-create policy "audit: admins read" on public.admin_audit for select to authenticated using ((select public.is_admin()));
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'admin_audit' and policyname = 'audit: admins read') then
+    create policy "audit: admins read" on public.admin_audit for select to authenticated using ((select public.is_admin()));
+  end if;
+end $pol$;
 revoke all on public.admin_audit from anon, authenticated;
 grant select on public.admin_audit to authenticated;
 
@@ -111,11 +125,11 @@ begin
           jsonb_build_object('published', new.published, 'title', new.title, 'sort_order', new.sort_order));
   return new;
 end $$;
-drop trigger if exists activities_audit on public.activities;
-create trigger activities_audit before update on public.activities for each row execute function public.audit_activities();
+create or replace trigger activities_audit before update on public.activities for each row execute function public.audit_activities();
 
 -- ============================================================ children: weekly goal + sane limits
 alter table public.children add column if not exists weekly_goal smallint not null default 5;
+alter table public.children alter column avatar set default null;  -- the app always sends an avatar
 do $$ begin
   alter table public.children add constraint children_weekly_goal_range check (weekly_goal between 1 and 50);
 exception when duplicate_object then null; end $$;
@@ -128,8 +142,7 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists children_limit on public.children;
-create trigger children_limit before insert on public.children for each row execute function public.limit_children();
+create or replace trigger children_limit before insert on public.children for each row execute function public.limit_children();
 
 -- ============================================================ learning attempts
 create table if not exists public.learning_attempts (
@@ -150,17 +163,23 @@ create table if not exists public.learning_attempts (
 create index if not exists learning_attempts_child_created_idx on public.learning_attempts (child_id, created_at desc);
 create index if not exists learning_attempts_parent_idx on public.learning_attempts (parent_id);
 alter table public.learning_attempts enable row level security;
-drop policy if exists "attempts: parent reads own" on public.learning_attempts;
-create policy "attempts: parent reads own" on public.learning_attempts for select to authenticated
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'learning_attempts' and policyname = 'attempts: parent reads own') then
+    create policy "attempts: parent reads own" on public.learning_attempts for select to authenticated
   using (parent_id = (select auth.uid()));
+  end if;
+end $pol$;
 revoke all on public.learning_attempts from anon, authenticated;
 grant select on public.learning_attempts to authenticated;          -- writes only via record_attempt()
 
--- progress becomes read-only for clients (best result per activity is maintained by record_attempt)
-drop policy if exists "progress: own rows" on public.progress;
-drop policy if exists "progress: parent reads own" on public.progress;
-create policy "progress: parent reads own" on public.progress for select to authenticated
+-- progress becomes read-only for clients (best result per activity is maintained by record_attempt).
+-- The 0001 policy stays; write PRIVILEGES are revoked, which blocks every client write.
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'progress' and policyname = 'progress: parent reads own') then
+    create policy "progress: parent reads own" on public.progress for select to authenticated
   using (parent_id = (select auth.uid()));
+  end if;
+end $pol$;
 revoke insert, update, delete on public.progress from anon, authenticated;
 grant select on public.progress to authenticated;
 
@@ -285,8 +304,11 @@ create table if not exists public.favorites (
   primary key (user_id, item_type, item_id)
 );
 alter table public.favorites enable row level security;
-drop policy if exists "favorites: own rows" on public.favorites;
-create policy "favorites: own rows" on public.favorites for all to authenticated
+do $pol$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'favorites' and policyname = 'favorites: own rows') then
+    create policy "favorites: own rows" on public.favorites for all to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  end if;
+end $pol$;
 revoke all on public.favorites from anon, authenticated;
 grant select, insert, delete on public.favorites to authenticated;
