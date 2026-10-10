@@ -555,7 +555,7 @@ function settingsPage(el) {
       <h3>💬 Maklum balas pilot</h3>
       <div class="row"><button class="btn sm lime" data-fb>Hantar maklum balas</button><a class="btn sm ghost" href="#/maklum-balas" data-fbadmin hidden>📋 Lihat semua maklum balas</a></div>
     </div>
-    <p class="small muted center">Playora · v1.2 · ${todayKey()}</p>
+    <p class="small muted center">Playora · v2.0 · ${todayKey()}</p>
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);

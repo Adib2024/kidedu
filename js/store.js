@@ -308,7 +308,8 @@ const cloud = {
     return this._rest(`learning_attempts?select=activity_id,category,score,total,stars,xp,answers,created_at&child_id=eq.${encodeURIComponent(childId)}&order=created_at.desc&limit=${limit}`);
   },
   async catalog() {
-    const headers = { apikey: CFG.SUPABASE_ANON_KEY, Authorization: `Bearer ${(this._s && (await this._token())) || CFG.SUPABASE_ANON_KEY}` };
+    const token = this._s && (await this._token());
+    const headers = { apikey: CFG.SUPABASE_ANON_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
     const r = await fetch(`${SB}/rest/v1/activities?select=id,category,title,published,sort_order&order=sort_order.asc`, { headers });
     if (!r.ok) throw new Error(`Katalog tidak dapat dimuat (${r.status})`);
     return r.json();
@@ -340,7 +341,8 @@ const cloud = {
     const token = this._s ? await this._token() : null;
     const r = await fetch(`${SB}/rest/v1/feedback`, {
       method: "POST",
-      headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: `Bearer ${token || CFG.SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      // publishable keys go in `apikey` only; Authorization carries a user JWT when signed in
+      headers: { apikey: CFG.SUPABASE_ANON_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({ payload: entry }),
     });
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || `Ralat pelayan (${r.status})`); }

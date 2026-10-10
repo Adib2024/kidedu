@@ -16,6 +16,8 @@ jobs:
         run: node scripts/check.mjs
       - name: Unit tests
         run: node --test tests/unit/*.test.mjs
+      - name: Database tests (migrations + RLS on a throwaway PostgreSQL)
+        run: node tests/db/run.mjs
       - name: End-to-end tests (headless Chrome)
         run: node tests/e2e/run.mjs
         env:

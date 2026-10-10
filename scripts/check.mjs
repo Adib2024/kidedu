@@ -40,7 +40,7 @@ for (const f of app) {
 }
 const manifest = JSON.parse(readFileSync(join(ROOT, "manifest.webmanifest"), "utf8"));
 for (const i of manifest.icons) if (!existsSync(join(ROOT, i.src))) errors.push(`manifest icon missing: ${i.src}`);
-const secretRx = /(service_role["']?\s*[:=]\s*["'][^"']{20,}|sk_live_|sb_secret_|-----BEGIN [A-Z ]*PRIVATE KEY|eyJhbGciOi[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{40,})/;
+const secretRx = /(service_role["']?\s*[:=]\s*["'][^"']{20,}|sk_live_[A-Za-z0-9]{16,}|sb_secret_[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY|eyJhbGciOi[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{40,})/;
 for (const f of files.filter((f) => /\.(js|mjs|html|json|sql|md|webmanifest)$/.test(f) && f !== new URL(import.meta.url).pathname)) {
   if (secretRx.test(readFileSync(f, "utf8"))) errors.push(`possible secret committed in ${relative(ROOT, f)}`);
 }

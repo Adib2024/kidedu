@@ -27,38 +27,55 @@ python3 -m http.server 8000
 
 Tanpa konfigurasi, app berjalan dalam **Mod Demo**: akaun & data disimpan dalam pelayar (localStorage). Sesuai untuk cuba/demo.
 
-## Sambung Supabase (login sebenar & segerak merentas peranti)
+## Sambung Supabase (data sebenar merentas peranti)
 
-1. Cipta projek di [supabase.com](https://supabase.com).
-2. Dashboard → **SQL Editor** → tampal & jalankan `supabase/schema.sql` (jadual + Row Level Security).
-3. Dashboard → **Project Settings → API**: salin *Project URL* dan *publishable/anon key* ke `config.js`:
-   ```js
-   window.PPL_CONFIG = { SUPABASE_URL: "https://xxxx.supabase.co", SUPABASE_ANON_KEY: "sb_publishable_..." };
+1. Cipta projek Supabase (projek dev semasa: `playora-dev`, rantau Singapura).
+2. Jalankan migrasi **mengikut turutan** dalam `supabase/migrations/` (SQL Editor, atau `supabase db push`).
+   Semuanya idempoten dan **tiada `DROP`/padam data** — selamat dijalankan semula.
+   | Fail | Isi |
+   |---|---|
+   | `…0001_baseline` | anak, kemajuan, data kunci/nilai, maklum balas + RLS |
+   | `…0002_learning_platform` | profil, admin, katalog aktiviti + audit, `learning_attempts`, RPC `record_attempt` (skor disahkan pelayan), `child_stats`, kegemaran, matlamat mingguan, had 10 anak |
+   | `…0003_seed_activities` | 36 keluarga aktiviti (dijana: `node scripts/gen-activities-seed.mjs`) |
+   | `…0004_feedback_hardening` | maklum balas: tulis sahaja melalui API |
+   | `…0005_advisor_fixes` | pembetulan advisor Supabase (fungsi pencetus tidak boleh dipanggil, indeks FK) |
+3. **Authentication → URL Configuration**: *Site URL* = alamat app (cth. `https://adib2024.github.io/kidedu/`), dan tambah URL yang sama dalam *Redirect URLs* (pengesahan emel & reset kata laluan).
+4. Beri peranan admin (tiada laluan API untuk ini — sengaja):
+   ```sql
+   insert into public.admins (user_id) select id from auth.users where email = 'emel-anda@contoh.com';
    ```
-4. **Authentication → URL Configuration**: tetapkan *Site URL* kepada domain app anda (untuk pautan sahkan emel & reset kata laluan).
+5. Uji RLS pada projek sebenar: tampal `tests/db/live-smoke.sql` dalam SQL Editor. Ia berjalan dalam satu transaksi yang **digulung balik** — tiada data ujian tertinggal.
 
-Kunci *anon/publishable* selamat diletak di frontend — semua data dilindungi RLS (setiap ibu/bapa hanya nampak data sendiri).
+**Bagaimana kemajuan dilindungi:** klien tidak boleh menulis jadual `progress`/`learning_attempts` secara terus. Setiap keputusan dihantar ke `record_attempt()` yang menyemak pemilikan anak, aktiviti diterbitkan, tahap sah, had skor, **mengira semula skor daripada log jawapan**, mengira bintang & XP sendiri (XP hanya untuk bintang *baharu*; 5 XP penyertaan untuk 30 percubaan pertama sehari) dan mengehadkan kadar (5 s / aktiviti, 40 percubaan / 10 minit). Had: aktiviti surih/mewarna dinilai di peranti (kanvas), jadi bintangnya (0–3) diterima seadanya dalam had tersebut.
 
-## Deploy
+## Deploy (GitHub Pages)
 
-Mana-mana hosting statik: GitHub Pages, Netlify, Vercel, Cloudflare Pages. Muat naik semua fail apa adanya (tiada build). HTTPS diperlukan untuk PWA & service worker.
+Workflow `.github/workflows/deploy.yml` menjalankan semakan + ujian unit + ujian pangkalan data, kemudian membina `_site` (`scripts/build-site.mjs`) dan deploy.
+
+Sekali sahaja:
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+2. **Settings → Secrets and variables → Actions → Variables**: `SUPABASE_URL` dan `SUPABASE_PUBLISHABLE_KEY` (nilai awam; lihat `.env.example`). Tanpa pembolehubah ini, laman dideploy dalam Mod Demo.
+3. Push ke cawangan, atau jalankan workflow secara manual (Actions → Deploy to GitHub Pages → Run workflow).
+
+`build-site.mjs` **menolak** kunci `sb_secret_…` atau JWT selain `anon`, jadi kunci rahsia tidak boleh terdedah secara tidak sengaja.
+
+**Rollback:** Actions → pilih larian deploy terdahulu yang berjaya → *Re-run jobs* (atau `git revert` commit bermasalah dan push). Migrasi pangkalan data hanya menambah objek; jika perlu berpatah balik, nyahterbit aktiviti melalui halaman admin atau tulis migrasi pembetulan baharu — jangan sunting migrasi yang telah digunakan.
 
 ## Ujian & semakan
 
-Tiada dependency npm diperlukan (Node 20+ sahaja; E2E perlukan Chrome/Chromium).
+Tiada dependency npm (Node 20+; E2E perlukan Chrome/Chromium; ujian DB perlukan binari PostgreSQL).
 
 ```bash
-npm run check      # sintaks, import, fail luar talian (SW), CSP (tiada handler inline), imbasan rahsia
-npm test           # ujian unit (node:test): penjana soalan, storan, auth demo, carian, utiliti
-npm run test:e2e   # 27 senario E2E dalam Chromium headless, termasuk mod Supabase (pelayan tiruan)
+npm run check      # sintaks, import, fail luar talian, CSP, imbasan rahsia ("build")
+npm test           # ujian unit: penjana soalan, storan, auth, ganjaran/XP, misi, cadangan
+npm run test:db    # migrasi + 36 semakan RLS/RPC (dibenarkan & ditolak) pada PostgreSQL sementara
+npm run test:e2e   # 32 senario E2E Chromium, termasuk mod Supabase (pelayan tiruan meniru peraturan SQL)
 npm run verify     # semua di atas
 ```
 
-`CHROME_PATH=/path/to/chrome` untuk menukar pelayar E2E. CI GitHub Actions (`.github/workflows/ci.yml`) menjalankan ketiga-tiganya.
-
 ## Keselamatan & privasi
 
-- **RLS Supabase** pada setiap jadual: ibu/bapa hanya membaca/menulis data sendiri; kemajuan hanya boleh ditulis untuk anak sendiri.
+- **RLS Supabase** pada setiap jadual: ibu/bapa hanya membaca/menulis data sendiri; kemajuan hanya melalui `record_attempt()`; admin dalam jadual yang tidak boleh ditulis melalui API; perubahan kandungan diaudit.
 - **CSP** dalam `index.html`: skrip hanya dari domain sendiri, API hanya ke `*.supabase.co`, tiada pengendali inline.
 - Semua teks pengguna dipaparkan selepas diloloskan (`esc()`) atau melalui `textContent`.
 - Data anak yang disimpan: **nama panggilan, umur (pilihan), avatar & kemajuan** sahaja.
@@ -76,9 +93,12 @@ js/store.js              — lapisan data: Mod Demo (localStorage) / Supabase RE
 js/engine.js             — enjin kuiz, keputusan, memory, objek tersembunyi
 js/data/*                — kosa kata, penjana soalan, games, peta, buku, gambar, tips
 js/pages/*               — setiap seksyen
-supabase/schema.sql      — skema pangkalan data (idempotent; selamat dijalankan semula)
+js/progression.js        — XP/tahap, misi, matlamat mingguan, titik lemah, cadangan (fungsi tulen)
+supabase/migrations/     — migrasi berversi (tanpa DROP, idempoten)
 scripts/check.mjs        — semakan statik ("build")
-tests/unit, tests/e2e    — ujian
+scripts/build-site.mjs   — bina _site untuk deploy (config.js dari pembolehubah persekitaran)
+scripts/gen-activities-seed.mjs, scripts/activity-catalog.mjs — benih katalog aktiviti
+tests/unit, tests/db, tests/e2e — ujian
 ```
 
 ## Nota
