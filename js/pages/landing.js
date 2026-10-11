@@ -80,7 +80,7 @@ export function landing(el) {
           ["Perlu internet?", "Selepas dibuka sekali, kebanyakan aktiviti boleh digunakan walaupun sambungan lemah. Untuk menyegerakkan data akaun, internet diperlukan."],
           ["Boleh guna untuk lebih seorang anak?", "Boleh! Tambah profil untuk setiap anak dalam satu akaun ibu/bapa."],
           ["Bagaimana cetak worksheet?", "Buka Worksheet, pilih jenis, tekan 'Cetak / PDF'. Pilih 'Save as PDF' jika mahu simpan."],
-          ["Adakah data anak selamat?", "Kami hanya menyimpan nama panggilan, umur & kemajuan. Tiada iklan dan tiada perkongsian data."],
+          ["Adakah data anak selamat?", "Kami hanya menyimpan nama panggilan, umur (pilihan), avatar & kemajuan. Tiada iklan dan tiada perkongsian data. Baca <a href='#/privasi'>Polisi Privasi</a>."],
         ].map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}
       </div>
 
@@ -92,7 +92,7 @@ export function landing(el) {
       </section>
     </div>
   </main>
-  <footer class="footer">🐼 <b>Playora</b> · Belajar sambil bermain<br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
+  <footer class="footer">🐼 <b>Playora</b> · Belajar sambil bermain · <a href="#/privasi">Polisi Privasi</a><br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
 
   el.querySelectorAll("[data-guest]").forEach((b) => (b.onclick = async () => {
     b.disabled = true;

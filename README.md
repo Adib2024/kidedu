@@ -14,7 +14,7 @@ Web app statik (PWA) tanpa build step: HTML + CSS + JavaScript ES modules. Boleh
 | 🖨️ Worksheet | 7 | Lembaran A4 dijana tanpa had: warna ikut nombor, kira & lukis, bentuk, surih perkataan (termasuk perkataan sendiri), colour the objects, meet the letter, latihan matematik + skema jawapan. |
 | 💖 Games Ibu | 8 | Jurnal emosi + corak 7/30 hari, Bahasa Cinta, Karakter Ibu, Gaya Keibubapaan, vision board, jurnal luahan, cabaran Glow Up 30 hari, semakan "Ibu Okay Ke?" + talian bantuan. |
 | 📒 Planner | 8 | Harian, penjejak tabiat bulanan, rutin anak (beri ⭐), jurnal syukur, matlamat, mood/tidur bulanan, jadual mingguan anak, menu & senarai belanja (dengan jumlah RM). |
-| 🎧 Tips & Info | 12 | Artikel usahawan digital/affiliate dengan pemain audio (TTS, kelajuan, sorotan). |
+| 🎧 Tips Keibubapaan | 12 | Masa skrin, membaca bersama, tidur, tantrum, emosi, dwibahasa, keselamatan digital, rehat ibu — dengan pemain audio (TTS, kelajuan, sorotan). |
 
 Juga: akaun ibu/bapa, **berbilang profil anak**, bintang → 30 pelekat + 10 lencana, laporan kemajuan (boleh cetak), tetapan bunyi/suara, mod luar talian (service worker).
 

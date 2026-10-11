@@ -117,6 +117,16 @@ await scenario("topic search: results, zero-result state, clear", async (b) => {
   assert.equal(await b.eval("document.querySelector('[data-zones]').hidden"), false);
 });
 
+await scenario("privacy policy is public and linked from landing & sign-up", async (b) => {
+  await b.goto(URL_);
+  await b.waitFor("footer a[href='#/privasi']");
+  await b.click("footer a[href='#/privasi']");
+  await b.waitFor(".privacy h1");
+  assert.match(await b.text(".privacy"), /Data yang kami simpan[\s\S]*PDPA/);
+  await b.hash("#/daftar");
+  assert.ok(await b.exists("form a[href='#/privasi']"));
+});
+
 // ------------------------------------------------------------------ games
 await scenario("quiz: play to the end, result, progress saved, replay", async (b) => {
   await guest(b);
@@ -523,7 +533,7 @@ await scenario("cloud: quiz is scored by the server; admin can hide an activity 
 });
 
 // ------------------------------------------------------------------ layout
-const ROUTES = ["/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/hook", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
+const ROUTES = ["/privasi", "/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/masa-skrin", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
 for (const width of [360, 1280]) {
   await scenario(`no horizontal overflow on ${ROUTES.length} routes at ${width}px`, async (b) => {
     await guest(b);

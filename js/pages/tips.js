@@ -8,9 +8,9 @@ export async function tipsList(el) {
   const done = await store.kv(DONE, []);
   el.innerHTML = `<div class="wrap page stack">
     <div class="pagehead"><a class="back" href="#/zon-ibu" aria-label="Kembali">←</a><h1>Tips & Info</h1></div>
-    <section class="banner" style="background:linear-gradient(180deg,#fef3c7,#fdba74)"><h1>Topik Tips & Info</h1><span class="sub">🎧 ${TIPS.length} audio · usahawan digital & affiliate</span>
+    <section class="banner" style="background:linear-gradient(135deg,#e0f2fe,#fef3c7)"><h1>Tips Keibubapaan</h1><span class="sub">🎧 ${TIPS.length} audio · panduan ringkas & praktikal</span>
       <p class="small" style="margin-top:10px">Selesai: <b>${done.length}/${TIPS.length}</b></p></section>
-    <div class="grid">${TIPS.map((t, i) => `<a class="tile" href="#/tips/${t.id}" style="--tile:${t.color}"><span class="small" style="font-weight:800;color:var(--pink)">AUDIO ${i + 1}</span><span class="em">${t.emoji}</span><span class="tt">${esc(t.title)}</span>${done.includes(t.id) ? `<span class="badge">✓</span>` : ""}</a>`).join("")}</div>
+    <div class="grid">${TIPS.map((t, i) => `<a class="tile" href="#/tips/${t.id}" style="--tile:${t.color}"><span class="small" style="font-weight:800;color:var(--pink-dk)">AUDIO ${i + 1}</span><span class="em">${t.emoji}</span><span class="tt">${esc(t.title)}</span>${done.includes(t.id) ? `<span class="badge">✓</span>` : ""}</a>`).join("")}</div>
   </div>`;
 }
 

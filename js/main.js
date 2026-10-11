@@ -17,6 +17,7 @@ import { penselList, penselView } from "./pages/pensel.js";
 import { ibuList, ibuView } from "./pages/ibu.js";
 import { plannerList, plannerView } from "./pages/planner.js";
 import { tipsList, tipsView } from "./pages/tips.js";
+import { privacyPage } from "./pages/privacy.js";
 import { openFeedback, fabHtml, revealFab, feedbackAdminPage, feedbackBackend } from "./feedback.js";
 import { makeChallenge, checkAnswer, gateEnabled, setGateEnabled, parentOk, markParent, closeGate, LOCK_AFTER, LOCK_MS } from "./gate.js";
 
@@ -29,6 +30,7 @@ const routes = [
   ["/masuk", loginPage, { shell: false }],
   ["/daftar", signupPage, { shell: false }],
   ["/lupa", forgotPage, { shell: false }],
+  ["/privasi", privacyPage, { shell: false }],
   ["/kata-laluan-baru", newPasswordPage, { shell: false, auth: true }],
   ["/app", hubPage, { auth: true, child: true, nav: "home" }],
   ["/anak", childrenPage, { auth: true, parent: true, nav: "home" }],
@@ -186,6 +188,7 @@ function signupPage(el, _p, query) {
       <label class="f"><span>Kata laluan (min 6 aksara)</span><input class="input" type="password" name="password" autocomplete="new-password" minlength="6" required></label>
       <div class="alert" data-err hidden></div>
       <button class="btn block big lime" type="submit">Daftar & Mula 🎉</button>
+      <p class="small muted center" style="margin:10px 0 0">Dengan mendaftar, anda bersetuju dengan <a href="#/privasi">Polisi Privasi</a> kami.</p>
     </form>
     <p class="center" style="margin-top:14px">Sudah ada akaun? <a href="#/masuk">Log masuk</a></p>`);
   formHandler(el, async (d) => {
@@ -646,7 +649,7 @@ function settingsPage(el) {
       <h3>💬 Maklum balas pilot</h3>
       <div class="row"><button class="btn sm lime" data-fb>Hantar maklum balas</button><a class="btn sm ghost" href="#/maklum-balas" data-fbadmin hidden>📋 Lihat semua maklum balas</a></div>
     </div>
-    <p class="small muted center">Playora · v2.0 · ${todayKey()}</p>
+    <p class="small muted center"><a href="#/privasi">Polisi Privasi</a> · Playora · v2.1 · ${todayKey()}</p>
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);

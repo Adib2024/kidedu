@@ -17,7 +17,7 @@ export const SECTIONS = [
   { key: "worksheet", zone: "anak", title: "Worksheet", emoji: "🖨️", color: "#dcfce7", href: "#/worksheet", list: WORKSHEETS, blurb: "Lembaran kerja A4 dijana tanpa had — cetak atau simpan PDF." },
   { key: "ibu", zone: "ibu", title: "Games untuk Ibu", emoji: "💖", color: "#ffe4e6", href: "#/ibu", list: IBU, blurb: "Kuiz personaliti, jurnal emosi, vision board & semakan kesejahteraan." },
   { key: "planner", zone: "ibu", title: "Planner", emoji: "📒", color: "#fff7ed", href: "#/planner", list: PLANNERS, blurb: "Planner harian, tabiat, rutin anak, syukur, matlamat, menu & belanja." },
-  { key: "tips", zone: "ibu", title: "Tips & Info", emoji: "🎧", color: "#e0f2fe", href: "#/tips", list: TIPS, blurb: "12 audio tips usahawan digital & affiliate." },
+  { key: "tips", zone: "ibu", title: "Tips & Info", emoji: "🎧", color: "#e0f2fe", href: "#/tips", list: TIPS, blurb: "12 tips keibubapaan bersuara: masa skrin, membaca, tidur, emosi, tantrum & banyak lagi." },
 ].map((s) => ({ ...s, count: s.list.length }));
 
 export const TOTAL_TOPICS = SECTIONS.reduce((n, s) => n + s.count, 0);
