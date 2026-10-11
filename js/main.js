@@ -17,6 +17,7 @@ import { ibuList, ibuView } from "./pages/ibu.js";
 import { plannerList, plannerView } from "./pages/planner.js";
 import { tipsList, tipsView } from "./pages/tips.js";
 import { openFeedback, fabHtml, revealFab, feedbackAdminPage, feedbackBackend } from "./feedback.js";
+import { makeChallenge, checkAnswer, gateEnabled, setGateEnabled, parentOk, markParent, closeGate, LOCK_AFTER, LOCK_MS } from "./gate.js";
 
 const app = document.getElementById("app");
 let cleanup = null;
@@ -29,13 +30,13 @@ const routes = [
   ["/lupa", forgotPage, { shell: false }],
   ["/kata-laluan-baru", newPasswordPage, { shell: false, auth: true }],
   ["/app", hubPage, { auth: true, child: true, nav: "home" }],
-  ["/anak", childrenPage, { auth: true, nav: "home" }],
+  ["/anak", childrenPage, { auth: true, parent: true, nav: "home" }],
   ["/ganjaran", rewardsPage, { auth: true, child: true, nav: "rewards" }],
-  ["/laporan", reportPage, { auth: true, nav: "ibu" }],
-  ["/tetapan", settingsPage, { auth: true, nav: "ibu" }],
-  ["/maklum-balas", feedbackAdminPage, { nav: "ibu" }],
-  ["/admin", adminPage, { auth: true, nav: "ibu" }],
-  ["/zon-ibu", momZonePage, { auth: true, nav: "ibu" }],
+  ["/laporan", reportPage, { auth: true, parent: true, nav: "ibu" }],
+  ["/tetapan", settingsPage, { auth: true, parent: true, nav: "ibu" }],
+  ["/maklum-balas", feedbackAdminPage, { parent: true, nav: "ibu" }],
+  ["/admin", adminPage, { auth: true, parent: true, nav: "ibu" }],
+  ["/zon-ibu", momZonePage, { auth: true, parent: true, nav: "ibu" }],
   ["/games", gamesList, { auth: true, child: true, nav: "games" }],
   ["/games/:id", gamePlay, { auth: true, child: true, nav: "games" }],
   ["/peta", mapsList, { auth: true, child: true, nav: "games" }],
@@ -46,12 +47,12 @@ const routes = [
   ["/worksheet/:id", worksheetView, { auth: true, nav: "home" }],
   ["/pensel", penselList, { auth: true, child: true, nav: "home" }],
   ["/pensel/:id", penselView, { auth: true, child: true, nav: "home" }],
-  ["/ibu", ibuList, { auth: true, nav: "ibu" }],
-  ["/ibu/:id", ibuView, { auth: true, nav: "ibu" }],
-  ["/planner", plannerList, { auth: true, nav: "ibu" }],
-  ["/planner/:id", plannerView, { auth: true, nav: "ibu" }],
-  ["/tips", tipsList, { auth: true, nav: "ibu" }],
-  ["/tips/:id", tipsView, { auth: true, nav: "ibu" }],
+  ["/ibu", ibuList, { auth: true, parent: true, nav: "ibu" }],
+  ["/ibu/:id", ibuView, { auth: true, parent: true, nav: "ibu" }],
+  ["/planner", plannerList, { auth: true, parent: true, nav: "ibu" }],
+  ["/planner/:id", plannerView, { auth: true, parent: true, nav: "ibu" }],
+  ["/tips", tipsList, { auth: true, parent: true, nav: "ibu" }],
+  ["/tips/:id", tipsView, { auth: true, parent: true, nav: "ibu" }],
 ].map(([path, fn, meta]) => {
   const keys = [];
   const re = new RegExp("^" + path.replace(/:(\w+)/g, (_, k) => (keys.push(k), "([^/]+)")) + "/?$");
@@ -99,6 +100,11 @@ async function render() {
   window.scrollTo(0, 0);
   if (!app.querySelector("[data-fb]")) app.insertAdjacentHTML("beforeend", fabHtml(route.meta.shell === false ? "low" : ""));
   revealFab(app);
+  // parent areas: ask the adult question first (skipped before the first child exists — sign-up flow)
+  if (route.meta.parent && store.user && store.children.length && gateEnabled()) {
+    if (!parentOk()) { parentGate(mount); document.title = "Untuk ibu bapa · Playora"; return; }
+    markParent(); // sliding window while the parent keeps using these pages
+  }
   mount.innerHTML = `<div class="loading" role="status"><div class="spin"></div>Memuatkan…</div>`;
   try {
     cleanup = await route.fn(mount, params, query);
@@ -541,12 +547,51 @@ function activityLabel(id) {
 }
 
 // ---------------------------------------------------------------- settings
+// ---------------------------------------------------------------- parental gate
+let gateFails = 0, gateLockedUntil = 0;
+function parentGate(el) {
+  let ch = makeChallenge();
+  el.innerHTML = `<div class="wrap page" style="max-width:520px">
+    <div class="card pad-lg center gate">
+      <div class="gate-ic" aria-hidden="true">🔒</div>
+      <h1>Untuk ibu bapa sahaja</h1>
+      <p class="muted">Bahagian ini untuk orang dewasa. Jawab soalan di bawah untuk teruskan.</p>
+      <form data-gate novalidate>
+        <label for="gate-a" class="gate-q" data-q></label>
+        <input id="gate-a" class="input gate-in" name="a" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="3" required>
+        <div class="alert" data-err hidden></div>
+        <button class="btn block" type="submit">Teruskan</button>
+      </form>
+      <a class="btn ghost block" href="#/app" style="margin-top:10px">← Kembali bermain</a>
+    </div></div>`;
+  const f = el.querySelector("[data-gate]");
+  const err = el.querySelector("[data-err]");
+  const ask = () => { el.querySelector("[data-q]").textContent = `Berapakah ${ch.a} × ${ch.b}?`; f.a.value = ""; };
+  ask();
+  f.onsubmit = (e) => {
+    e.preventDefault();
+    const wait = Math.ceil((gateLockedUntil - Date.now()) / 1000);
+    if (wait > 0) { err.textContent = `Terlalu banyak cubaan. Cuba lagi dalam ${wait} saat.`; err.hidden = false; return; }
+    if (checkAnswer(ch, f.a.value)) { gateFails = 0; markParent(); render(); return; }
+    gateFails++;
+    if (gateFails >= LOCK_AFTER) { gateFails = 0; gateLockedUntil = Date.now() + LOCK_MS; }
+    err.textContent = "Jawapan kurang tepat. Cuba soalan baharu ini.";
+    err.hidden = false;
+    ch = makeChallenge();
+    ask();
+    f.a.focus();
+  };
+  f.a.focus();
+}
+
 function settingsPage(el) {
   el.innerHTML = `<div class="wrap page stack" style="max-width:640px">
     <div class="pagehead"><a class="back" href="#/zon-ibu" aria-label="Kembali">←</a><h1>Tetapan</h1></div>
     <div class="card stack">
       <label class="check"><input type="checkbox" data-sound ${isSoundOn() ? "checked" : ""}><span>🔔 Kesan bunyi</span></label>
       <label class="check"><input type="checkbox" data-speak ${autoSpeakOn() ? "checked" : ""}><span>🗣️ Baca soalan secara automatik</span></label>
+      <label class="check"><input type="checkbox" data-gate-on ${gateEnabled() ? "checked" : ""}><span>🔒 Pintu ibu bapa <span class="small muted" style="display:block">Soalan dewasa sebelum Zon Ibu, laporan, tetapan & profil anak</span></span></label>
+      <button class="btn sm ghost" data-lock>🔐 Kunci zon ibu bapa sekarang</button>
     </div>
     <div class="card">
       <h3>Akaun</h3>
@@ -567,7 +612,9 @@ function settingsPage(el) {
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);
-  el.querySelector("[data-out]").onclick = async () => { await store.signOut(); toast("Anda telah log keluar"); go("/"); };
+  el.querySelector("[data-gate-on]").onchange = (e) => { setGateEnabled(e.target.checked); toast(e.target.checked ? "Pintu ibu bapa dihidupkan 🔒" : "Pintu ibu bapa dimatikan"); };
+  el.querySelector("[data-lock]").onclick = () => { closeGate(); toast("Zon ibu bapa dikunci 🔐"); go("/app"); };
+  el.querySelector("[data-out]").onclick = async () => { closeGate(); await store.signOut(); toast("Anda telah log keluar"); go("/"); };
   store.isAdmin().then((yes) => { const a = el.querySelector("[data-admin]"); if (yes && a) a.hidden = false; });
   feedbackBackend().then(async (be) => {
     if (!be) return;

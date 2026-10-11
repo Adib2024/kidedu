@@ -18,9 +18,11 @@ const CLOUD = `http://127.0.0.1:${CLOUD_APP}/`;
 
 const results = [];
 const only = process.argv[2];
-async function scenario(name, fn, { width = 412, allow = null } = {}) {
+async function scenario(name, fn, { width = 412, allow = null, gate = false } = {}) {
   if (only && !name.includes(only)) return;
   const b = await launch({ width });
+  // the parental gate has its own scenario; elsewhere it would only add a step to every parent page
+  if (!gate) await b.addInitScript("try { localStorage.setItem('ppl_gate_off', '1') } catch {}");
   const t0 = Date.now();
   try {
     await fn(b);
@@ -223,6 +225,34 @@ await scenario("worksheets render for every type and regenerate", async (b) => {
 });
 
 // ------------------------------------------------------------------ planner & parent tools
+await scenario("parental gate guards parent areas: wrong answer refused, right answer opens, lock closes", async (b) => {
+  await guest(b);
+  await b.hash("#/zon-ibu");
+  await b.waitFor("[data-gate]");
+  assert.match(await b.text("#view"), /Untuk ibu bapa sahaja/);
+  assert.equal(await b.exists(".tile"), false, "parent tiles must not render behind the gate");
+  const q1 = await b.text("[data-q]");
+  await b.eval(`(()=>{const f=document.querySelector('[data-gate]'); f.a.value='1'; f.requestSubmit()})()`);
+  await b.wait(200);
+  assert.match(await b.text("[data-err]"), /kurang tepat/);
+  assert.equal(await b.exists("[data-gate]"), true);
+  // answer the (new) question correctly
+  await b.eval(`(()=>{const f=document.querySelector('[data-gate]'); const [a,c]=document.querySelector('[data-q]').textContent.match(/\\d+/g).map(Number); f.a.value=String(a*c); f.requestSubmit()})()`);
+  await b.waitFor(".tile");
+  assert.match(await b.text("#view"), /Zon Ibu/);
+  assert.ok(q1.length > 5);
+  // other parent pages stay open within the window; kid pages never ask
+  await b.hash("#/tetapan");
+  await b.waitFor("[data-lock]");
+  await b.hash("#/games");
+  assert.equal(await b.exists("[data-gate]"), false);
+  // lock again from settings
+  await b.hash("#/tetapan");
+  await b.click("[data-lock]");
+  await b.hash("#/laporan");
+  await b.waitFor("[data-gate]");
+}, { gate: true });
+
 await scenario("habit tracker: deleting a habit does not move ticks to another habit", async (b) => {
   await guest(b);
   await b.hash("/planner/tabiat");
