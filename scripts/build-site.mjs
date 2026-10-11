@@ -7,7 +7,7 @@ import { vendorFonts, useLocalFonts, addToShell } from "./fonts.mjs";
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const OUT = join(ROOT, "_site");
-const url = (process.env.SUPABASE_URL || "").trim();
+const url = (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
 const key = (process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
 
 function assertPublicKey(k) {

@@ -32,11 +32,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Public values: read from repository Variables, or from Secrets if they were saved there.
       - name: Build static site (config.js from repository variables)
         run: node scripts/build-site.mjs
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
