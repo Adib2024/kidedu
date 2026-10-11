@@ -54,7 +54,8 @@ await scenario("landing renders with Playora branding, no CSP violations", async
   await b.waitFor(".logo-type");
   assert.match(await b.eval("document.title"), /Playora/);
   assert.match(await b.text(".logo-type"), /Play\s*ora/);
-  assert.ok((await b.eval("document.querySelectorAll('.tile').length")) >= 70);
+  assert.equal(await b.eval("document.querySelectorAll('.lp-sec').length"), 8);
+  assert.equal(await b.eval("[...document.querySelectorAll('.lp-sec-h .small')].reduce((n, e) => n + parseInt(e.textContent), 0)"), 70);
 });
 
 await scenario("protected route redirects to login and returns after sign-in", async (b) => {

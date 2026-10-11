@@ -1,6 +1,6 @@
 // Service worker: network-first for this app's own files (fresh after every deploy),
 // falling back to the cached copy when offline. API calls (Supabase) are never cached.
-const VERSION = "playora-v5";
+const VERSION = "playora-v6";
 const SHELL = [
   "./", "index.html", "config.js", "css/style.css", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png",
   "js/main.js", "js/feedback.js", "js/progression.js", "js/util.js", "js/store.js", "js/engine.js", "js/sections.js",

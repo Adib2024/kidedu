@@ -114,29 +114,30 @@ async function render() {
 function shell(nav) {
   const c = store.activeChild;
   const stars = c ? store.totalStars(c.id) : 0;
-  const n = (k, ic, label, href) => `<a href="${href}" class="${nav === k ? "on" : ""}"><span class="ic">${ic}</span>${label}</a>`;
+  const items = [["home", "🏠", "Utama", "#/app"], ["games", "🎮", "Games", "#/games"], ["books", "📚", "Buku", "#/buku"], ["rewards", "🏆", "Ganjaran", "#/ganjaran"], ["ibu", "👩", "Zon Ibu", "#/zon-ibu"]];
+  const cur = (k) => (nav === k ? ` class="on" aria-current="page"` : "");
   return `
   <header class="topbar no-print">
     <div class="wrap">
-      <a class="brand" href="#/app"><span class="logo">🐼</span><span class="txt">Playora</span></a>
+      <a class="brand" href="#/app" aria-label="Playora — laman utama"><span class="logo">🐼</span><span class="txt">Playora</span></a>
+      <nav class="topnav" aria-label="Navigasi utama">${items.map(([k, ic, label, href]) => `<a href="${href}"${cur(k)}>${ic} ${label}</a>`).join("")}</nav>
       <span class="spacer"></span>
       ${c ? `<a class="child-chip" href="#/anak" title="Tukar profil anak"><span class="av">${esc(c.avatar || "🧒")}</span><span class="nm">${esc(c.name)}</span><span class="star-pill">⭐ ${stars}</span></a>` : ""}
       <a class="icon-btn" href="#/tetapan" aria-label="Tetapan">⚙️</a>
     </div>
   </header>
-  ${store.mode === "demo" && !sessionStorage.getItem("ppl_demo_ok") ? `<div class="wrap no-print"><div class="alert info small" style="margin-top:10px">🧪 <b>Mod Demo</b>: data disimpan dalam pelayar ini sahaja. <button class="btn sm ghost" data-demo-ok style="margin-left:6px">Faham</button></div></div>` : ""}
+  ${store.mode === "demo" && !demoNoteDismissed() ? `<div class="wrap no-print"><div class="demo-note" role="note"><span>🧪 <b>Mod Demo</b> — data disimpan dalam pelayar ini sahaja.</span><button data-demo-ok aria-label="Tutup nota Mod Demo">✕</button></div></div>` : ""}
   <main id="view"></main>
   <nav class="bottomnav no-print" aria-label="Navigasi utama">
-    ${n("home", "🏠", "Utama", "#/app")}
-    ${n("games", "🎮", "Games", "#/games")}
-    ${n("books", "📚", "Buku", "#/buku")}
-    ${n("rewards", "🏆", "Ganjaran", "#/ganjaran")}
-    ${n("ibu", "👩", "Zon Ibu", "#/zon-ibu")}
+    ${items.map(([k, ic, label, href]) => `<a href="${href}"${cur(k)}><span class="ic" aria-hidden="true">${ic}</span>${label}</a>`).join("")}
   </nav>`;
+}
+function demoNoteDismissed() {
+  try { return !!(localStorage.getItem("ppl_demo_ok") || sessionStorage.getItem("ppl_demo_ok")); } catch { return false; }
 }
 function bindShell() {
   const b = $("[data-demo-ok]");
-  if (b) b.onclick = () => { sessionStorage.setItem("ppl_demo_ok", "1"); b.closest(".wrap").remove(); };
+  if (b) b.onclick = () => { try { localStorage.setItem("ppl_demo_ok", "1"); } catch {} b.closest(".wrap").remove(); };
 }
 // keep the star counter in the top bar fresh
 store.on(() => {
@@ -252,35 +253,42 @@ function hubPage(el) {
       <span class="em">${s.emoji}</span><span class="tt">${s.title}</span><span class="ds">${s.count} topik</span>
       ${p != null ? `<span class="stars">⭐ ${p}</span>` : ""}</a>`;
   };
+  const momTile = (href, emoji, title, ds, color) => `<a class="tile row-tile" href="${href}" style="--tile:${color}"><span class="em">${emoji}</span><span><span class="tt" style="display:block">${title}</span><span class="ds">${ds}</span></span></a>`;
   el.innerHTML = `<div class="wrap page stack">
-    <section class="banner">
-      <span class="deco" style="left:10px;top:8px">🍭</span><span class="deco" style="right:12px;top:10px">🌈</span>
-      <div class="mascot-say"><div class="m">${esc(c.avatar || "🐼")}</div><div class="bubble">${greet}, ${esc(c.name)}! Jom belajar sambil bermain hari ini 🎈</div></div>
-      <div class="row" style="justify-content:center;margin-top:12px">
-        <span class="star-pill" style="font-size:1.1rem">⭐ ${stars} bintang</span>
-        <a class="star-pill" style="font-size:1.1rem;background:#fff;text-decoration:none" href="#/ganjaran">🎁 ${stick}/${STICKERS.length} pelekat</a>
+    <section class="hello">
+      <a class="hello-av" href="#/anak" title="Tukar profil anak" aria-label="Tukar profil anak">${esc(c.avatar || "🐼")}</a>
+      <div class="hello-main">
+        <p class="hello-greet">${greet} 👋</p>
+        <h1>Hai, ${esc(c.name)}!</h1>
+        ${xpBar(store.xpOf(c.id))}
       </div>
-      <p class="small" style="margin:8px 0 0">Kumpul <b>${toNext}</b> ⭐ lagi untuk pelekat seterusnya!</p>
-      ${xpBar(store.xpOf(c.id))}
+      <div class="hello-stats">
+        <a href="#/ganjaran" class="stat"><b>⭐ ${stars}</b><span>bintang</span></a>
+        <a href="#/ganjaran" class="stat"><b>🎁 ${stick}<small>/${STICKERS.length}</small></b><span>pelekat</span></a>
+        <p class="small hello-next">Kumpul <b>${toNext}</b> ⭐ lagi untuk pelekat baru!</p>
+      </div>
     </section>
-    <div class="grid two" data-learn>
-      <div class="card"><h2 style="font-size:1.2rem">🎯 Misi Hari Ini</h2><div data-missions><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
-      <div class="card"><h2 style="font-size:1.2rem">✨ Cadangan untuk ${esc(c.name)}</h2><div data-recs><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
-    </div>
     <div class="search" role="search">
       <span class="ic" aria-hidden="true">🔍</span>
       <label for="topic-q" class="sr-only">Cari topik</label>
-      <input id="topic-q" class="input" type="search" placeholder="Cari topik: sifir, warna, cerita, planner…" autocomplete="off" maxlength="40">
+      <input id="topic-q" class="input" type="search" placeholder="Cari topik: sifir, warna, cerita…" autocomplete="off" maxlength="40">
       <button class="btn sm ghost clear" data-clear hidden aria-label="Kosongkan carian">✕</button>
     </div>
     <div data-results hidden></div>
     <div data-zones>
-    <h2 style="margin-top:22px">🧒 Zon Anak</h2>
-    <div class="grid">${kids.map(tile).join("")}</div>
-    <h2 style="margin-top:22px">👩 Zon Ibu</h2>
-    <div class="grid">${mom.map(tile).join("")}
-      <a class="tile" href="#/laporan" style="--tile:#e8f7ff"><span class="em">📊</span><span class="tt">Laporan Anak</span><span class="ds">Lihat kemajuan</span></a>
+      <div class="section-h"><h2>🎈 Jom Main!</h2></div>
+      <div class="grid kids">${kids.map(tile).join("")}</div>
     </div>
+    <div class="grid two" data-learn>
+      <div class="card"><h2>🎯 Misi Hari Ini</h2><div data-missions><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
+      <div class="card"><h2>✨ Cadangan untuk ${esc(c.name)}</h2><div data-recs><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
+    </div>
+    <div data-zones>
+      <div class="section-h"><h2>💖 Untuk Ibu & Bapa</h2><a href="#/zon-ibu">Semua →</a></div>
+      <div class="grid two compact">
+        ${mom.map((s) => momTile(s.href, s.emoji, s.title, `${s.count} topik`, s.color)).join("")}
+        ${momTile("#/laporan", "📊", "Laporan Anak", "Lihat kemajuan", "#e8f7ff")}
+      </div>
     </div>
   </div>`;
   bindTopicSearch(el);
@@ -318,14 +326,14 @@ async function fillLearning(el, c) {
 function bindTopicSearch(el) {
   const input = el.querySelector("#topic-q");
   const box = el.querySelector("[data-results]");
-  const zones = el.querySelector("[data-zones]");
+  const zones = el.querySelectorAll("[data-zones], [data-learn]");
   const clear = el.querySelector("[data-clear]");
   const run = () => {
     const q = input.value.trim();
     clear.hidden = !q;
-    if (!q) { box.hidden = true; zones.hidden = false; return; }
+    if (!q) { box.hidden = true; zones.forEach((z) => (z.hidden = false)); return; }
     const res = searchTopics(q);
-    zones.hidden = true;
+    zones.forEach((z) => (z.hidden = true));
     box.hidden = false;
     box.innerHTML = res.length
       ? `<p class="small muted" style="margin:12px 0 8px">${res.length} topik dijumpai</p><div class="grid">${res.map(({ s, it }) => `<a class="tile" href="${s.href}/${it.id}" style="--tile:${it.color || s.color}"><span class="em">${it.emoji}</span><span class="tt">${esc(it.title)}</span><span class="ds">${esc(s.title)}</span></a>`).join("")}</div>`

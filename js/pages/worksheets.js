@@ -129,13 +129,15 @@ export async function worksheetList(el) {
       <div class="search" role="search"><span class="ic" aria-hidden="true">🔍</span><label for="ws-q" class="sr-only">Cari worksheet</label>
         <input id="ws-q" class="input" type="search" placeholder="Cari: huruf, warna, tambah…" maxlength="40" autocomplete="off"></div>
       <div class="chips" role="group" aria-label="Subjek">${Object.entries(SUBJECTS).map(([k, v]) => `<button class="chip" data-subj="${k}" aria-pressed="false">${v}</button>`).join("")}</div>
-      <div class="row">
-        <label class="small" for="ws-age"><b>Umur anak</b></label>
-        <select id="ws-age" class="input" style="width:auto"><option value="">Semua umur</option>${[3, 4, 5, 6, 7, 8, 9].map((a) => `<option value="${a}">${a} tahun</option>`).join("")}</select>
-        <label class="small" for="ws-sort"><b>Susun</b></label>
-        <select id="ws-sort" class="input" style="width:auto"><option value="default">Disyorkan</option><option value="az">A–Z</option><option value="age">Umur termuda</option></select>
+      <div class="filters">
+        <label class="f"><span>Umur anak</span>
+        <select id="ws-age" class="input"><option value="">Semua umur</option>${[3, 4, 5, 6, 7, 8, 9].map((a) => `<option value="${a}">${a} tahun</option>`).join("")}</select></label>
+        <label class="f"><span>Susun</span>
+        <select id="ws-sort" class="input"><option value="default">Disyorkan</option><option value="az">A–Z</option><option value="age">Umur termuda</option></select></label>
+      </div>
+      <div class="row between">
         <button class="chip" data-favonly aria-pressed="false">⭐ Kegemaran sahaja</button>
-        <button class="btn sm ghost" data-reset>Set semula</button>
+        <button class="btn sm ghost" data-reset>↺ Set semula</button>
       </div>
     </div>
     <p class="small muted" data-count role="status"></p>

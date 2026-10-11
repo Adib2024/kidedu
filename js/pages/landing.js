@@ -8,78 +8,90 @@ export function landing(el) {
     ? `<a class="btn big" href="#/app">Masuk ke App 🎈</a>`
     : `<a class="btn big" href="#/daftar">Daftar Percuma 🎉</a>${store.mode === "demo" ? `<button class="btn big sun" data-guest>Cuba Terus ▶️</button>` : `<a class="btn big ghost" href="#/masuk">Log Masuk</a>`}`;
 
+  const kidsCount = SECTIONS.filter((x) => x.zone === "anak").reduce((n, x) => n + x.count, 0);
   el.innerHTML = `
   <header class="topbar"><div class="wrap">
-    <a class="brand" href="#/"><span class="logo">🐼</span><span>Playora</span></a><span class="spacer"></span>
-    ${logged ? `<a class="btn sm sun" href="#/app">Buka App</a>` : `<a class="btn sm sun" href="#/masuk">Log Masuk</a>`}
+    <a class="brand" href="#/" aria-label="Playora"><span class="logo">🐼</span><span class="txt">Playora</span></a><span class="spacer"></span>
+    ${logged ? `<a class="btn sm" href="#/app">Buka App</a>` : `<a class="btn sm ghost" href="#/masuk">Log Masuk</a>`}
   </div></header>
-  <main class="wrap">
-    <section class="hero">
-      <div class="hero-card">
-        <span class="float" style="left:4%;top:6%">🐰</span><span class="float" style="right:5%;top:8%;animation-delay:-1s">🍭</span>
-        <span class="float" style="left:6%;bottom:30%;animation-delay:-2s">🧒</span><span class="float" style="right:6%;bottom:32%;animation-delay:-3s">👧</span>
-        <div style="font-size:4rem" class="boot-logo">🐼</div>
-        <div class="logo-type"><span class="a">Play</span><span class="b">ora</span></div>
-        <div class="tag">Belajar melalui <b>Games Online</b>, <b>Worksheet</b>, <b>Buku Cerita</b>, <b>Planner</b> & <b>Zon Ibu</b></div>
-        <div class="feature-row">
-          <div class="feature"><div class="ic" style="background:var(--pink-3)">📖</div><b>${TOTAL_TOPICS} Topik Premium</b></div>
-          <div class="feature"><div class="ic" style="background:var(--lime-3)">🎮</div><b>Main Games Online</b></div>
-          <div class="feature"><div class="ic" style="background:var(--sky-3)">📝</div><b>Cetak Worksheet</b></div>
-          <div class="feature"><div class="ic" style="background:var(--orange-3)">🎧</div><b>Audio & Bacaan Suara</b></div>
-        </div>
-        <div class="price-tag"><small>Akses Beta</small><strong>PERCUMA</strong></div>
-        <div class="row" style="justify-content:center;margin-top:18px">${cta}</div>
-        <p class="small" style="margin-top:12px">💖 Satu platform lengkap untuk belajar sambil bermain & membantu perkembangan anak.</p>
+  <main>
+    <section class="lp-hero"><div class="wrap lp-hero-in">
+      <div class="lp-copy">
+        <span class="lp-eyebrow">✨ Akses Beta · Percuma</span>
+        <h1 class="lp-title">Belajar sambil bermain bersama <span class="logo-type"><span class="a">Play</span><span class="b">ora</span></span></h1>
+        <p class="lp-lead">${TOTAL_TOPICS} topik dalam Bahasa Melayu & English — games, buku cerita bersuara, pensel warna digital & worksheet. Plus <b>Zon Ibu</b> untuk anda.</p>
+        <div class="lp-cta">${cta}</div>
+        <ul class="lp-trust" aria-label="Ciri utama">
+          <li>👶 Umur 3–9 tahun</li><li>🔊 Bacaan suara</li><li>🚫 Tiada iklan</li><li>📱 Telefon, tablet & PC</li>
+        </ul>
       </div>
-    </section>
-
-    <div class="section-title"><h2>Terokai Dunia dengan Amazing Games & Worksheet!</h2>
-      <p>Bina kreativiti anak-anak dengan permainan tahap demi tahap & permainan menguji minda</p></div>
-
-    ${SECTIONS.map((s) => `
-      <section class="banner" style="margin-bottom:20px;text-align:center">
-        <span class="deco" style="left:10px;top:10px">${s.emoji}</span><span class="deco" style="right:10px;top:10px">🍬</span>
-        <h2>${esc(s.title)}</h2><span class="sub">${s.count} topik</span>
-        <p style="margin:12px auto 14px;max-width:560px;font-weight:700">${esc(s.blurb)}</p>
-        <div class="grid" style="text-align:center">
-          ${s.list.map((it) => `<a class="tile" href="${logged ? s.href + "/" + it.id : "#/daftar"}" style="--tile:${it.color || "#fff"};min-height:120px"><span class="em" style="font-size:2.2rem">${it.emoji}</span><span class="tt" style="font-size:.92rem">${esc(it.title)}</span></a>`).join("")}
+      <div class="lp-art" aria-hidden="true">
+        <div class="lp-phone">
+          <div class="lp-phone-top"><span>🐼</span><b>Hai, Adik!</b><span class="star-pill">⭐ 12</span></div>
+          <div class="lp-phone-grid">
+            ${SECTIONS.filter((x) => x.zone === "anak").slice(0, 4).map((x) => `<div style="background:${x.color}"><span>${x.emoji}</span><b>${esc(x.title)}</b></div>`).join("")}
+          </div>
+          <div class="lp-phone-q"><b>3 × 4 = ?</b><div><span>7</span><span class="ok">12</span><span>14</span></div></div>
         </div>
-      </section>`).join("")}
+        <span class="lp-float f1">🐰</span><span class="lp-float f2">⭐</span><span class="lp-float f3">🍭</span>
+      </div>
+    </div></section>
 
-    <div class="section-title"><h2>Kenapa Ibu Bapa Suka?</h2></div>
-    <div class="grid two">
-      ${[
-        ["⭐", "Sistem bintang & pelekat", "Anak kumpul bintang setiap aktiviti, buka pelekat & lencana — motivasi untuk terus belajar."],
-        ["🔊", "Bacaan suara automatik", "Soalan & buku cerita boleh dibacakan — sesuai untuk anak yang belum lancar membaca."],
-        ["👨‍👩‍👧", "Ramai anak, satu akaun", "Cipta profil setiap anak. Kemajuan dijejak berasingan dengan laporan untuk ibu bapa."],
-        ["📱", "Pasang seperti app", "Tambah ke skrin utama telefon. Berfungsi pada telefon, tablet & komputer."],
-        ["♾️", "Soalan tidak berulang", "Soalan dijana secara rawak setiap kali bermain — latihan tanpa had."],
-        ["💖", "Ibu pun dijaga", "Planner, jurnal emosi & semakan kesejahteraan khas untuk ibu."],
-      ].map(([e, t, d]) => `<div class="card soft row" style="align-items:flex-start;flex-wrap:nowrap"><span style="font-size:2.2rem">${e}</span><div><h3 style="margin:0 0 4px">${t}</h3><p class="small" style="margin:0">${d}</p></div></div>`).join("")}
-    </div>
+    <div class="wrap">
+      <section class="lp-stats" aria-label="Kandungan">
+        <div><b>${TOTAL_TOPICS}</b><span>topik</span></div>
+        <div><b>${kidsCount}</b><span>aktiviti anak</span></div>
+        <div><b>30</b><span>pelekat ganjaran</span></div>
+        <div><b>∞</b><span>soalan rawak</span></div>
+      </section>
 
-    <div class="section-title"><h2>Cara Mula</h2></div>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-      ${[["1", "Daftar akaun ibu/bapa", "📝"], ["2", "Tambah profil anak", "🧒"], ["3", "Main, belajar & kumpul bintang!", "🏆"]].map(([n, t, e]) => `<div class="card center"><div style="font-size:2.6rem">${e}</div><div class="star-pill">Langkah ${n}</div><h3 style="margin-top:8px">${t}</h3></div>`).join("")}
-    </div>
+      <div class="lp-head"><h2>Apa ada dalam Playora?</h2><p>Setiap seksyen direka untuk belajar tahap demi tahap — anak kumpul bintang, ibu nampak kemajuan.</p></div>
+      <div class="lp-sections">
+        ${SECTIONS.map((s) => `
+          <article class="lp-sec" style="--sec:${s.color}">
+            <div class="lp-sec-h"><span class="em">${s.emoji}</span><div><h3>${esc(s.title)}</h3><span class="small muted">${s.count} topik · ${s.zone === "anak" ? "untuk anak" : "untuk ibu"}</span></div></div>
+            <p>${esc(s.blurb)}</p>
+            <div class="lp-chips">${s.list.slice(0, 4).map((it) => `<a href="${logged ? s.href + "/" + it.id : "#/daftar"}">${it.emoji} ${esc(it.title)}</a>`).join("")}${s.count > 4 ? `<span>+${s.count - 4} lagi</span>` : ""}</div>
+          </article>`).join("")}
+      </div>
 
-    <div class="section-title"><h2>Soalan Lazim</h2></div>
-    <div class="faq" style="max-width:760px;margin:0 auto">
-      ${[
-        ["Untuk umur berapa?", "Sesuai untuk kanak-kanak 3–9 tahun. Tahap bermula mudah dan meningkat secara beransur-ansur."],
-        ["Perlu internet?", "Selepas dibuka sekali, kebanyakan aktiviti boleh digunakan walaupun sambungan lemah. Untuk menyegerakkan data akaun, internet diperlukan."],
-        ["Boleh guna untuk lebih seorang anak?", "Boleh! Tambah seberapa banyak profil anak dalam satu akaun ibu/bapa."],
-        ["Bagaimana cetak worksheet?", "Buka Worksheet, pilih jenis, tekan 'Cetak / PDF'. Pilih 'Save as PDF' jika mahu simpan."],
-        ["Adakah data anak selamat?", "Kami hanya menyimpan nama panggilan, umur & kemajuan. Tiada iklan dan tiada perkongsian data."],
-      ].map(([q, a]) => `<details><summary>${q}</summary><p style="margin:8px 0 0">${a}</p></details>`).join("")}
-    </div>
+      <div class="lp-head"><h2>Kenapa ibu bapa suka?</h2></div>
+      <div class="lp-why">
+        ${[
+          ["⭐", "Bintang & pelekat", "Setiap aktiviti beri bintang. Kumpul untuk buka pelekat & lencana — anak bermotivasi untuk terus belajar."],
+          ["🔊", "Bacaan suara", "Soalan & buku cerita boleh dibacakan — sesuai untuk anak yang belum lancar membaca."],
+          ["👨‍👩‍👧", "Ramai anak, satu akaun", "Profil berasingan untuk setiap anak, dengan laporan kemajuan untuk ibu bapa."],
+          ["♾️", "Soalan tidak berulang", "Soalan dijana rawak setiap kali bermain — latihan tanpa had."],
+          ["📱", "Pasang seperti app", "Tambah ke skrin utama. Berfungsi pada telefon, tablet & komputer."],
+          ["💖", "Ibu pun dijaga", "Planner, jurnal emosi & semakan kesejahteraan khas untuk ibu."],
+        ].map(([e, t, d]) => `<div class="lp-why-i"><span class="em">${e}</span><div><h3>${t}</h3><p>${d}</p></div></div>`).join("")}
+      </div>
 
-    <div class="hero-card" style="margin:34px 0 0">
-      <h2 style="color:var(--pink);font-size:2rem">Jom mula hari ini! 🎈</h2>
-      <div class="row" style="justify-content:center">${cta}</div>
+      <div class="lp-head"><h2>Mula dalam 3 langkah</h2></div>
+      <ol class="lp-steps">
+        ${[["📝", "Daftar akaun ibu/bapa", "Percuma, ambil masa seminit."], ["🧒", "Tambah profil anak", "Nama panggilan & umur sahaja."], ["🏆", "Main & kumpul bintang!", "Ikut misi harian & cadangan."]].map(([e, t, d], i) => `<li><span class="n">${i + 1}</span><span class="em">${e}</span><h3>${t}</h3><p>${d}</p></li>`).join("")}
+      </ol>
+
+      <div class="lp-head"><h2>Soalan lazim</h2></div>
+      <div class="faq">
+        ${[
+          ["Untuk umur berapa?", "Sesuai untuk kanak-kanak 3–9 tahun. Tahap bermula mudah dan meningkat secara beransur-ansur."],
+          ["Perlu internet?", "Selepas dibuka sekali, kebanyakan aktiviti boleh digunakan walaupun sambungan lemah. Untuk menyegerakkan data akaun, internet diperlukan."],
+          ["Boleh guna untuk lebih seorang anak?", "Boleh! Tambah profil untuk setiap anak dalam satu akaun ibu/bapa."],
+          ["Bagaimana cetak worksheet?", "Buka Worksheet, pilih jenis, tekan 'Cetak / PDF'. Pilih 'Save as PDF' jika mahu simpan."],
+          ["Adakah data anak selamat?", "Kami hanya menyimpan nama panggilan, umur & kemajuan. Tiada iklan dan tiada perkongsian data."],
+        ].map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}
+      </div>
+
+      <section class="lp-final">
+        <div style="font-size:3rem" aria-hidden="true">🐼🎈</div>
+        <h2>Jom mula hari ini!</h2>
+        <p>Percuma semasa beta. Tiada kad kredit diperlukan.</p>
+        <div class="lp-cta center-x">${cta}</div>
+      </section>
     </div>
   </main>
-  <footer class="footer">🐼 Playora · Belajar sambil bermain<br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
+  <footer class="footer">🐼 <b>Playora</b> · Belajar sambil bermain<br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
 
   el.querySelectorAll("[data-guest]").forEach((b) => (b.onclick = async () => {
     b.disabled = true;
