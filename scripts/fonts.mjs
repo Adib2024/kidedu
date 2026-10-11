@@ -3,24 +3,40 @@
 // does the network part and is used by build-site.mjs (falls back to Google Fonts on any error).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 export const GOOGLE_CSS = "https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@500;600;700;800&family=Chewy&display=swap";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-/** Rewrite Google's @font-face CSS to local URLs. Returns the new CSS and the files to download. */
+/**
+ * Rewrite Google's @font-face CSS to local URLs. Returns the new CSS and the files to download.
+ * Handles plain .woff2 paths and Google's extension-less "/l/font?kit=…" URLs (named by hash +
+ * the format() hint). Throws if any Google URL would remain, so the build falls back safely.
+ */
 export function localizeFontCss(css, dir = "../fonts/") {
   const files = [];
-  const out = css.replace(/url\((https:\/\/fonts\.gstatic\.com\/[^)\s]+\.woff2)\)/g, (_m, url) => {
+  const EXT = { woff2: "woff2", woff: "woff", truetype: "ttf", opentype: "otf" };
+  const out = css.replace(/url\((['"]?)(https:\/\/fonts\.gstatic\.com\/[^)'"\s]+)\1\)(\s*format\((['"])([a-z0-9]+)\4\))?/g, (_m, _q, url, fmtPart = "", _q2, fmt) => {
     let f = files.find((x) => x.url === url);
     if (!f) {
-      const base = url.split("/").slice(-3).join("-").replace(/[^A-Za-z0-9._-]/g, "");
-      f = { url, name: base };
+      const path = new URL(url).pathname;
+      const known = /\.(woff2|woff|ttf|otf)$/.test(path);
+      const name = known
+        ? path.split("/").slice(-3).join("-").replace(/[^A-Za-z0-9._-]/g, "")
+        : `f-${createHash("sha256").update(url).digest("hex").slice(0, 16)}.${EXT[fmt] || "woff2"}`;
+      f = { url, name };
       files.push(f);
     }
-    return `url(${dir}${f.name})`;
+    return `url(${dir}${f.name})${fmtPart}`;
   });
-  if (!files.length) throw new Error("no woff2 fonts found in the stylesheet");
+  if (!files.length) throw new Error("no fonts found in the stylesheet");
+  if (/fonts\.(gstatic|googleapis)\.com/.test(out)) throw new Error("a Google font URL was not localised");
   return { css: out, files };
+}
+
+/** Every font-family declared by Google must still be declared locally. */
+export function familiesIn(css) {
+  return [...new Set([...css.matchAll(/font-family:\s*['"]?([^;'"]+)['"]?\s*;/g)].map((m) => m[1].trim()))].sort();
 }
 
 /** Point index.html at the local stylesheet and drop Google from the CSP. */
@@ -43,7 +59,11 @@ export function addToShell(sw, paths) {
 export async function vendorFonts(outDir) {
   const res = await fetch(GOOGLE_CSS, { headers: { "User-Agent": UA } });
   if (!res.ok) throw new Error(`fonts css HTTP ${res.status}`);
-  const { css, files } = localizeFontCss(await res.text());
+  const google = await res.text();
+  const { css, files } = localizeFontCss(google);
+  const want = ["Andika", "Baloo 2", "Chewy"];
+  const have = familiesIn(css);
+  for (const fam of want) if (!have.includes(fam)) throw new Error(`font family missing from stylesheet: ${fam}`);
   mkdirSync(join(outDir, "fonts"), { recursive: true });
   for (const f of files) {
     const r = await fetch(f.url);
