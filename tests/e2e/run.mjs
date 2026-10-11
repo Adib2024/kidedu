@@ -423,6 +423,45 @@ await scenario("cloud mode: expired session sends the user to login (no silent f
   assert.match(await b.text("#toast"), /Sesi anda telah tamat/);
 }, { allow: /status of (401|400) .*\/(rest\/v1\/user_kv|auth\/v1\/token)/ });
 
+const deleteViaSettings = async (b) => {
+  await b.hash("#/tetapan");
+  await b.click("[data-delacct]");
+  await b.waitFor("[data-delf]");
+  assert.equal(await b.eval("document.querySelector('[data-yes]').disabled"), true, "needs the typed confirmation");
+  await b.eval(`(()=>{const i=document.querySelector('[data-delf] input'); i.value='padam'; i.dispatchEvent(new Event('input'))})()`);
+  assert.equal(await b.eval("document.querySelector('[data-yes]').disabled"), false);
+  await b.click("[data-yes]");
+  await b.wait(1200);
+  assert.equal(await b.eval("location.hash"), "#/");
+};
+await scenario("delete account (demo): typed confirmation, all local data for the account removed", async (b) => {
+  await guest(b);
+  const id = await b.eval("import('/js/store.js').then(m => m.store.user.id)");
+  await b.hash("/planner/syukur");
+  await b.eval(`(()=>{const i=document.querySelector('[data-g="0"]'); i.value='Terima kasih'; i.dispatchEvent(new Event('input'))})()`);
+  await b.wait(900);
+  assert.ok(await b.eval(`Object.keys(localStorage).some(k => k.includes(${JSON.stringify(id)}))`));
+  await deleteViaSettings(b);
+  assert.equal(await b.eval(`Object.keys(localStorage).filter(k => k.includes(${JSON.stringify(id)})).length`), 0);
+  assert.equal(await b.eval(`Object.values(JSON.parse(localStorage.getItem('ppl_users') || '{}')).some(u => u.id === ${JSON.stringify(id)})`), false);
+  assert.equal(await b.eval("localStorage.getItem('ppl_session')"), null);
+});
+
+await scenario("delete account (cloud): server deletes the user; old password no longer works", async (b) => {
+  await b.goto(CLOUD + "#/daftar");
+  await b.eval("localStorage.setItem('ppl_autospeak','off')");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Padam'; f.email.value='padam@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  await b.wait(1200);
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Adik'; f.requestSubmit();})()`);
+  await b.wait(900);
+  await deleteViaSettings(b);
+  await b.goto(CLOUD + "#/masuk");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.email.value='padam@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  await b.wait(1000);
+  assert.match(await b.text("[data-err]"), /\S/);
+  assert.match(await b.eval("location.hash"), /#\/masuk/);
+}, { allow: /status of 400 .*auth\/v1\/token/ });
+
 // ------------------------------------------------------------------ learning dashboard, worksheets, admin
 await scenario("first-run welcome: age question, first activity, skip remembered; streak calendar", async (b) => {
   await guest(b);

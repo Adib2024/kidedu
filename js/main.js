@@ -1,6 +1,6 @@
 // App shell: router, layout, auth pages, hub, children, rewards, report, settings.
 import { store, STICKERS, STARS_PER_STICKER } from "./store.js";
-import { $, esc, toast, stopSpeak, speak, confirmBox, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
+import { $, esc, toast, stopSpeak, speak, confirmBox, modal, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
 import { autoSpeakOn, setAutoSpeak } from "./engine.js";
 import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
 import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf, streak } from "./progression.js";
@@ -625,6 +625,35 @@ function parentGate(el) {
   f.a.focus();
 }
 
+function deleteAccountDialog() {
+  modal(`<h2 style="font-size:1.3rem">Padam akaun selama-lamanya?</h2>
+    <p>Semua profil anak (${store.children.length}), bintang, kemajuan, planner & jurnal untuk <b>${esc(store.user.email)}</b> akan dipadam. Ia tidak boleh dipulihkan.</p>
+    <form data-delf novalidate>
+      <label class="f"><span>Taip <b>PADAM</b> untuk mengesahkan</span><input class="input" name="c" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <div class="alert" data-err hidden></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost sm" type="button" data-no>Batal</button><button class="btn sm danger-solid" type="submit" disabled data-yes>Padam akaun</button></div>
+    </form>`, { onMount: (m, close) => {
+    const f = m.querySelector("[data-delf]");
+    const yes = m.querySelector("[data-yes]");
+    const err = m.querySelector("[data-err]");
+    f.c.oninput = () => (yes.disabled = f.c.value.trim().toUpperCase() !== "PADAM");
+    m.querySelector("[data-no]").onclick = close;
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      if (yes.disabled) return;
+      yes.disabled = true;
+      err.hidden = true;
+      try {
+        closeGate();
+        await store.deleteAccount();
+        close();
+        toast("Akaun dan semua data telah dipadam. Terima kasih kerana mencuba Playora 💛", 3500);
+        go("/");
+      } catch (ex) { err.textContent = `Tidak dapat memadam akaun: ${ex.message}`; err.hidden = false; yes.disabled = false; }
+    };
+  } });
+}
+
 function settingsPage(el) {
   el.innerHTML = `<div class="wrap page stack" style="max-width:640px">
     <div class="pagehead"><a class="back" href="#/zon-ibu" aria-label="Kembali">←</a><h1>Tetapan</h1></div>
@@ -649,12 +678,18 @@ function settingsPage(el) {
       <h3>💬 Maklum balas pilot</h3>
       <div class="row"><button class="btn sm lime" data-fb>Hantar maklum balas</button><a class="btn sm ghost" href="#/maklum-balas" data-fbadmin hidden>📋 Lihat semua maklum balas</a></div>
     </div>
+    <div class="card danger">
+      <h3>🗑️ Padam akaun</h3>
+      <p class="small">Padam akaun ini bersama <b>semua</b> data: profil anak, bintang, kemajuan, planner & jurnal. Tindakan ini <b>tidak boleh dibatalkan</b>.</p>
+      <button class="btn sm ghost danger-btn" data-delacct>Padam akaun saya…</button>
+    </div>
     <p class="small muted center"><a href="#/privasi">Polisi Privasi</a> · Playora · v2.1 · ${todayKey()}</p>
   </div>`;
   el.querySelector("[data-sound]").onchange = (e) => setSound(e.target.checked);
   el.querySelector("[data-speak]").onchange = (e) => setAutoSpeak(e.target.checked);
   el.querySelector("[data-gate-on]").onchange = (e) => { setGateEnabled(e.target.checked); toast(e.target.checked ? "Pintu ibu bapa dihidupkan 🔒" : "Pintu ibu bapa dimatikan"); };
   el.querySelector("[data-lock]").onclick = () => { closeGate(); toast("Zon ibu bapa dikunci 🔐"); go("/app"); };
+  el.querySelector("[data-delacct]").onclick = () => deleteAccountDialog();
   el.querySelector("[data-out]").onclick = async () => { closeGate(); await store.signOut(); toast("Anda telah log keluar"); go("/"); };
   store.isAdmin().then((yes) => { const a = el.querySelector("[data-admin]"); if (yes && a) a.hidden = false; });
   feedbackBackend().then(async (be) => {

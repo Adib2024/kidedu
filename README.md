@@ -39,6 +39,7 @@ Tanpa konfigurasi, app berjalan dalam **Mod Demo**: akaun & data disimpan dalam 
    | `…0003_seed_activities` | 36 keluarga aktiviti (dijana: `node scripts/gen-activities-seed.mjs`) |
    | `…0004_feedback_hardening` | maklum balas: tulis sahaja melalui API |
    | `…0005_advisor_fixes` | pembetulan advisor Supabase (fungsi pencetus tidak boleh dipanggil, indeks FK) |
+   | `…0006_delete_account` | RPC `delete_my_account()` — ibu/bapa padam akaun sendiri; semua data keluarga dipadam secara cascade |
 3. **Authentication → URL Configuration**: *Site URL* = alamat app (cth. `https://adib2024.github.io/kidedu/`), dan tambah URL yang sama dalam *Redirect URLs* (pengesahan emel & reset kata laluan).
 4. Beri peranan admin (tiada laluan API untuk ini — sengaja):
    ```sql

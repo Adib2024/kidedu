@@ -174,6 +174,23 @@ try {
     assert.equal(psql(`select count(*) from public.learning_attempts where child_id = '${childA}'`), "0");
     assert.equal(psql(`select count(*) from public.progress where child_id = '${childA}'`), "0");
   });
+  t("delete_my_account: anon refused; deletes only the caller and cascades their family data", () => {
+    denied(`select public.delete_my_account()`, null, /permission denied/);
+    const D = psql(`insert into auth.users (email, raw_user_meta_data) values ('d@t.my', '{"name":"Ibu D"}') returning id`);
+    const kidD = psql(`insert into public.children (name, age) values ('Adik D', 6) returning id`, { as: D });
+    psql(`insert into public.user_kv (key, value) values ('planner:x', '{"a":1}')`, { as: D });
+    psql(`insert into public.feedback (payload) values ('{"rating":4,"t":"del-test"}')`, { as: D });
+    psql(`select public.record_attempt('${kidD}', 'game:bijak-sifir:0', 10, 10, ${quiz(10)}, 30000)`, { as: D });
+    const others = psql(`select count(*) from public.children where parent_id <> '${D}'`);
+    psql(`select public.delete_my_account()`, { as: D });
+    assert.equal(psql(`select count(*) from auth.users where id = '${D}'`), "0");
+    for (const tbl of ["children", "progress", "learning_attempts"]) assert.equal(psql(`select count(*) from public.${tbl} where parent_id = '${D}'`), "0", tbl);
+    assert.equal(psql(`select count(*) from public.user_kv where user_id = '${D}'`), "0");
+    assert.equal(psql(`select count(*) from public.profiles where id = '${D}'`), "0");
+    assert.equal(psql(`select count(*) from public.feedback where payload->>'t' = 'del-test' and user_id is null`), "1", "feedback kept, anonymised");
+    assert.equal(psql(`select count(*) from public.children where parent_id <> '${D}'`), others, "other families untouched");
+    assert.equal(psql(`select count(*) from auth.users where id in ('${A}', '${B}')`), "2");
+  });
 } catch (e) {
   results.push([false, "setup", e.message.split("\n").slice(0, 4).join(" | ")]);
 } finally {

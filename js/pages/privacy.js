@@ -50,7 +50,7 @@ export function privacyPage(el) {
     <ul>
       <li>Data disimpan selagi akaun aktif.</li>
       <li><b>Padam profil anak:</b> Zon Ibu → Profil Anak → Ubah → Padam. Semua bintang, kemajuan dan rekod aktiviti anak itu dipadam serta-merta.</li>
-      <li><b>Padam keseluruhan akaun:</b> hubungi kami melalui borang Maklum Balas dalam app dan kami akan memadam akaun serta semua data berkaitan.</li>
+      <li><b>Padam keseluruhan akaun:</b> Zon Ibu → Tetapan → <b>Padam akaun</b>. Akaun, semua profil anak, kemajuan, planner dan jurnal dipadam serta-merta dan tidak boleh dipulihkan. Maklum balas yang pernah dihantar dikekalkan tanpa dikaitkan dengan anda.</li>
     </ul>
 
     <h2>6. Hak anda</h2>

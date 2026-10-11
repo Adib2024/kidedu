@@ -105,6 +105,18 @@ export function mockSupabase(port, { catalog = [] } = {}) {
       const child = eq("child_id");
       return out(200, DB.attempts.filter((a) => a.parent_id === uid && (!child || a.child_id === child)).slice().reverse().slice(0, Number(u.searchParams.get("limit") || 200)).map(({ t, parent_id, ...a }) => a));
     }
+    if (u.pathname === "/rest/v1/rpc/delete_my_account") { // mirrors migration 0006: cascade everything the user owns
+      for (const [email, e] of DB.users) if (e.user.id === uid) DB.users.delete(email);
+      const kids = new Set(DB.children.filter((c) => c.parent_id === uid).map((c) => c.id));
+      DB.children = DB.children.filter((c) => c.parent_id !== uid);
+      for (const [k, r] of DB.progress) if (r.parent_id === uid || kids.has(r.child_id)) DB.progress.delete(k);
+      DB.attempts = DB.attempts.filter((a) => a.parent_id !== uid);
+      DB.favorites = DB.favorites.filter((f) => f.user_id !== uid);
+      for (const k of [...DB.kv.keys()]) if (k.startsWith(uid + "|")) DB.kv.delete(k);
+      DB.admins.delete(uid);
+      for (const [t, id] of TOK) if (id === uid) TOK.delete(t);
+      return out(204);
+    }
     if (u.pathname === "/rest/v1/rpc/is_admin") return out(200, DB.admins.has(uid));
     if (u.pathname === "/rest/v1/activities" && req.method === "PATCH") {
       const a = DB.activities.get(eq("id"));

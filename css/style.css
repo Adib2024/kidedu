@@ -500,6 +500,10 @@ textarea.input { min-height: 110px; resize: vertical; }
 .streak-days .today { color: var(--ink); }
 .streak-week p { margin: 8px 0 0; text-align: center; }
 
+.card.danger { border-color: #f5c2d4; }
+.btn.danger-btn { --fg: #a3164f; }
+.btn.danger-solid { --bg: #b4235f; }
+
 /* parental gate */
 .gate-ic { font-size: 2.6rem; width: 76px; height: 76px; margin: 0 auto 8px; border-radius: 24px; background: var(--sky-3); display: grid; place-items: center; }
 .gate h1 { font-size: 1.6rem; }

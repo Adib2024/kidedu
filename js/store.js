@@ -98,6 +98,15 @@ const demo = {
     return { id: u.id, email, name: u.name };
   },
   async signOut() { ls.del("ppl_session"); },
+  /** Remove the account and every key it owns on this device. */
+  async deleteAccount(userId) {
+    const users = ls.get("ppl_users", {});
+    for (const [email, u] of Object.entries(users)) if (u.id === userId) delete users[email];
+    ls.set("ppl_users", users);
+    ls.del("ppl_data_" + userId);
+    Object.keys(localStorage).filter((k) => k.startsWith(`ppl_kv_${userId}_`)).forEach((k) => ls.del(k));
+    ls.del("ppl_session");
+  },
   async resetPassword() { throw new Error("Mod Demo: tetapan semula kata laluan tidak tersedia. Daftar akaun baru atau sambungkan Supabase."); },
   _db(userId) { return ls.get("ppl_data_" + userId, { children: [], progress: {}, kv: {}, attempts: [] }); },
   _save(userId, db) { ls.set("ppl_data_" + userId, db); },
@@ -254,6 +263,11 @@ const cloud = {
       const t = await this._token();
       if (t) await fetch(`${SB}/auth/v1/logout`, { method: "POST", headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: `Bearer ${t}` } });
     } finally { this._store(null); }
+  },
+  /** Server deletes the auth user; every family table cascades (migration 0006). */
+  async deleteAccount() {
+    await this._rest("rpc/delete_my_account", { method: "POST", body: {} });
+    this._store(null);
   },
   async resetPassword(email) {
     const r = await fetch(`${SB}/auth/v1/recover?redirect_to=${encodeURIComponent(location.origin + location.pathname)}`, {
@@ -460,6 +474,17 @@ export const store = {
   },
   async signOut() {
     await be.signOut();
+    this._resetLocal();
+  },
+  /** Permanently delete the parent account and all family data (children, progress, planner…). */
+  async deleteAccount() {
+    const kids = this.children.map((c) => c.id);
+    await be.deleteAccount(this.user.id);
+    for (const id of kids) ls.del(`ppl_onb_${id}`);
+    ls.del("ppl_child");
+    this._resetLocal();
+  },
+  _resetLocal() {
     this.user = null;
     this.children = [];
     this.progress = {};
