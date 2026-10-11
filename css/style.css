@@ -474,6 +474,29 @@ textarea.input { min-height: 110px; resize: vertical; }
 .fb-face small { font-size: .68rem; font-weight: 700; color: var(--ink-2); text-align: center; }
 .fb-face.on { border-color: var(--pink); background: var(--pink-3); transform: scale(1.06); }
 
+/* mascot, onboarding, streak */
+.mascot { display: block; flex: none; }
+.mascot.bob { animation: bounce 2.2s ease-in-out infinite; }
+.mascot.pop { animation: mascot-pop .6s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes mascot-pop { from { transform: scale(.4) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.onb { position: relative; display: flex; gap: 16px; align-items: center; background: #fff; border: 2px solid var(--sky); border-bottom-width: 5px; border-radius: 26px; padding: 18px; }
+.onb-art .mascot { animation: mascot-pop .6s cubic-bezier(.3,1.6,.5,1) both; }
+.onb-body { flex: 1; min-width: 0; }
+.onb-body h2 { font-size: 1.35rem; margin-bottom: 6px; padding-right: 54px; }
+.onb-steps { list-style: none; padding: 0; margin: 4px 0 12px; display: flex; gap: 6px; flex-wrap: wrap; counter-reset: s; }
+.onb-steps li { display: flex; align-items: center; gap: 6px; background: var(--sky-3); border-radius: 999px; padding: 4px 12px 4px 6px; font-weight: 800; font-size: .9rem; }
+.onb-steps li span { width: 28px; height: 28px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+.onb-skip { position: absolute; top: 10px; right: 10px; border: 0; background: var(--paper); color: var(--ink-2); font-weight: 800; border-radius: 10px; padding: 6px 10px; min-height: 36px; cursor: pointer; }
+@media (max-width: 520px) { .onb { flex-direction: column; text-align: center; } .onb-body h2 { padding: 0 30px; } .onb-steps, .onb .chips { justify-content: center; } }
+.streak-week { margin: 0 0 14px; }
+.streak-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+.streak-days span { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .72rem; font-weight: 800; color: var(--ink-2); }
+.streak-days i { font-style: normal; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); border: 2px dashed var(--line-2); font-size: 1.05rem; }
+.streak-days .on i { background: #fff1e0; border: 2px solid var(--orange); }
+.streak-days .today i { box-shadow: 0 0 0 3px var(--sun-2); }
+.streak-days .today { color: var(--ink); }
+.streak-week p { margin: 8px 0 0; text-align: center; }
+
 /* parental gate */
 .gate-ic { font-size: 2.6rem; width: 76px; height: 76px; margin: 0 auto 8px; border-radius: 24px; background: var(--sky-3); display: grid; place-items: center; }
 .gate h1 { font-size: 1.6rem; }

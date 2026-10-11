@@ -76,3 +76,28 @@ test("recommendations are explainable and based on data", () => {
   const hidden = P.recommendations({ child: { age: 7 }, progress, attempts: [], catalog, isPublished: (f) => f !== "game:bijak-sifir", max: 10 });
   assert.ok(!hidden.some((r) => r.href.includes("bijak-sifir")), "unpublished activities are never suggested");
 });
+
+test("streak: consecutive Malaysia days, alive until end of today, best run, 7-day calendar", () => {
+  const at = (iso) => ({ created_at: iso, category: "games" });
+  const now = new Date("2026-10-11T04:00:00Z"); // 12:00 MYT, Sunday
+  assert.deepEqual(P.streak([], now).current, 0);
+  // played 9th, 10th (MYT); not yet today → still a 2-day streak
+  const a = [at("2026-10-09T02:00:00Z"), at("2026-10-10T15:30:00Z") /* 23:30 MYT on the 10th */];
+  let s = P.streak(a, now);
+  assert.equal(s.current, 2);
+  assert.equal(s.playedToday, false);
+  // 17:00Z on the 10th is 01:00 MYT on the 11th → counts as today
+  s = P.streak([...a, at("2026-10-10T17:00:00Z")], now);
+  assert.equal(s.current, 3);
+  assert.equal(s.playedToday, true);
+  // a gap breaks it; best keeps the longer old run
+  s = P.streak([at("2026-10-01T01:00:00Z"), at("2026-10-02T01:00:00Z"), at("2026-10-03T01:00:00Z"), at("2026-10-11T01:00:00Z")], now);
+  assert.equal(s.current, 1);
+  assert.equal(s.best, 3);
+  assert.equal(s.week.length, 7);
+  assert.equal(s.week[6].today, true);
+  assert.equal(s.week[6].label, "Ahd");
+  assert.equal(s.week[6].active, true);
+  // two days missed → streak over
+  assert.equal(P.streak([at("2026-10-08T01:00:00Z")], now).current, 0);
+});

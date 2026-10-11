@@ -1,4 +1,5 @@
 // Shared helpers: escaping, randomness, sound, speech, confetti, toast, modal.
+import { mascot } from "./mascot.js";
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -205,8 +206,8 @@ export function download(filename, dataUrl) {
 export function notFound(el, backHref = "#/app", backLabel = "Kembali") {
   el.innerHTML = `<div class="wrap page center" style="max-width:560px">
     <div class="card pad-lg stack">
-      <div style="font-size:4rem">🐼❓</div>
-      <h1 style="color:var(--pink)">Alamak! Halaman tidak dijumpai</h1>
+      <div style="display:grid;place-items:center">${mascot("oops", 120, "pop")}</div>
+      <h1>Alamak! Halaman tidak dijumpai</h1>
       <p>Pautan ini mungkin salah atau sudah tiada. Jom kembali dan teruskan bermain!</p>
       <div class="row" style="justify-content:center"><a class="btn" href="${esc(backHref)}">← ${esc(backLabel)}</a><a class="btn ghost" href="#/">🏠 Laman utama</a></div>
     </div></div>`;

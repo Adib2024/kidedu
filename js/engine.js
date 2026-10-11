@@ -1,6 +1,7 @@
 // Reusable play engines: multiple-choice quiz, result screen, memory match, hidden objects.
 import { esc, sfx, speak, stopSpeak, confetti, starsFor, shuffle, sample, pick, rnd } from "./util.js";
 import { levelInfo, levelTitle } from "./progression.js";
+import { mascot, moodForStars } from "./mascot.js";
 
 function xpLine(gained, total) {
   const L = levelInfo(total || 0);
@@ -97,7 +98,7 @@ export function showResult(el, { score, total, earned, newSticker, actions = [],
   const title = s === 3 ? "Cemerlang!" : s === 2 ? "Bagus sekali!" : s === 1 ? "Syabas, teruskan!" : "Cuba lagi ya!";
   el.innerHTML = `
     <div class="card pad-lg result">
-      <div class="mascot-say"><div class="m">🐼</div><div class="bubble">${title}</div></div>
+      <div class="mascot-say">${mascot(moodForStars(s), 112, "pop")}<div class="bubble">${title}</div></div>
       <div class="bigstars">${[1, 2, 3].map((n) => `<span class="${n <= s ? "" : "off"}">⭐</span>`).join("")}</div>
       ${total ? `<p style="font-size:1.3rem;font-weight:800">Markah: ${score} / ${total}</p>` : ""}
       ${message ? `<p>${message}</p>` : ""}

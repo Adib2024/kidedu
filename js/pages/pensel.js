@@ -2,6 +2,7 @@
 import { store } from "../store.js";
 import { esc, sfx, toast, confetti, download, uid, todayKey, pick, shuffle, sample, starStr, speak, notFound, confirmBox } from "../util.js";
 import { PICTURES, pictureSvg } from "../data/pictures.js";
+import { mascot } from "../mascot.js";
 import { SHAPES, shapePath } from "../data/visuals.js";
 import { ABC, KATA, COLORS } from "../data/lexicon.js";
 import { showResult } from "../engine.js";
@@ -291,7 +292,7 @@ function freeDraw(el, p) {
   const render = () => {
     el.innerHTML = `<div class="wrap page" style="max-width:900px">
       <div class="pagehead"><a class="back" href="#/pensel" aria-label="Kembali">←</a><h1 style="font-size:1.3rem">${p.emoji} ${esc(p.title)}</h1></div>
-      <div class="mascot-say" style="margin-bottom:10px"><div class="m">🐼</div><div class="bubble">${esc(prompt)} <button class="btn sm ghost" data-idea>💡 Idea lain</button></div></div>
+      <div class="mascot-say" style="margin-bottom:10px">${mascot("think", 64)}<div class="bubble">${esc(prompt)} <button class="btn sm ghost" data-idea>💡 Idea lain</button></div></div>
       <div class="chips" style="margin-bottom:10px">${Object.keys(scenes).map((s) => `<button class="chip ${s === scene ? "on" : ""}" data-scene="${s}">${{ langit: "🌤️ Langit", malam: "🌙 Malam", pantai: "🏖️ Pantai", kosong: "⬜ Kosong" }[s]}</button>`).join("")}</div>
       <div data-board></div>
       <div class="row" style="justify-content:center;margin-top:12px">

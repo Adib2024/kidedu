@@ -414,6 +414,28 @@ await scenario("cloud mode: expired session sends the user to login (no silent f
 }, { allow: /status of (401|400) .*\/(rest\/v1\/user_kv|auth\/v1\/token)/ });
 
 // ------------------------------------------------------------------ learning dashboard, worksheets, admin
+await scenario("first-run welcome: age question, first activity, skip remembered; streak calendar", async (b) => {
+  await guest(b);
+  await b.waitFor(".onb");
+  assert.match(await b.text(".onb"), /Pipi Panda/);
+  assert.ok(await b.exists(".onb svg.mascot"));
+  assert.ok(await b.exists("[data-onb-go]"), "guest child has an age, so a first activity is offered");
+  // a child without an age gets asked first
+  await b.eval("import('/js/store.js').then(async m => { const c = await m.store.addChild({ name: 'Bongsu', age: null, avatar: '🐰' }); m.store.setActiveChild(c.id); })");
+  await b.hash("#/games"); await b.hash("#/app");
+  await b.waitFor("[data-age]");
+  await b.click("[data-age='7']");
+  await b.waitFor("[data-onb-go]");
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.activeChild.age)"), 7);
+  await b.click("[data-onb-skip]");
+  assert.equal(await b.exists(".onb"), false);
+  await b.reload();
+  await b.waitFor("[data-week] .streak-days");
+  assert.equal(await b.exists(".onb"), false, "skip is remembered");
+  assert.equal(await b.eval("document.querySelectorAll('.streak-days span').length"), 7);
+  assert.match(await b.text("[data-streak]"), /0\s*hari berturut/);
+});
+
 await scenario("hub: daily missions, XP and data-based recommendations update after playing", async (b) => {
   await guest(b);
   await b.waitFor(".mission");

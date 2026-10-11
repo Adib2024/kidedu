@@ -63,6 +63,33 @@ export function weeklyProgress(attempts, goal = 5, now = new Date()) {
   return { count, goal, pct: Math.min(100, Math.round((count / Math.max(1, goal)) * 100)), reached: count >= goal };
 }
 
+// ---------------------------------------------------------------- streak
+const shiftDay = (day, n) => new Date(Date.parse(day + "T00:00:00Z") + n * 86400e3).toISOString().slice(0, 10);
+const HARI_STREAK = ["Ahd", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"];
+/**
+ * Consecutive days (Malaysia time) with at least one activity. A streak stays alive until the end
+ * of today, so "yesterday + not yet today" still counts. Returns the last 7 days for a mini calendar.
+ */
+export function streak(attempts, now = new Date()) {
+  const days = new Set(attempts.map((a) => mytDay(a.created_at)));
+  const today = mytDay(now);
+  let d = days.has(today) ? today : shiftDay(today, -1);
+  let current = 0;
+  while (days.has(d)) { current++; d = shiftDay(d, -1); }
+  let best = 0;
+  for (const day of days) {
+    if (days.has(shiftDay(day, -1))) continue; // count only from the start of each run
+    let n = 0, x = day;
+    while (days.has(x)) { n++; x = shiftDay(x, 1); }
+    best = Math.max(best, n);
+  }
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const day = shiftDay(today, i - 6);
+    return { day, label: HARI_STREAK[new Date(day + "T00:00:00Z").getUTCDay()], active: days.has(day), today: day === today };
+  });
+  return { current, best, playedToday: days.has(today), week };
+}
+
 // ---------------------------------------------------------------- insights for parents
 /** Questions answered wrongly, grouped by activity family (needs answer logs). */
 export function weakSpots(attempts, { days = 14, now = new Date() } = {}) {

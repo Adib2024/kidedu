@@ -1,9 +1,10 @@
 // App shell: router, layout, auth pages, hub, children, rewards, report, settings.
 import { store, STICKERS, STARS_PER_STICKER } from "./store.js";
-import { $, esc, toast, stopSpeak, confirmBox, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
+import { $, esc, toast, stopSpeak, speak, confirmBox, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
 import { autoSpeakOn, setAutoSpeak } from "./engine.js";
 import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
-import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf } from "./progression.js";
+import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf, streak } from "./progression.js";
+import { mascot } from "./mascot.js";
 import { GAMES } from "./data/games.js";
 import { MAPS } from "./data/maps.js";
 import { BOOKS } from "./data/books.js";
@@ -155,7 +156,7 @@ store.on(() => {
 function authFrame(inner) {
   return `<div class="wrap page" style="max-width:480px">
     <p style="margin-top:8px"><a href="#/" style="text-decoration:none;font-weight:800">← Laman utama</a></p>
-    <div class="center" style="margin:10px 0 16px"><div style="font-size:4rem" class="boot-logo">🐼</div>
+    <div class="center" style="margin:10px 0 16px"><div style="display:grid;place-items:center">${mascot("happy", 96, "bob")}</div>
       <div class="logo-type" style="font-size:2.4rem;margin:0"><span class="a">Play</span><span class="b">ora</span></div></div>
     <div class="card pad-lg">${inner}</div>
     ${store.mode === "demo" ? `<p class="small muted center" style="margin-top:12px">🧪 Mod Demo — akaun disimpan dalam pelayar ini sahaja.</p>` : ""}
@@ -271,9 +272,11 @@ function hubPage(el) {
       <div class="hello-stats">
         <a href="#/ganjaran" class="stat"><b>⭐ ${stars}</b><span>bintang</span></a>
         <a href="#/ganjaran" class="stat"><b>🎁 ${stick}<small>/${STICKERS.length}</small></b><span>pelekat</span></a>
+        <span class="stat" data-streak hidden></span>
         <p class="small hello-next">Kumpul <b>${toNext}</b> ⭐ lagi untuk pelekat baru!</p>
       </div>
     </section>
+    <div data-onb></div>
     <div class="search" role="search">
       <span class="ic" aria-hidden="true">🔍</span>
       <label for="topic-q" class="sr-only">Cari topik</label>
@@ -286,7 +289,7 @@ function hubPage(el) {
       <div class="grid kids">${kids.map(tile).join("")}</div>
     </div>
     <div class="grid two" data-learn>
-      <div class="card"><h2>🎯 Misi Hari Ini</h2><div data-missions><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
+      <div class="card"><h2>🎯 Misi Hari Ini</h2><div class="streak-week" data-week></div><div data-missions><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
       <div class="card"><h2>✨ Cadangan untuk ${esc(c.name)}</h2><div data-recs><div class="loading" style="padding:20px 0"><div class="spin"></div></div></div></div>
     </div>
     <div data-zones>
@@ -319,14 +322,49 @@ async function fillLearning(el, c) {
     return;
   }
   if (!mBox.isConnected) return;
+  const st = streak(attempts);
+  const sBox = el.querySelector("[data-streak]");
+  sBox.hidden = false;
+  sBox.title = `Rekod terbaik: ${st.best} hari`;
+  sBox.innerHTML = `<b>🔥 ${st.current}</b><span>hari berturut</span>`;
+  el.querySelector("[data-week]").innerHTML = `<div class="streak-days">${st.week.map((d) => `<span class="${d.active ? "on" : ""}${d.today ? " today" : ""}" title="${d.day}"><i aria-hidden="true">${d.active ? "🔥" : ""}</i>${d.label}</span>`).join("")}</div>
+    <p class="small muted">${st.playedToday ? `Hebat! Rekod terbaik: ${st.best} hari.` : st.current ? `Main hari ini untuk teruskan ${st.current} hari berturut! 🔥` : "Main satu aktiviti hari ini untuk mula rekod 🔥"}</p>`;
   const ms = dailyMissions(attempts);
   const allDone = ms.every((m) => m.complete);
   mBox.innerHTML = `<div class="stack">${ms.map((m) => `<div class="mission ${m.complete ? "done" : ""}"><span class="e" aria-hidden="true">${m.complete ? "✅" : m.emoji}</span><span class="grow">${esc(m.text)}</span><b>${m.done}/${m.need}</b></div>`).join("")}</div>
     <p class="small muted" style="margin:10px 0 0">${allDone ? "Hebat! Semua misi hari ini selesai 🎉" : "Misi baharu setiap hari — tiada denda jika terlepas."}</p>`;
   const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: CATALOG, isPublished: (f) => store.isPublished(f) });
+  if (!attempts.length && !onboardingSeen(c.id)) onboarding(el.querySelector("[data-onb]"), c, recs);
   rBox.innerHTML = recs.length
     ? `<div class="stack">${recs.map((r) => `<a class="rec" href="${r.href}"><span class="e" aria-hidden="true">${r.emoji}</span><span class="grow"><b>${esc(r.title)}</b><span class="small muted" style="display:block">${esc(r.reason)}</span></span><span aria-hidden="true">➡️</span></a>`).join("")}</div>`
     : `<p class="muted">Teruskan bermain — cadangan akan muncul berdasarkan aktiviti ${esc(c.name)}.</p>`;
+}
+
+// ---------------------------------------------------------------- first-run welcome (per child, until first activity)
+const onbKey = (id) => `ppl_onb_${id}`;
+function onboardingSeen(id) { try { return localStorage.getItem(onbKey(id)) === "1"; } catch { return false; } }
+function markOnboarded(id) { try { localStorage.setItem(onbKey(id), "1"); } catch {} }
+function onboarding(box, c, recs) {
+  const first = recs[0];
+  const needAge = !c.age;
+  box.innerHTML = `<section class="onb" aria-label="Selamat datang">
+    <div class="onb-art">${mascot(needAge ? "think" : "cheer", 104)}</div>
+    <div class="onb-body">
+      <h2>Hai ${esc(c.name)}! Saya Pipi Panda 👋</h2>
+      ${needAge ? `<p>Berapa umur ${esc(c.name)}? Pipi akan pilih aktiviti yang sesuai.</p>
+        <div class="chips" role="group" aria-label="Umur">${[3, 4, 5, 6, 7, 8, 9].map((a) => `<button class="chip" data-age="${a}">${a} tahun</button>`).join("")}</div>`
+      : `<ol class="onb-steps"><li><span aria-hidden="true">🎮</span>Main aktiviti</li><li><span aria-hidden="true">⭐</span>Dapat bintang</li><li><span aria-hidden="true">🎁</span>Buka pelekat</li></ol>
+        ${first ? `<p class="small muted" style="margin:0 0 8px">Jom mula dengan:</p><a class="btn big block" href="${first.href}" data-onb-go>${first.emoji} ${esc(first.title)}</a>` : ""}`}
+      <button class="onb-skip" data-onb-skip>Nanti</button>
+    </div></section>`;
+  box.querySelectorAll("[data-age]").forEach((b) => (b.onclick = async () => {
+    box.querySelectorAll("[data-age]").forEach((x) => (x.disabled = true));
+    try { await store.updateChild(c.id, { age: Number(b.dataset.age) }); render(); } // re-render: recommendations use the age
+    catch (e) { toast(e.message); box.querySelectorAll("[data-age]").forEach((x) => (x.disabled = false)); }
+  }));
+  box.querySelector("[data-onb-go]")?.addEventListener("click", () => markOnboarded(c.id));
+  box.querySelector("[data-onb-skip]").onclick = () => { markOnboarded(c.id); box.innerHTML = ""; };
+  if (autoSpeakOn()) speak(`Hai ${c.name}! Saya Pipi Panda. Jom belajar sambil bermain!`);
 }
 
 function bindTopicSearch(el) {
