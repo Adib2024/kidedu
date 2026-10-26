@@ -11,13 +11,17 @@ export const chromePath = () => CANDIDATES.find((p) => existsSync(p));
 export async function launch({ width = 412, height = 900, port = 9400 + Math.floor(Math.random() * 500), mobile = width < 600 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "playora-e2e-"));
   if (!chromePath()) throw new Error("Chrome/Chromium not found — set CHROME_PATH");
-  const proc = spawn(chromePath(), ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
-  let targets = [];
-  for (let i = 0; i < 80 && !targets.length; i++) {
-    try { targets = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).filter((t) => t.type === "page"); } catch {}
-    if (!targets.length) await new Promise((r) => setTimeout(r, 150));
+  // cold starts on shared CI runners can take well over 10 s: wait up to ~30 s, then retry once on a fresh port
+  let proc, targets = [];
+  for (let attempt = 0; attempt < 2 && !targets.length; attempt++) {
+    if (attempt) { proc.kill("SIGKILL"); port += 1; }
+    proc = spawn(chromePath(), ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+    for (let i = 0; i < 200 && !targets.length; i++) {
+      try { targets = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).filter((t) => t.type === "page"); } catch {}
+      if (!targets.length) await new Promise((r) => setTimeout(r, 150));
+    }
   }
-  if (!targets.length) throw new Error("Chromium did not start");
+  if (!targets.length) { proc.kill("SIGKILL"); throw new Error("Chromium did not start"); }
   const ws = new WebSocket(targets[0].webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
   let id = 0;
