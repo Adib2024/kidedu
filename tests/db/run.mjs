@@ -177,6 +177,23 @@ try {
     assert.equal(psql(`select count(*) from public.learning_attempts where child_id = '${childA}'`), "0");
     assert.equal(psql(`select count(*) from public.progress where child_id = '${childA}'`), "0");
   });
+  t("sekolah: chapters recorded & re-scored by the server; unknown topics, wrong totals and forged scores refused", () => {
+    const S = psql(`insert into auth.users (email) values ('s@t.my') returning id`);
+    const kid = psql(`insert into public.children (name, age, grade) values ('Murid', 9, 3) returning id`, { as: S });
+    assert.equal(psql(`select count(*) from public.activities where category = 'sekolah'`), "20");
+    const r = JSON.parse(psql(`select public.record_attempt('${kid}', 'sek:mat-t3:pecahan-setara-latihan', 8, 10, ${quiz(8)}, 60000)`, { as: S }));
+    assert.equal(r.stars, 2);
+    assert.equal(psql(`select category from public.learning_attempts where activity_id = 'sek:mat-t3:pecahan-setara-latihan'`), "sekolah");
+    fails(`select public.record_attempt('${kid}', 'sek:mat-t3:tiada-bab-latihan', 8, 10, ${quiz(8)})`, S, /invalid_item/);
+    fails(`select public.record_attempt('${kid}', 'sek:mat-t3:pecahan-setara-bos', 10, 10, ${quiz(6)})`, S, /score_mismatch/);
+    fails(`select public.record_attempt('${kid}', 'sek:mat-t3:pecahan-setara-masa', 5, 8, ${quiz(5, 5, 8)})`, S, /invalid_total/);
+    psql(`select public.record_attempt('${kid}', 'sek:harian:2026-10-26', 7, 10, ${quiz(7)})`, { as: S });
+    fails(`select public.record_attempt('${kid}', 'sek:harian:esok', 7, 10, ${quiz(7)})`, S, /invalid_item/);
+    psql(`select public.record_attempt('${kid}', 'sek:ulang-kaji', 10, 10, ${quiz(10)})`, { as: S });
+    fails(`select public.record_attempt('${kid}', 'sek:ulang-kaji:x', 10, 10, ${quiz(10)})`, S, /item_required|invalid_item/);
+    psql(`update public.children set grade = 6 where id = '${kid}'`, { as: S });
+    fails(`update public.children set grade = 7 where id = '${kid}'`, S, /children_grade_range|check constraint/);
+  });
   t("delete_my_account: anon refused; deletes only the caller and cascades their family data", () => {
     denied(`select public.delete_my_account()`, null, /permission denied/);
     const D = psql(`insert into auth.users (email, raw_user_meta_data) values ('d@t.my', '{"name":"Ibu D"}') returning id`);

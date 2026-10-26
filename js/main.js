@@ -18,6 +18,8 @@ import { ibuList, ibuView } from "./pages/ibu.js";
 import { plannerList, plannerView } from "./pages/planner.js";
 import { tipsList, tipsView } from "./pages/tips.js";
 import { privacyPage } from "./pages/privacy.js";
+import { schoolHome, schoolChapter, schoolPlay, schoolReview, schoolDaily, schoolPrint, nextTopic, subjectProgress, chapterStars } from "./pages/school.js";
+import { SUBJECTS, gradeOf, gradeLabel, parseActivity, subjectById, topicById, STAGES, REVIEW_ID, DAILY_FAMILY } from "./school/curriculum.js";
 import { openFeedback, fabHtml, revealFab, feedbackAdminPage, feedbackBackend } from "./feedback.js";
 import { makeChallenge, checkAnswer, gateEnabled, setGateEnabled, parentOk, markParent, closeGate, LOCK_AFTER, LOCK_MS } from "./gate.js";
 
@@ -40,12 +42,18 @@ const routes = [
   ["/maklum-balas", feedbackAdminPage, { parent: true, nav: "ibu" }],
   ["/admin", adminPage, { auth: true, parent: true, nav: "ibu" }],
   ["/zon-ibu", momZonePage, { auth: true, parent: true, nav: "ibu" }],
+  ["/sekolah", schoolHome, { auth: true, child: true, nav: "school" }],
+  ["/sekolah/bab/:subject/:year/:topic", schoolChapter, { auth: true, child: true, nav: "school" }],
+  ["/sekolah/main/:subject/:year/:topic/:stage", schoolPlay, { auth: true, child: true, nav: "school" }],
+  ["/sekolah/ulang-kaji", schoolReview, { auth: true, child: true, nav: "school" }],
+  ["/sekolah/harian", schoolDaily, { auth: true, child: true, nav: "school" }],
+  ["/sekolah/cetak/:subject/:year/:topic", schoolPrint, { auth: true, child: true, nav: "school" }],
   ["/games", gamesList, { auth: true, child: true, nav: "games" }],
   ["/games/:id", gamePlay, { auth: true, child: true, nav: "games" }],
   ["/peta", mapsList, { auth: true, child: true, nav: "games" }],
   ["/peta/:id", mapView, { auth: true, child: true, nav: "games" }],
-  ["/buku", booksList, { auth: true, child: true, nav: "books" }],
-  ["/buku/:id", bookRead, { auth: true, child: true, nav: "books" }],
+  ["/buku", booksList, { auth: true, child: true, nav: "games" }],
+  ["/buku/:id", bookRead, { auth: true, child: true, nav: "games" }],
   ["/worksheet", worksheetList, { auth: true, nav: "home" }],
   ["/worksheet/:id", worksheetView, { auth: true, nav: "home" }],
   ["/pensel", penselList, { auth: true, child: true, nav: "home" }],
@@ -123,7 +131,7 @@ async function render() {
 function shell(nav) {
   const c = store.activeChild;
   const stars = c ? store.totalStars(c.id) : 0;
-  const items = [["home", "🏠", "Utama", "#/app"], ["games", "🎮", "Games", "#/games"], ["books", "📚", "Buku", "#/buku"], ["rewards", "🏆", "Ganjaran", "#/ganjaran"], ["ibu", "👩", "Zon Ibu", "#/zon-ibu"]];
+  const items = [["home", "🏠", "Utama", "#/app"], ["games", "🎮", "Games", "#/games"], ["school", "🎒", "Sekolah", "#/sekolah"], ["rewards", "🏆", "Ganjaran", "#/ganjaran"], ["ibu", "👩", "Zon Ibu", "#/zon-ibu"]];
   const cur = (k) => (nav === k ? ` class="on" aria-current="page"` : "");
   return `
   <header class="topbar no-print">
@@ -280,6 +288,7 @@ function hubPage(el) {
       </div>
     </section>
     <div data-onb></div>
+    ${schoolStrip(c)}
     <div class="search" role="search">
       <span class="ic" aria-hidden="true">🔍</span>
       <label for="topic-q" class="sr-only">Cari topik</label>
@@ -307,6 +316,20 @@ function hubPage(el) {
   fillLearning(el, c);
 }
 
+/** Quick "continue" row for school-age children (Tahun 1–6). */
+function schoolStrip(c) {
+  const g = gradeOf(c);
+  if (!g) return `<a class="school-strip mini" href="#/sekolah"><span class="ss-e">🎒</span><span><b>Sekolah Tahun 1–6</b><small>Matematik, BM & English ikut topik KSSR</small></span><span aria-hidden="true">→</span></a>`;
+  return `<section class="school-strip" aria-label="Sekolah ${gradeLabel(g)}">
+    <a class="ss-head" href="#/sekolah?t=${g}"><span class="ss-e">🎒</span><span><b>Sekolah · ${gradeLabel(g)}</b><small>Teruskan pembelajaran hari ini</small></span><span class="ss-all">Semua →</span></a>
+    <div class="ss-subjects">${SUBJECTS.map((s, i) => { const t = nextTopic(s.id, g), p = subjectProgress(s.id, g); return `<a class="ss-sub" style="--tc:${s.color};--ta:${s.accent};--i:${i}" href="#/sekolah/bab/${s.id}/${g}/${t.id}">
+      <span class="ss-top"><span>${s.emoji} ${esc(s.short)}</span><b>${p.pct}%</b></span>
+      <span class="ss-t">${t.emoji} ${esc(t.title)}</span>
+      <span class="ss-bar"><i style="width:${p.pct}%"></i></span>
+      <span class="ss-go">${chapterStars(s.id, g, t.id) ? "Teruskan" : "Mula"} ▶</span></a>`; }).join("")}</div>
+  </section>`;
+}
+
 function xpBar(xp) {
   const L = levelInfo(xp);
   return `<div class="xp-bar" title="${xp} XP">
@@ -314,6 +337,18 @@ function xpBar(xp) {
     <div class="progress"><i style="width:${L.pct}%"></i></div></div>`;
 }
 const CATALOG = { games: GAMES, maps: MAPS, books: BOOKS };
+/** School hooks for recommendations(): label weak topics and suggest the next chapter per subject. */
+function schoolCatalog(c) {
+  const g = gradeOf(c);
+  return {
+    lookup(fam) {
+      const p = parseActivity(`${fam}-latihan`);
+      const t = p && topicById(p.subject, p.year, p.topic);
+      return t ? { emoji: t.emoji, title: `${subjectById(p.subject).short} T${p.year}: ${t.title}`, href: `#/sekolah/bab/${p.subject}/${p.year}/${t.id}` } : null;
+    },
+    upNext: g ? SUBJECTS.map((s) => { const t = nextTopic(s.id, g); return { emoji: t.emoji, title: `${s.short}: ${t.title}`, href: `#/sekolah/bab/${s.id}/${g}/${t.id}`, reason: chapterStars(s.id, g, t.id) ? "Teruskan bab ini" : `Bab seterusnya untuk ${gradeLabel(g)}` }; }) : [],
+  };
+}
 async function fillLearning(el, c) {
   const mBox = el.querySelector("[data-missions]");
   const rBox = el.querySelector("[data-recs]");
@@ -336,7 +371,7 @@ async function fillLearning(el, c) {
   const allDone = ms.every((m) => m.complete);
   mBox.innerHTML = `<div class="stack">${ms.map((m) => `<div class="mission ${m.complete ? "done" : ""}"><span class="e" aria-hidden="true">${m.complete ? "✅" : m.emoji}</span><span class="grow">${esc(m.text)}</span><b>${m.done}/${m.need}</b></div>`).join("")}</div>
     <p class="small muted" style="margin:10px 0 0">${allDone ? "Hebat! Semua misi hari ini selesai 🎉" : "Misi baharu setiap hari — tiada denda jika terlepas."}</p>`;
-  const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: CATALOG, isPublished: (f) => store.isPublished(f) });
+  const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: { ...CATALOG, school: schoolCatalog(c) }, isPublished: (f) => store.isPublished(f) });
   if (!attempts.length && !onboardingSeen(c.id)) onboarding(el.querySelector("[data-onb]"), c, recs);
   rBox.innerHTML = recs.length
     ? `<div class="stack">${recs.map((r) => `<a class="rec" href="${r.href}"><span class="e" aria-hidden="true">${r.emoji}</span><span class="grow"><b>${esc(r.title)}</b><span class="small muted" style="display:block">${esc(r.reason)}</span></span><span aria-hidden="true">➡️</span></a>`).join("")}</div>`
@@ -355,7 +390,7 @@ function onboarding(box, c, recs) {
     <div class="onb-body">
       <h2>Hai ${esc(c.name)}! Saya Pipi Panda 👋</h2>
       ${needAge ? `<p>Berapa umur ${esc(c.name)}? Pipi akan pilih aktiviti yang sesuai.</p>
-        <div class="chips" role="group" aria-label="Umur">${[3, 4, 5, 6, 7, 8, 9].map((a) => `<button class="chip" data-age="${a}">${a} tahun</button>`).join("")}</div>`
+        <div class="chips" role="group" aria-label="Umur">${[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((a) => `<button class="chip" data-age="${a}">${a} tahun</button>`).join("")}</div>`
       : `<ol class="onb-steps"><li><span aria-hidden="true">🎮</span>Main aktiviti</li><li><span aria-hidden="true">⭐</span>Dapat bintang</li><li><span aria-hidden="true">🎁</span>Buka pelekat</li></ol>
         ${first ? `<p class="small muted" style="margin:0 0 8px">Jom mula dengan:</p><a class="btn big block" href="${first.href}" data-onb-go>${first.emoji} ${esc(first.title)}</a>` : ""}`}
       <button class="onb-skip" data-onb-skip>Nanti</button>
@@ -419,7 +454,7 @@ function childrenPage(el, _p, query) {
         ${store.children.map((c) => `
           <div class="card soft row">
             <span style="font-size:2.6rem">${esc(c.avatar || "🧒")}</span>
-            <div class="grow"><b style="font-size:1.15rem">${esc(c.name)}</b><div class="small muted">${c.age ? `${esc(c.age)} tahun · ` : ""}⭐ ${store.totalStars(c.id)}</div></div>
+            <div class="grow"><b style="font-size:1.15rem">${esc(c.name)}</b><div class="small muted">${c.age ? `${esc(c.age)} tahun · ` : ""}${gradeLabel(gradeOf(c))} · ⭐ ${store.totalStars(c.id)}</div></div>
             ${active?.id === c.id ? `<span class="star-pill">Aktif</span>` : `<button class="btn sm" data-use="${c.id}">Guna</button>`}
             <button class="btn sm ghost" data-edit="${c.id}" aria-label="Ubah">✏️</button>
           </div>`).join("")}
@@ -429,7 +464,10 @@ function childrenPage(el, _p, query) {
         <form data-f>
           <input type="hidden" name="id">
           <label class="f"><span>Nama panggilan</span><input class="input" name="name" required maxlength="30"></label>
-          <label class="f"><span>Umur</span><select class="input" name="age">${["", 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((a) => `<option value="${a}">${a ? a + " tahun" : "— pilih —"}</option>`).join("")}</select></label>
+          <div class="filters">
+            <label class="f"><span>Umur</span><select class="input" name="age">${["", 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((a) => `<option value="${a}">${a ? a + " tahun" : "— pilih —"}</option>`).join("")}</select></label>
+            <label class="f"><span>Darjah</span><select class="input" name="grade"><option value="">Ikut umur</option>${[0, 1, 2, 3, 4, 5, 6].map((g) => `<option value="${g}">${gradeLabel(g)}</option>`).join("")}</select></label>
+          </div>
           <span style="font-weight:800;font-size:.92rem">Pilih avatar</span>
           <div class="chips" style="margin:6px 0 14px">${AVATARS.map((a, i) => `<label class="chip" style="font-size:1.5rem;padding:4px 8px"><input type="radio" name="avatar" value="${a}" ${i === 0 ? "checked" : ""} style="display:none">${a}</label>`).join("")}</div>
           <div class="row"><button class="btn lime grow" type="submit">Simpan</button><button class="btn ghost" type="button" data-cancel hidden>Batal</button><button class="btn ghost" type="button" data-del hidden style="--fg:#b4235f">Padam</button></div>
@@ -444,7 +482,7 @@ function childrenPage(el, _p, query) {
     el.querySelectorAll("[data-use]").forEach((b) => (b.onclick = () => { store.setActiveChild(b.dataset.use); toast("Profil ditukar"); go("/app"); }));
     el.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => {
       const c = store.children.find((x) => x.id === b.dataset.edit);
-      f.id.value = c.id; f.name.value = c.name; f.age.value = c.age || "";
+      f.id.value = c.id; f.name.value = c.name; f.age.value = c.age || ""; f.grade.value = c.grade ?? "";
       f.querySelectorAll("[name=avatar]").forEach((r) => (r.checked = r.value === c.avatar));
       syncChips();
       el.querySelector("[data-ftitle]").textContent = `Ubah ${c.name}`;
@@ -463,7 +501,7 @@ function childrenPage(el, _p, query) {
     f.onsubmit = async (e) => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(f));
-      const data = { name: d.name.trim(), age: d.age ? Number(d.age) : null, avatar: d.avatar || "🐼" };
+      const data = { name: d.name.trim(), age: d.age ? Number(d.age) : null, grade: d.grade === "" ? null : Number(d.grade), avatar: d.avatar || "🐼" };
       if (!data.name) return toast("Sila isi nama");
       try {
         if (d.id) await store.updateChild(d.id, data);
@@ -488,6 +526,9 @@ const BADGES = [
   { id: "explorer", e: "🗺️", name: "Pengembara", desc: "Selesaikan 10 stesen peta", test: (r) => r.filter((x) => x.category === "peta" && x.stars > 0).length >= 10 },
   { id: "artist", e: "🎨", name: "Pelukis Cilik", desc: "Selesaikan 5 aktiviti pensel warna", test: (r) => r.filter((x) => x.category === "pensel").length >= 5 },
   { id: "perfect", e: "💯", name: "Sempurna", desc: "Dapat markah penuh 10/10", test: (r) => r.some((x) => x.total >= 10 && x.best_score === x.total) },
+  { id: "rajin", e: "🎒", name: "Murid Rajin", desc: "Dapatkan bintang dalam 10 bab Sekolah", test: (r) => new Set(r.filter((x) => x.category === "sekolah" && x.stars > 0 && /-(latihan|masa|bos)$/.test(x.activity_id)).map((x) => x.activity_id.replace(/-(latihan|masa|bos)$/, ""))).size >= 10 },
+  { id: "bos", e: "⚔️", name: "Pemburu Bos", desc: "Kalahkan 3 bos dengan 2⭐ atau lebih", test: (r) => r.filter((x) => x.activity_id.endsWith("-bos") && x.stars >= 2).length >= 3 },
+  { id: "raja", e: "👑", name: "Raja Bab", desc: "Kuasai satu bab Sekolah (9⭐)", test: (r) => { const by = {}; for (const x of r) if (x.category === "sekolah" && /-(latihan|masa|bos)$/.test(x.activity_id)) { const k = x.activity_id.replace(/-(latihan|masa|bos)$/, ""); by[k] = (by[k] || 0) + x.stars; } return Object.values(by).some((v) => v >= 9); } },
   { id: "allgames", e: "🎮", name: "Pemain Serba Boleh", desc: "Main semua 9 games online", test: (r) => new Set(r.filter((x) => x.category === "games").map((x) => x.activity_id.split(":")[1])).size >= 9 },
 ];
 function rewardsPage(el) {
@@ -512,7 +553,7 @@ function rewardsPage(el) {
 // ---------------------------------------------------------------- report
 async function reportPage(el) {
   if (!store.children.length) { el.innerHTML = `<div class="wrap page"><div class="alert info">Tiada profil anak lagi. <a href="#/anak?baru=1">Tambah sekarang</a></div></div>`; return; }
-  const cats = { games: "🎮 Games Online", peta: "🗺️ Peta Kartun", buku: "📚 Buku Cerita", pensel: "🖍️ Pensel Warna", rutin: "🌞 Rutin" };
+  const cats = { sekolah: "🎒 Sekolah (Tahun 1–6)", games: "🎮 Games Online", peta: "🗺️ Peta Kartun", buku: "📚 Buku Cerita", pensel: "🖍️ Pensel Warna", rutin: "🌞 Rutin" };
   el.innerHTML = `<div class="wrap page stack">
     <div class="pagehead"><a class="back" href="#/zon-ibu" aria-label="Kembali">←</a><h1>Laporan Kemajuan</h1></div>
     <p class="small muted">Semua angka dikira daripada aktiviti yang benar-benar direkodkan. Laporan ini menunjukkan latihan, bukan penilaian rasmi penguasaan.</p>
@@ -536,7 +577,7 @@ async function reportPage(el) {
     const by = Object.keys(cats).map((k) => { const rr = rows.filter((r) => r.category === k); return { k, n: rr.length, s: rr.reduce((a, r) => a + r.stars, 0), max: rr.length * 3 }; }).filter((b) => b.n);
     const weak = weakSpots(attempts);
     const lowStars = rows.filter((r) => r.stars <= 1 && r.category !== "rutin").slice(0, 5);
-    const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: CATALOG, isPublished: (f) => store.isPublished(f) });
+    const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: { ...CATALOG, school: schoolCatalog(c) }, isPublished: (f) => store.isPublished(f) });
     card.innerHTML = `
       <div class="row"><span style="font-size:2.4rem">${esc(c.avatar || "🧒")}</span><div class="grow"><h2 style="margin:0">${esc(c.name)}</h2><span class="muted small">${c.age ? esc(c.age) + " tahun · " : ""}Tahap ${L.level} ${esc(levelTitle(L.level))}</span></div></div>
       ${failed ? `<div class="alert">Sejarah aktiviti tidak dapat dimuat. Angka di bawah mungkin tidak lengkap.</div>` : ""}
@@ -569,12 +610,24 @@ async function reportPage(el) {
     };
   }
 }
+function schoolLabel(id) {
+  if (id === REVIEW_ID) return "Ulang Kaji Pintar";
+  if (id.startsWith(DAILY_FAMILY + ":")) return `Cabaran Harian (${id.split(":")[2]})`;
+  const p = parseActivity(id) || parseActivity(`${id}-latihan`);
+  if (!p) return null;
+  const s = subjectById(p.subject), t = topicById(p.subject, p.year, p.topic);
+  if (!t) return null;
+  const stage = parseActivity(id) ? ` — ${STAGES.find((x) => x.id === p.stage).title}` : "";
+  return `${s.short} T${p.year}: ${t.title}${stage}`;
+}
 function familyLabel(fam) {
+  if (fam.startsWith("sek:")) return schoolLabel(fam) || fam;
   const [cat, id] = fam.split(":");
   const sec = SECTIONS.find((s) => s.key === (cat === "game" ? "games" : cat));
   return sec?.list.find((x) => x.id === id)?.title || fam;
 }
 function activityLabel(id) {
+  if (id.startsWith("sek:")) return schoolLabel(id) || id;
   const [cat0, a, b] = id.split(":");
   if (cat0 === "rutin") return `Rutin ${b === "pagi" ? "pagi" : "malam"} (${a})`;
   const cat = cat0 === "game" ? "games" : cat0;

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { launch, chromePath } from "./cdp.mjs";
 import { staticServer, mockSupabase } from "./servers.mjs";
-import { buildCatalog } from "../../scripts/activity-catalog.mjs";
+import { buildCatalog, buildSchoolCatalog } from "../../scripts/activity-catalog.mjs";
 
 if (!chromePath()) { console.log("SKIP: no Chromium found (set CHROME_PATH)"); process.exit(0); }
 
@@ -11,7 +11,7 @@ const servers = [
   await staticServer(APP),
   await staticServer(CLOUD_APP, { stripCsp: true, config: `window.PPL_CONFIG = { SUPABASE_URL: "http://127.0.0.1:${SB}", SUPABASE_ANON_KEY: "anon-test" };` }),
 ];
-const sb = await mockSupabase(SB, { catalog: await buildCatalog() });
+const sb = await mockSupabase(SB, { catalog: [...(await buildCatalog()), ...(await buildSchoolCatalog())] });
 servers.push(sb);
 const URL_ = `http://127.0.0.1:${APP}/`;
 const CLOUD = `http://127.0.0.1:${CLOUD_APP}/`;
@@ -56,8 +56,10 @@ await scenario("landing renders with Playora branding, no CSP violations", async
   await b.waitFor(".logo-type");
   assert.match(await b.eval("document.title"), /Playora/);
   assert.match(await b.text(".logo-type"), /Play\s*ora/);
-  assert.equal(await b.eval("document.querySelectorAll('.lp-sec').length"), 8);
-  assert.equal(await b.eval("[...document.querySelectorAll('.lp-sec-h .small')].reduce((n, e) => n + parseInt(e.textContent), 0)"), 70);
+  assert.equal(await b.eval("document.querySelectorAll('.lp-sec').length"), 9);
+  const total = await b.eval("import('/js/sections.js').then(m => m.TOTAL_TOPICS)");
+  assert.ok(total > 190, `total topics ${total}`);
+  assert.equal(await b.eval("[...document.querySelectorAll('.lp-sec-h .small')].reduce((n, e) => n + parseInt(e.textContent), 0)"), total);
 });
 
 await scenario("protected route redirects to login and returns after sign-in", async (b) => {
@@ -462,6 +464,175 @@ await scenario("delete account (cloud): server deletes the user; old password no
   assert.match(await b.eval("location.hash"), /#\/masuk/);
 }, { allow: /status of 400 .*auth\/v1\/token/ });
 
+// ------------------------------------------------------------------ Sekolah (Tahun 1–6)
+/** Answer the current Sekolah question (correctly, or wrongly when `wrong`) through the real UI. */
+const ANSWER = (wrong = false) => `(() => {
+  const card = document.querySelector(".qcard2"); if (!card || !card.__q) return "none";
+  const q = card.__q, wrong = ${wrong};
+  if (["mcq", "fill", "tf"].includes(q.type)) {
+    const opts = [...card.querySelectorAll(".opt2:not(:disabled)")];
+    (wrong ? opts.find((o) => o.dataset.v !== q.answer) : opts.find((o) => o.dataset.v === q.answer)).click(); return q.type;
+  }
+  if (q.type === "input") {
+    const v = wrong ? String(Number(q.answer) + 1) : String(q.answer);
+    for (const ch of v) card.querySelector('[data-k="' + ch + '"]').click();
+    card.querySelector("[data-ok]").click(); return "input";
+  }
+  if (q.type === "order") {
+    const used = new Set(), tiles = [...card.querySelectorAll(".order-bank .tile2")];
+    for (const p of (wrong ? [...q.parts].reverse() : q.parts)) { const t = tiles.find((x, i) => !used.has(i) && x.textContent === p); used.add(tiles.indexOf(t)); t.click(); }
+    card.querySelector("[data-check]").click(); return "order";
+  }
+  if (q.type === "match") {
+    if (wrong) { const ls = card.querySelectorAll("[data-l]"), rs = card.querySelectorAll("[data-r]"); for (let k = 0; k < 3; k++) { ls[0].click(); [...rs].find((x) => x.dataset.r !== "0").click(); } }
+    q.pairs.forEach(([, r], k) => { card.querySelector('[data-l="' + k + '"]').click(); [...card.querySelectorAll("[data-r]")].find((x) => x.textContent === r).click(); });
+    return "match";
+  }
+})()`;
+/** Play a whole round; `wrongAt` lists question indexes to answer wrongly. Returns the question types seen. */
+const playSchool = async (b, { wrongAt = [], max = 10 } = {}) => {
+  const types = [];
+  for (let i = 0; i < max; i++) {
+    if (await b.exists(".result")) break;
+    await b.waitFor(".qcard2");
+    types.push(await b.eval(ANSWER(wrongAt.includes(i))));
+    await b.wait(350);
+    if (await b.exists(".q2-next")) await b.click(".q2-next");
+    else await b.wait(wrongAt.includes(i) ? 2000 : 950);
+  }
+  await b.waitFor(".result", 8000);
+  return types;
+};
+const schoolKid = async (b, grade = 2) => {
+  await guest(b);
+  await b.eval(`import('/js/store.js').then(m => m.store.updateChild(m.store.activeChild.id, { age: ${grade + 6}, grade: ${grade} }))`);
+};
+
+await scenario("sekolah: home shows the child's year, subjects and chapter path; topic search links to chapters", async (b) => {
+  await schoolKid(b, 3);
+  await b.hash("#/games");
+  await b.hash("#/app");
+  await b.waitFor(".school-strip .ss-sub");
+  assert.equal(await b.eval("document.querySelectorAll('.school-strip .ss-sub').length"), 3);
+  assert.match(await b.text(".school-strip"), /Tahun 3/);
+  await b.click(".bottomnav a[href='#/sekolah']");
+  await b.waitFor(".path .node");
+  assert.match(await b.text(".school-hero"), /Matematik\s+Tahun 3/);
+  assert.equal(await b.eval("document.querySelector('.ychip.on').textContent.replace(/\\D/g,'')"), "3");
+  assert.equal(await b.eval("document.querySelectorAll('.path .node:not(.trophy)').length"), 8);
+  assert.ok(await b.exists(".node.next"));
+  await b.hash("#/sekolah?t=5&s=en");
+  await b.waitFor(".path .node");
+  assert.match(await b.text(".school-hero"), /English\s+Tahun 5/);
+  await b.hash("#/app");
+  await b.eval(`(()=>{const i=document.querySelector('#topic-q'); i.value='pecahan setara'; i.dispatchEvent(new Event('input'))})()`);
+  assert.ok(await b.exists("[data-results] a[href='#/sekolah/bab/mat/3/pecahan-setara']"));
+});
+
+await scenario("sekolah: practice round with every question type → stars saved, mistakes filed for review, boss unlocked", async (b) => {
+  await schoolKid(b, 2);
+  await b.hash("#/sekolah/bab/mat/2/darab-asas");
+  await b.waitFor(".stage-card");
+  assert.ok(await b.exists(".st-bos .btn[disabled]"), "boss locked before practice");
+  await b.click(".st-latihan a.btn");
+  const types = await playSchool(b, { wrongAt: [2, 6] });
+  assert.ok(types.includes("input"), `types ${types}`);
+  assert.match(await b.text(".result"), /Markah: 8 \/ 10/);
+  assert.match(await b.text(".result"), /Semak 2 soalan yang salah/);
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.starsOf('sek:mat-t2:darab-asas-latihan'))"), 2);
+  await b.hash("#/sekolah/bab/mat/2/darab-asas");
+  await b.waitFor(".st-bos a.btn");
+  assert.match(await b.text(".chap-hero"), /2\/9/);
+  // the two mistakes wait in Ulang Kaji Pintar
+  await b.hash("#/sekolah/ulang-kaji");
+  await b.waitFor("[data-start]");
+  const filed = await b.eval("import('/js/store.js').then(async m => (await m.store.kv('review:' + m.store.activeChild.id, [])).length)");
+  assert.ok(filed >= 1 && filed <= 2, `filed ${filed}`); // a wrong "match" question is re-practised in the chapter, not filed
+  assert.match(await b.text("#view"), new RegExp(`${filed} soalan perlu diulang`));
+  await b.click("[data-start]");
+  await playSchool(b);
+  await b.wait(600);
+  const boxes = await b.eval("import('/js/store.js').then(async m => (await m.store.kv('review:' + m.store.activeChild.id, [])).map(x => x.box))");
+  assert.deepEqual(boxes, Array(filed).fill(2), "reviewed items move up a box");
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.starsOf('sek:ulang-kaji'))"), 3);
+});
+
+await scenario("sekolah: other types (order words, match pairs) and the boss battle ends after 3 lost lives", async (b) => {
+  await schoolKid(b, 1);
+  await b.hash("#/sekolah/main/bm/1/susun-ayat/latihan");
+  const t1 = await playSchool(b);
+  assert.ok(t1.includes("order"), `types ${t1}`);
+  assert.match(await b.text(".result"), /Markah: 10 \/ 10/);
+  await b.hash("#/sekolah/main/en/1/colours/latihan");
+  await playSchool(b);
+  await b.hash("#/sekolah/main/bm/1/susun-ayat/bos");
+  await b.waitFor(".boss-zone");
+  await playSchool(b, { wrongAt: [0, 1, 2] });
+  assert.match(await b.text(".result"), /Nyawa habis/);
+  assert.match(await b.text(".result"), /Markah: 0 \/ 10/);
+  const last = await b.eval("import('/js/store.js').then(async m => (await m.store.attempts())[0])");
+  assert.equal(last.activity_id, "sek:bm-t1:susun-ayat-bos");
+  assert.equal(last.answers.length, 10, "unanswered questions are logged as wrong");
+});
+
+await scenario("sekolah: time challenge — when time runs out the round ends and remaining questions count as wrong", async (b) => {
+  await b.addInitScript("window.__playoraTimeScale = 0.02");
+  await schoolKid(b, 4);
+  await b.hash("#/sekolah/main/mat/4/koordinat/masa");
+  await b.waitFor(".timer");
+  await b.eval(ANSWER());
+  await b.waitFor(".result", 10000);
+  assert.match(await b.text(".result"), /Masa tamat/);
+  const last = await b.eval("import('/js/store.js').then(async m => (await m.store.attempts())[0])");
+  assert.equal(last.answers.length, 10);
+  assert.ok(last.answers.filter((a) => a.a === "").length >= 8);
+});
+
+await scenario("sekolah: daily challenge, printable sheet, Darjah in child profile", async (b) => {
+  await schoolKid(b, 5);
+  await b.hash("#/sekolah/harian");
+  await b.click("[data-start]");
+  await playSchool(b);
+  const today = await b.eval("import('/js/util.js').then(m => m.todayKey())");
+  assert.ok((await b.eval(`import('/js/store.js').then(m => m.store.starsOf('sek:harian:${today}'))`)) >= 1);
+  await b.hash("#/sekolah/cetak/mat/5/purata");
+  await b.waitFor(".school-sheet .p-q");
+  assert.equal(await b.eval("document.querySelectorAll('.school-sheet .p-q').length"), 12);
+  assert.match(await b.text(".school-sheet"), /skema jawapan/i);
+  await b.hash("#/anak");
+  await b.click("[data-edit]");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.grade.value='6'; f.requestSubmit();})()`);
+  await b.wait(600);
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.activeChild.grade)"), 6);
+  await b.hash("#/sekolah");
+  await b.waitFor(".school-hero");
+  assert.match(await b.text(".school-hero"), /Tahun 6/);
+});
+
+await scenario("level-up celebration shows the new level and closes with Esc", async (b) => {
+  await schoolKid(b, 2);
+  await b.eval("import('/js/engine.js').then(m => m.levelUpCelebrate(3))");
+  await b.waitFor(".lvlup [data-lvl-ok]");
+  assert.match(await b.text(".lvlup"), /NAIK TAHAP![\s\S]*3/);
+  await b.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+  await b.wait(500);
+  assert.equal(await b.exists(".lvlup"), false);
+});
+
+await scenario("sekolah (cloud): chapter scored by the server, grade saved", async (b) => {
+  await b.goto(CLOUD + "#/daftar");
+  await b.eval("localStorage.setItem('ppl_autospeak','off'); localStorage.setItem('ppl_sound','off')");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Murid'; f.email.value='murid@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  await b.wait(1200);
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Hana'; f.age.value='9'; f.grade.value='3'; f.requestSubmit();})()`);
+  await b.wait(1000);
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.activeChild.grade)"), 3);
+  await b.hash("#/sekolah/main/en/3/opposites/latihan");
+  await playSchool(b, { wrongAt: [4] });
+  assert.match(await b.text(".result"), /Markah: 9 \/ 10/);
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.starsOf('sek:en-t3:opposites-latihan'))"), 3);
+});
+
 // ------------------------------------------------------------------ learning dashboard, worksheets, admin
 await scenario("first-run welcome: age question, first activity, skip remembered; streak calendar", async (b) => {
   await guest(b);
@@ -572,7 +743,7 @@ await scenario("cloud: quiz is scored by the server; admin can hide an activity 
 });
 
 // ------------------------------------------------------------------ layout
-const ROUTES = ["/privasi", "/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/masa-skrin", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
+const ROUTES = ["/sekolah", "/sekolah?t=6&s=bm", "/sekolah/bab/mat/4/koordinat", "/sekolah/main/en/1/sentences-1/latihan", "/sekolah/main/mat/2/darab-asas/masa", "/sekolah/ulang-kaji", "/sekolah/harian", "/sekolah/cetak/mat/5/purata", "/privasi", "/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/masa-skrin", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
 for (const width of [360, 1280]) {
   await scenario(`no horizontal overflow on ${ROUTES.length} routes at ${width}px`, async (b) => {
     await guest(b);

@@ -30,3 +30,11 @@ export async function buildCatalog() {
 
   return rows.map((r, i) => ({ id: r.id, category: r.category, title: r.title, kind: r.kind, question_count: r.qc ?? null, items: r.items ?? null, item_pattern: r.pattern ?? null, sort_order: i }));
 }
+
+/** Sekolah (Darjah 1–6) families — generated into migration 0007 and added to the E2E mock catalogue. */
+export async function buildSchoolCatalog(start = 1000) {
+  globalThis.window ||= globalThis;
+  globalThis.localStorage ||= { getItem: () => null, setItem() {}, removeItem() {} };
+  const { catalogRows } = await import("../js/school/curriculum.js");
+  return catalogRows().map((r, i) => ({ id: r.id, category: r.category, title: r.title, kind: r.kind, question_count: r.qc, items: r.items ?? null, item_pattern: r.pattern ?? null, sort_order: start + i }));
+}

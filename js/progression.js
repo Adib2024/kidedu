@@ -42,7 +42,7 @@ export function mytWeekStart(d = new Date()) {
 
 // ---------------------------------------------------------------- daily missions
 export const MISSIONS = [
-  { id: "main", emoji: "🎮", text: "Main 2 games atau stesen peta", need: 2, test: (a) => a.category === "games" || a.category === "peta" },
+  { id: "main", emoji: "🎮", text: "Main 2 aktiviti: Sekolah, games atau peta", need: 2, test: (a) => a.category === "games" || a.category === "peta" || a.category === "sekolah" },
   { id: "baca", emoji: "📚", text: "Baca 1 buku cerita & jawab kuiz", need: 1, test: (a) => a.category === "buku" },
   { id: "lukis", emoji: "🖍️", text: "Surih atau warnakan 1 aktiviti", need: 1, test: (a) => a.category === "pensel" },
 ];
@@ -114,7 +114,10 @@ export function weakSpots(attempts, { days = 14, now = new Date() } = {}) {
 /** "game:bijak-sifir:3" → "game:bijak-sifir"; "rutin:2026-10-10:pagi" → "rutin". */
 export function familyOf(activityId) {
   const p = String(activityId).split(":");
-  return p[0] === "rutin" ? "rutin" : p.slice(0, 2).join(":");
+  if (p[0] === "rutin") return "rutin";
+  // school chapters are grouped per topic (all three stages): sek:mat-t3:pecahan-setara
+  if (p[0] === "sek" && p.length >= 3 && /-(latihan|masa|bos)$/.test(p[2])) return `sek:${p[1]}:${p[2].replace(/-(latihan|masa|bos)$/, "")}`;
+  return p.slice(0, 2).join(":");
 }
 
 /**
@@ -127,6 +130,14 @@ export function recommendations({ child, progress = {}, attempts = [], catalog, 
   const push = (r) => { if (!seen.has(r.href) && out.length < max) { seen.add(r.href); out.push(r); } };
   const stars = (id) => progress[id]?.stars || 0;
 
+  // 0. School chapters (Tahun 1–6): weak topics first, then the next chapter in each subject
+  if (catalog.school) {
+    for (const w of weakSpots(attempts).filter((x) => x.family.startsWith("sek:")).slice(0, 2)) {
+      const t = catalog.school.lookup(w.family);
+      if (t) push({ ...t, title: `Ulang kaji: ${t.title}`, reason: `${w.wrong} daripada ${w.answered} jawapan salah dalam 14 hari lepas` });
+    }
+    for (const r of catalog.school.upNext || []) push(r);
+  }
   // 1. Practise where the child is struggling (from answer logs)
   for (const w of weakSpots(attempts).slice(0, 2)) {
     const [kind, id] = w.family.split(":");

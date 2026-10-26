@@ -341,12 +341,21 @@ const cloud = {
     else await this._rest(`favorites?item_type=eq.${encodeURIComponent(type)}&item_id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
   },
   async addChild(_u, child) {
-    const [c] = await this._rest("children", { method: "POST", body: child, prefer: "return=representation" });
+    const [c] = await this._withoutMissingGrade(child, (body) => this._rest("children", { method: "POST", body, prefer: "return=representation" }));
     return c;
   },
   async updateChild(_u, id, patch) {
-    const [c] = await this._rest(`children?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: patch, prefer: "return=representation" });
+    const [c] = await this._withoutMissingGrade(patch, (body) => this._rest(`children?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body, prefer: "return=representation" }));
     return c;
+  },
+  /** Databases without migration 0007 have no children.grade column: save the rest instead of failing. */
+  async _withoutMissingGrade(body, send) {
+    try { return await send(body); }
+    catch (e) {
+      if (!("grade" in body) || !/'grade' column/.test(e.message || "")) throw e;
+      const { grade, ...rest } = body;
+      return send(rest);
+    }
   },
   async removeChild(_u, id) {
     await this._rest(`children?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });

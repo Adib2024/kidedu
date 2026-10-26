@@ -11,6 +11,34 @@ function xpLine(gained, total) {
     ${leveled ? `<div class="alert ok" style="margin-top:8px">🆙 Naik ke Tahap ${L.level}!</div>` : ""}</div>`;
 }
 
+/** Full-screen "level up" celebration; closes on tap, Esc or after a few seconds. */
+export function levelUpCelebrate(level) {
+  document.querySelector(".lvlup")?.remove();
+  const box = document.createElement("div");
+  box.className = "lvlup";
+  box.setAttribute("role", "dialog");
+  box.setAttribute("aria-modal", "true");
+  box.setAttribute("aria-label", `Naik ke Tahap ${level}`);
+  box.innerHTML = `<div class="lvlup-card">
+      <div class="lvlup-rays" aria-hidden="true"></div>
+      ${mascot("cheer", 120, "pop")}
+      <p class="lvlup-k">NAIK TAHAP!</p>
+      <div class="lvlup-n">${level}</div>
+      <p class="lvlup-t">${esc(levelTitle(level))}</p>
+      <button class="btn big" data-lvl-ok>Yeay! 🎉</button>
+    </div>`;
+  document.body.appendChild(box);
+  sfx("win"); confetti(60);
+  speak(`Tahniah! Naik ke tahap ${level}`);
+  const close = () => { box.classList.add("out"); setTimeout(() => box.remove(), 250); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") close(); };
+  box.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
+  box.querySelector("[data-lvl-ok]").focus();
+  setTimeout(close, 6000);
+}
+const leveledUp = (gained, total) => { const L = levelInfo(total || 0); return total != null && gained != null && total - gained < L.start && L.level > 1 ? L.level : 0; };
+
 export const autoSpeakOn = () => localStorage.getItem("ppl_autospeak") !== "off";
 export const setAutoSpeak = (on) => localStorage.setItem("ppl_autospeak", on ? "on" : "off");
 
@@ -112,6 +140,8 @@ export function showResult(el, { score, total, earned, newSticker, actions = [],
     </div>`;
   el.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => actions[+b.dataset.a].onClick()));
   if (s >= 1) speak(title);
+  const lv = !saveFailed && leveledUp(xpGained, totalXp);
+  if (lv) setTimeout(() => el.isConnected && levelUpCelebrate(lv), 900);
 }
 
 // ---------------- Memory match ----------------

@@ -8,8 +8,12 @@ import { WORKSHEETS } from "./pages/worksheets.js";
 import { PENSEL } from "./pages/pensel.js";
 import { IBU } from "./pages/ibu.js";
 import { PLANNERS } from "./pages/planner.js";
+import { SUBJECTS, YEARS, topics } from "./school/curriculum.js";
+
+const SCHOOL_TOPICS = SUBJECTS.flatMap((s) => YEARS.flatMap((y) => topics(s.id, y).map((t) => ({ id: `bab/${s.id}/${y}/${t.id}`, title: `${t.title} (${s.short} T${y})`, emoji: t.emoji, color: s.color }))));
 
 export const SECTIONS = [
+  { key: "sekolah", zone: "anak", title: "Sekolah Tahun 1–6", emoji: "🎒", color: "#e0e7ff", href: "#/sekolah", list: SCHOOL_TOPICS, blurb: "Matematik, Bahasa Melayu & English ikut topik KSSR — latihan, cabaran masa, lawan bos & ulang kaji pintar." },
   { key: "games", zone: "anak", title: "Games Online", emoji: "🎮", color: "#ddf3ff", href: "#/games", list: GAMES, blurb: "Kuiz tahap demi tahap: sifir, matematik, warna, buah, cuaca, English, simpulan bahasa & ingatan." },
   { key: "peta", zone: "anak", title: "Peta Kartun", emoji: "🗺️", color: "#fce7f3", href: "#/peta", list: MAPS, blurb: "Pengembaraan di peta — buka stesen satu demi satu: membaca, duit, warna, jam & objek tersembunyi." },
   { key: "buku", zone: "anak", title: "Buku Cerita", emoji: "📚", color: "#fef3c7", href: "#/buku", list: BOOKS, blurb: "Cerita asli BM dengan bacaan suara, sorotan perkataan & kuiz kefahaman." },
@@ -24,7 +28,7 @@ export const TOTAL_TOPICS = SECTIONS.reduce((n, s) => n + s.count, 0);
 
 /** Stars earned in a kid section (null for sections without stars). */
 export function sectionProgress(s, childId) {
-  if (!["games", "peta", "buku", "pensel"].includes(s.key)) return null;
+  if (!["sekolah", "games", "peta", "buku", "pensel"].includes(s.key)) return null;
   return Object.values(store.progress[childId] || {}).filter((r) => r.category === s.key).reduce((a, r) => a + r.stars, 0);
 }
 
