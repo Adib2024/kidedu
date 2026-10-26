@@ -4,11 +4,13 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const CANDIDATES = [process.env.CHROME_PATH, "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].filter(Boolean);
+const CANDIDATES = [process.env.CHROME_PATH, "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/opt/pw-browsers/chromium", "/usr/bin/chromium",
+  "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome", "/usr/bin/chromium-browser"].filter(Boolean);
 export const chromePath = () => CANDIDATES.find((p) => existsSync(p));
 
 export async function launch({ width = 412, height = 900, port = 9400 + Math.floor(Math.random() * 500), mobile = width < 600 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "playora-e2e-"));
+  if (!chromePath()) throw new Error("Chrome/Chromium not found — set CHROME_PATH");
   const proc = spawn(chromePath(), ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   let targets = [];
   for (let i = 0; i < 80 && !targets.length; i++) {

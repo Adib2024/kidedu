@@ -16,6 +16,8 @@ jobs:
         run: node scripts/check.mjs
       - name: Unit tests
         run: node --test tests/unit/*.test.mjs
+      - name: Ensure PostgreSQL server binaries (runner images change)
+        run: ls /usr/lib/postgresql/*/bin/initdb >/dev/null 2>&1 || command -v initdb || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql)
       - name: Database tests (migrations + RLS on a throwaway PostgreSQL)
         run: node tests/db/run.mjs
       - name: End-to-end tests (headless Chrome)

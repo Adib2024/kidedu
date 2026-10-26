@@ -10,8 +10,11 @@ import assert from "node:assert/strict";
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "../..");
 const asPg = process.getuid?.() === 0 ? ["runuser", "-u", "postgres", "--"] : [];
 const run = (cmd, args, opts = {}) => execFileSync(asPg.length ? asPg[0] : cmd, asPg.length ? [...asPg.slice(1), cmd, ...args] : args, { encoding: "utf8", stdio: "pipe", ...opts });
+// Newest PostgreSQL installed under /usr/lib/postgresql (any version), else whatever is on $PATH.
 const bin = (n) => {
-  for (const v of ["17", "16", "15"]) { const p = `/usr/lib/postgresql/${v}/bin/${n}`; if (existsSync(p)) return p; }
+  const base = "/usr/lib/postgresql";
+  const versions = existsSync(base) ? readdirSync(base).filter((v) => /^\d+$/.test(v)).sort((a, b) => b - a) : [];
+  for (const v of versions) { const p = `${base}/${v}/bin/${n}`; if (existsSync(p)) return p; }
   return n;
 };
 
