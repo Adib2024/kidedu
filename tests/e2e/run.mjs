@@ -268,6 +268,7 @@ await scenario("parental gate guards parent areas: wrong answer refused, right a
 await scenario("habit tracker: deleting a habit does not move ticks to another habit", async (b) => {
   await guest(b);
   await b.hash("/planner/tabiat");
+  await b.waitFor('[data-h="1"][data-day="1"]');
   // tick day 1 of the 2nd habit ("Senaman 15 minit")
   await b.click('[data-h="1"][data-day="1"]');
   await b.eval("window.__confirm = 1");
@@ -278,6 +279,7 @@ await scenario("habit tracker: deleting a habit does not move ticks to another h
   assert.equal(await b.eval(`document.querySelector('[data-h="0"][data-day="1"]').classList.contains('on')`), true);
   assert.equal(await b.eval(`document.querySelector('[data-h="1"][data-day="1"]').classList.contains('on')`), false);
   await b.reload();
+  await b.waitFor('[data-h="0"][data-day="1"]');
   assert.equal(await b.eval(`document.querySelector('[data-h="0"][data-day="1"]').classList.contains('on')`), true, "persists after refresh");
 });
 
@@ -717,9 +719,11 @@ await scenario("admin page is refused for parents (demo and cloud)", async (b) =
 
 await scenario("cloud: quiz is scored by the server; admin can hide an activity for everyone", async (b) => {
   await b.goto(CLOUD + "#/daftar");
+  await b.waitFor("[data-f] [name=email]");
   await b.eval("localStorage.setItem('ppl_autospeak','off')");
   await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Admin'; f.email.value='admin@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
   await b.wait(1200);
+  for (let t = 0; t < 50 && !(await b.eval("location.hash.startsWith('#/anak') && !!document.querySelector('[data-f]')")); t++) await b.wait(100);
   await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Adik'; f.requestSubmit();})()`);
   await b.wait(900);
   await b.hash("/games/bijak-sifir?lv=0");
