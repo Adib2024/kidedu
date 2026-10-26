@@ -55,7 +55,7 @@ Workflow `.github/workflows/deploy.yml` menjalankan semakan + ujian unit + ujian
 
 Sekali sahaja:
 1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
-2. **Settings → Secrets and variables → Actions → Variables**: `SUPABASE_URL` dan `SUPABASE_PUBLISHABLE_KEY` (nilai awam; lihat `.env.example`). Tanpa pembolehubah ini, laman dideploy dalam Mod Demo.
+2. Nilai Supabase (awam) untuk projek `playora-dev` sudah ditetapkan sebagai lalai dalam `.github/workflows/deploy.yml`. Untuk projek lain, tetapkan `SUPABASE_URL` dan `SUPABASE_PUBLISHABLE_KEY` dalam **Settings → Secrets and variables → Actions → Variables** (atau Secrets) — ia mengatasi nilai lalai.
 3. Push ke cawangan, atau jalankan workflow secara manual (Actions → Deploy to GitHub Pages → Run workflow).
 
 `build-site.mjs` **menolak** kunci `sb_secret_…` atau JWT selain `anon`, jadi kunci rahsia tidak boleh terdedah secara tidak sengaja.
