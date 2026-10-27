@@ -113,6 +113,12 @@ function numberWords(max) {
     ])();
   };
 }
+/** 🎧 hear a number in words, pick the numeral (written form where audio is unavailable). */
+const listenNum = (max) => () => {
+  const n = rnd(max > 100 ? 100 : 11, max);
+  const near = [n + 1, n - 1, n + 10, n - 10, Number(String(n).split("").reverse().join(""))].filter((x) => x > 0 && x !== n && x <= max * 1.1);
+  return mcq("🎧 Dengar dan pilih nombor yang betul.", fmt(n), near.map(fmt), { listen: perkataan(n), alt: `Pilih nombor bagi <b>${perkataan(n)}</b>.` });
+};
 function addSub(max, { sub = true, add = true, story = true } = {}) {
   const gens = [];
   if (add) gens.push([2, () => { const a = rnd(Math.floor(max / 20), Math.floor(max / 2)), b = rnd(Math.floor(max / 30) + 1, max - a); return input(`${fmt(a)} + ${fmt(b)} = ?`, a + b, { explain: `Tambah sa dengan sa, puluh dengan puluh…` }); }]);
@@ -297,7 +303,7 @@ const time24 = blend(
 // [id, title, emoji, generator]
 export const MATH = {
   1: [
-    ["nombor-100", "Nombor hingga 100", "🔢", blend([1, compareNums(100)], [1, beforeAfter(100)], [1, placeValue(100, 2)], [1, () => { const n = rnd(11, 99); return mcq(`${n} = ? puluh ${n % 10} sa`, String(Math.floor(n / 10)), ["1", "2", "3", "5", "7", "9", String(n % 10)]); }])],
+    ["nombor-100", "Nombor hingga 100", "🔢", blend([1, compareNums(100)], [1, beforeAfter(100)], [1, placeValue(100, 2)], [1, listenNum(100)], [1, () => { const n = rnd(11, 99); return mcq(`${n} = ? puluh ${n % 10} sa`, String(Math.floor(n / 10)), ["1", "2", "3", "5", "7", "9", String(n % 10)]); }])],
     ["tambah-100", "Tambah hingga 100", "➕", addSub(100, { sub: false })],
     ["tolak-100", "Tolak hingga 100", "➖", addSub(100, { add: false })],
     ["wang-rm10", "Wang hingga RM10", "💰", money(1000, { change: false })],
@@ -306,7 +312,7 @@ export const MATH = {
     ["bentuk", "Bentuk 2D & 3D", "🔷", shapes],
   ],
   2: [
-    ["nombor-1000", "Nombor hingga 1000", "🔢", blend([1, compareNums(1000)], [1, placeValue(1000, 3)], [1, numberWords(999)], [1, beforeAfter(1000)])],
+    ["nombor-1000", "Nombor hingga 1000", "🔢", blend([1, compareNums(1000)], [1, placeValue(1000, 3)], [1, numberWords(999)], [1, beforeAfter(1000)], [1, listenNum(999)])],
     ["tambah-tolak-1000", "Tambah & Tolak hingga 1000", "🧮", addSub(1000)],
     ["darab-asas", "Darab (Sifir 2, 3, 4, 5, 10)", "✖️", times([2, 3, 4, 5, 10])],
     ["bahagi-asas", "Bahagi dalam Sifir", "➗", divide([2, 3, 4, 5, 10])],

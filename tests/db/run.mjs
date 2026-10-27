@@ -180,7 +180,12 @@ try {
   t("sekolah: chapters recorded & re-scored by the server; unknown topics, wrong totals and forged scores refused", () => {
     const S = psql(`insert into auth.users (email) values ('s@t.my') returning id`);
     const kid = psql(`insert into public.children (name, age, grade) values ('Murid', 9, 3) returning id`, { as: S });
-    assert.equal(psql(`select count(*) from public.activities where category = 'sekolah'`), "20");
+    assert.equal(psql(`select count(*) from public.activities where category = 'sekolah'`), "26");
+    // 0008: Sains and the new BM/English chapters are accepted; chapters from 0007 still are
+    psql(`select public.record_attempt('${kid}', 'sek:sai-t4:sistem-suria-masa', 9, 10, ${quiz(9)}, 50000)`, { as: S });
+    psql(`select public.record_attempt('${kid}', 'sek:en-t2:listen-2-latihan', 6, 10, ${quiz(6)})`, { as: S });
+    psql(`select public.record_attempt('${kid}', 'sek:bm-t2:baca-faham-bos', 7, 10, ${quiz(7)})`, { as: S });
+    fails(`select public.record_attempt('${kid}', 'sek:sai-t4:tiada-latihan', 8, 10, ${quiz(8)})`, S, /invalid_item/);
     const r = JSON.parse(psql(`select public.record_attempt('${kid}', 'sek:mat-t3:pecahan-setara-latihan', 8, 10, ${quiz(8)}, 60000)`, { as: S }));
     assert.equal(r.stars, 2);
     assert.equal(psql(`select category from public.learning_attempts where activity_id = 'sek:mat-t3:pecahan-setara-latihan'`), "sekolah");

@@ -1,9 +1,24 @@
 # 🐼 Playora
 
-Platform pembelajaran kanak-kanak (BM/English) — **belajar sambil bermain** — dengan zon khas untuk ibu.
+Platform pembelajaran kanak-kanak Prasekolah hingga Darjah 6 (BM/English) — **belajar sambil bermain** — dengan zon khas untuk ibu.
 Web app statik (PWA) tanpa build step: HTML + CSS + JavaScript ES modules. Boleh dipasang ke skrin utama telefon.
 
-## Kandungan (70 topik)
+## Kandungan
+
+### 🎒 Sekolah Tahun 1–6 (173 bab ikut topik KSSR)
+
+| Subjek | Bab | Contoh |
+|---|---|---|
+| 🧮 Matematik | 45 | nombor & nilai tempat, operasi, pecahan, perpuluhan, peratus, wang, masa (jam SVG), ukuran, bentuk, koordinat, statistik — termasuk 🎧 dengar nombor |
+| 📝 Bahasa Melayu | 46 | imbuhan, penjodoh bilangan, kata sendi/hubung, simpulan bahasa, peribahasa, ejaan, 🎧 dengar & pilih / eja / ayat, petikan pemahaman bertahap |
+| 🔤 English | 46 | vocabulary, tenses, plurals, prepositions, comparatives, 🎧 listen & choose / spell / sentences, levelled reading passages |
+| 🔬 Sains | 36 | pancaindera, haiwan, tumbuhan, magnet, gigi, kelas makanan, asid & alkali, sistem suria, litar elektrik, keadaan jirim, mikroorganisma, daya, kelajuan, pemuliharaan |
+
+Setiap bab ada 3 peringkat (Latihan dengan bantuan, ⏱️ Cabaran Masa, ⚔️ Lawan Bos), 6 jenis soalan (aneka pilihan, betul/salah, taip jawapan, isi tempat kosong, susun, padankan) + soalan dengar (suara peranti; versi bertulis untuk cetakan / peranti tanpa suara), Ulang Kaji Pintar (Leitner), Cabaran Harian dan lembaran latihan boleh cetak dengan skema. **Kedai Pipi** — tukar bintang dengan aksesori Pipi Panda (kosmetik sahaja). **Laporan Sekolah** untuk ibu bapa: bab dikuasai, ketepatan, masa belajar, bab yang perlu bantuan.
+
+Topik baharu: tambah penjana dalam `js/school/gen-*.js`, kemudian `node scripts/gen-school-seed.mjs <YYYYMMDDhhmmss_nama>.sql` untuk migrasi katalog baharu (jangan ubah migrasi yang sudah dijalankan).
+
+### Prasekolah & Zon Ibu (70 topik)
 
 | Seksyen | Topik | Apa yang berfungsi |
 |---|---|---|
@@ -95,6 +110,8 @@ js/engine.js             — enjin kuiz, keputusan, memory, objek tersembunyi
 js/data/*                — kosa kata, penjana soalan, games, peta, buku, gambar, tips
 js/pages/*               — setiap seksyen
 js/progression.js        — XP/tahap, misi, matlamat mingguan, titik lemah, cadangan (fungsi tulen)
+js/school/*              — Sekolah: kurikulum, penjana soalan (gen-math/bm/en/sains), pemain pusingan, ulang kaji, laporan
+js/shop.js               — Kedai Pipi (aksesori maskot dibeli dengan bintang)
 supabase/migrations/     — migrasi berversi (tanpa DROP, idempoten)
 scripts/check.mjs        — semakan statik ("build")
 scripts/build-site.mjs   — bina _site untuk deploy (config.js dari pembolehubah persekitaran)

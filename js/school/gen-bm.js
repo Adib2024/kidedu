@@ -107,15 +107,32 @@ const PERBANDINGAN = [["Gajah ___ besar daripada kucing.", "lebih", ["paling", "
   ["Pensel itu ___ panjang dengan pembaris kecil.", "sama", ["lebih", "paling", "ter"]]];
 
 // Pemahaman: [petikan, [[soalan, jawapan, [salah…]] …]]
+// [tahap, petikan, soalan] — 0: Tahun 1–2 (sangat pendek), 1: Tahun 3, 2: Tahun 4–5, 3: Tahun 5–6
 const PETIKAN = [
-  ["Pada hari Sabtu, Aina dan keluarganya pergi ke Pantai Cenang di Langkawi. Mereka bertolak awal pagi dengan feri. Aina membina istana pasir bersama adiknya, Danial. Petang itu, mereka menikmati air kelapa muda sambil melihat matahari terbenam.",
+  [0, "Ini Adam. Adam ada seekor kucing. Nama kucing itu Comel. Comel suka makan ikan.",
+    [["Siapakah tuan kucing itu?", "Adam", ["Comel", "Ali", "Siti"]], ["Apakah nama kucing itu?", "Comel", ["Adam", "Tompok", "Manja"]], ["Apakah makanan kegemaran Comel?", "ikan", ["nasi", "susu", "roti"]]]],
+  [0, "Hari ini hari Ahad. Mira pergi ke taman bersama ibu. Mira bermain buaian. Ibu membeli aiskrim.",
+    [["Hari ini hari apa?", "hari Ahad", ["hari Isnin", "hari Sabtu", "hari Jumaat"]], ["Mira pergi ke taman bersama siapa?", "ibu", ["ayah", "kakak", "nenek"]], ["Apakah yang dibeli oleh ibu?", "aiskrim", ["bunga", "buaian", "buku"]]]],
+  [0, "Pak Ali seorang nelayan. Dia menangkap ikan di laut. Dia pergi ke laut dengan bot. Ikan itu dijual di pasar.",
+    [["Apakah pekerjaan Pak Ali?", "nelayan", ["petani", "guru", "polis"]], ["Pak Ali pergi ke laut dengan…", "bot", ["kereta", "basikal", "bas"]], ["Di manakah ikan itu dijual?", "di pasar", ["di sekolah", "di laut", "di rumah"]]]],
+  [0, "Kelas Satu Bestari ada dua puluh orang murid. Guru kelas mereka ialah Cikgu Rosnah. Kelas itu bersih dan ceria.",
+    [["Berapakah bilangan murid Kelas Satu Bestari?", "dua puluh", ["sepuluh", "tiga puluh", "lima belas"]], ["Siapakah guru kelas mereka?", "Cikgu Rosnah", ["Cikgu Ali", "Cikgu Lim", "Puan Mira"]], ["Bagaimanakah keadaan kelas itu?", "bersih dan ceria", ["kotor", "gelap", "bising"]]]],
+  [1, "Pada hari Sabtu, Aina dan keluarganya pergi ke Pantai Cenang di Langkawi. Mereka bertolak awal pagi dengan feri. Aina membina istana pasir bersama adiknya, Danial. Petang itu, mereka menikmati air kelapa muda sambil melihat matahari terbenam.",
     [["Ke manakah Aina dan keluarganya pergi?", "Pantai Cenang", ["Pulau Pinang", "Melaka", "Pantai Batu Feringghi"]], ["Mereka ke Langkawi dengan menaiki…", "feri", ["kapal terbang", "bas", "kereta api"]], ["Siapakah adik Aina?", "Danial", ["Ali", "Siti", "Hafiz"]], ["Apakah yang mereka minum pada waktu petang?", "air kelapa muda", ["air tebu", "teh tarik", "susu"]]]],
-  ["Encik Rahman ialah seorang petani. Setiap pagi, dia menyiram sayur-sayuran di kebunnya. Dia menanam kangkung, bayam dan cili. Hasil tanamannya dijual di pasar tani pada hari Rabu. Encik Rahman sangat rajin dan sabar.",
+  [1, "Encik Rahman ialah seorang petani. Setiap pagi, dia menyiram sayur-sayuran di kebunnya. Dia menanam kangkung, bayam dan cili. Hasil tanamannya dijual di pasar tani pada hari Rabu. Encik Rahman sangat rajin dan sabar.",
     [["Apakah pekerjaan Encik Rahman?", "petani", ["nelayan", "guru", "doktor"]], ["Bilakah Encik Rahman menjual hasil tanamannya?", "hari Rabu", ["hari Sabtu", "setiap pagi", "hari Ahad"]], ["Manakah BUKAN tanaman Encik Rahman?", "jagung", ["kangkung", "bayam", "cili"]], ["Sifat Encik Rahman ialah…", "rajin dan sabar", ["malas dan lambat", "garang", "pemarah"]]]],
-  ["Hari Sukan Sekolah Kebangsaan Taman Ilmu diadakan pada bulan Mac. Rumah Merah menjadi johan keseluruhan. Mei Ling memenangi acara lari 100 meter. Semua murid bersorak dengan gembira apabila Guru Besar menyampaikan piala.",
+  [2, "Hari Sukan Sekolah Kebangsaan Taman Ilmu diadakan pada bulan Mac. Rumah Merah menjadi johan keseluruhan. Mei Ling memenangi acara lari 100 meter. Semua murid bersorak dengan gembira apabila Guru Besar menyampaikan piala.",
     [["Bilakah Hari Sukan diadakan?", "bulan Mac", ["bulan Mei", "bulan Jun", "hari Isnin"]], ["Rumah sukan manakah yang menjadi johan?", "Rumah Merah", ["Rumah Biru", "Rumah Hijau", "Rumah Kuning"]], ["Mei Ling menang acara…", "lari 100 meter", ["lompat jauh", "lontar peluru", "lari berganti-ganti"]], ["Siapakah yang menyampaikan piala?", "Guru Besar", ["Mei Ling", "pengawas", "ibu bapa"]]]],
-  ["Ravi suka membaca. Setiap waktu rehat, dia pergi ke perpustakaan sekolah. Dia gemar membaca buku tentang angkasa lepas. Ravi bercita-cita untuk menjadi angkasawan seperti Datuk Dr. Sheikh Muszaphar Shukor.",
+  [2, "Ravi suka membaca. Setiap waktu rehat, dia pergi ke perpustakaan sekolah. Dia gemar membaca buku tentang angkasa lepas. Ravi bercita-cita untuk menjadi angkasawan seperti Datuk Dr. Sheikh Muszaphar Shukor.",
     [["Apakah hobi Ravi?", "membaca", ["melukis", "berenang", "bermain bola"]], ["Bilakah Ravi pergi ke perpustakaan?", "waktu rehat", ["selepas sekolah", "hujung minggu", "waktu pagi"]], ["Apakah cita-cita Ravi?", "angkasawan", ["doktor", "guru", "juruterbang"]], ["Ravi gemar membaca buku tentang…", "angkasa lepas", ["haiwan", "sejarah", "masakan"]]]],
+  [1, "Setiap petang, Hafiz membantu ayahnya di kedai runcit. Dia menyusun tin susu dan botol kicap di atas rak. Hafiz juga belajar mengira wang baki pelanggan. Ayah berasa bangga kerana Hafiz rajin dan jujur.",
+    [["Di manakah Hafiz membantu ayahnya?", "di kedai runcit", ["di kebun", "di pasar malam", "di sekolah"]], ["Apakah yang disusun oleh Hafiz?", "tin susu dan botol kicap", ["buku dan pensel", "baju dan seluar", "sayur dan buah"]], ["Hafiz belajar mengira…", "wang baki pelanggan", ["bilangan rak", "harga kereta", "bilangan murid"]], ["Mengapakah ayah berasa bangga?", "Hafiz rajin dan jujur", ["Hafiz pandai menyanyi", "kedai itu besar", "Hafiz suka bermain"]]]],
+  [2, "Banjir melanda Kampung Sri Jaya selepas hujan lebat selama tiga hari. Penduduk dipindahkan ke dewan sekolah yang dijadikan pusat pemindahan sementara. Sukarelawan menghantar makanan, selimut dan pakaian. Selepas air surut, penduduk bergotong-royong membersihkan rumah mereka.",
+    [["Apakah punca banjir itu?", "hujan lebat selama tiga hari", ["sungai tersumbat sehari", "angin kencang", "air laut pasang"]], ["Ke manakah penduduk dipindahkan?", "dewan sekolah", ["masjid", "balai polis", "hospital"]], ["Apakah yang dihantar oleh sukarelawan?", "makanan, selimut dan pakaian", ["buku dan alat tulis", "kereta dan bot", "wang sahaja"]], ["Apakah yang dilakukan selepas air surut?", "bergotong-royong membersihkan rumah", ["berpindah ke bandar", "bercuti", "membina jambatan"]]]],
+  [3, "Penyu belimbing ialah penyu terbesar di dunia. Dahulu, ribuan penyu belimbing mendarat di Rantau Abang, Terengganu untuk bertelur. Kini, penyu itu jarang dilihat kerana telurnya diambil, pantai tercemar dan banyak penyu tersangkut pada pukat. Kita perlu menjaga pantai dan tidak membeli telur penyu supaya spesies ini tidak pupus.",
+    [["Di manakah penyu belimbing dahulu mendarat untuk bertelur?", "Rantau Abang, Terengganu", ["Pulau Pinang", "Kota Kinabalu", "Port Dickson"]], ["Antara berikut, yang manakah BUKAN punca penyu jarang dilihat?", "pantai terlalu panjang", ["telurnya diambil", "pantai tercemar", "tersangkut pada pukat"]], ["Maksud perkataan 'pupus' ialah…", "hilang terus dari dunia", ["bertambah banyak", "berpindah tempat", "menjadi besar"]], ["Apakah yang boleh kita lakukan?", "tidak membeli telur penyu", ["menangkap penyu", "membuang sampah di pantai", "memasang lebih banyak pukat"]]]],
+  [3, "Tunku Abdul Rahman Putra Al-Haj dikenali sebagai Bapa Kemerdekaan. Beliau mengetuai rombongan ke London untuk berunding tentang kemerdekaan Tanah Melayu. Pada 31 Ogos 1957, beliau melaungkan perkataan 'Merdeka' sebanyak tujuh kali di Stadium Merdeka. Beliau juga Perdana Menteri Malaysia yang pertama.",
+    [["Tunku Abdul Rahman dikenali sebagai…", "Bapa Kemerdekaan", ["Bapa Pembangunan", "Bapa Pemodenan", "Bapa Perpaduan"]], ["Ke manakah rombongan itu pergi untuk berunding?", "London", ["Paris", "Tokyo", "Singapura"]], ["Berapa kalikah perkataan 'Merdeka' dilaungkan?", "tujuh", ["tiga", "lima", "sepuluh"]], ["Di manakah peristiwa itu berlaku?", "Stadium Merdeka", ["Dataran Merdeka", "Stadium Bukit Jalil", "Parlimen"]]]],
 ];
 
 // ---------------------------------------------------------------- generators
@@ -204,11 +221,31 @@ const peribahasa = blend(
   [2, () => { const [p, m] = pick(PERIBAHASA); return mcq(`Peribahasa yang bermaksud <b>"${m}"</b> ialah…`, p, PERIBAHASA.map((x) => x[0])); }],
   [1, () => { const [p] = pick(PERIBAHASA.filter(([x]) => x.split(" ").length <= 6)); return order("Susun semula peribahasa ini.", p.replace(/,/g, "").split(" ")); }],
 );
-const pemahaman = () => {
-  const [text, qs] = pick(PETIKAN);
+const pemahaman = (...levels) => () => {
+  const [, text, qs] = pick(PETIKAN.filter((p) => levels.includes(p[0])));
   const [q, a, ds] = pick(qs);
   return mcq(q, a, ds, { visual: `<div class="passage">${text}</div>` });
 };
+// ---------------------------------------------------------------- mendengar (dibacakan oleh peranti)
+const dengarPilih = () => { const [e, w] = pick(EMOJI_WORD); return mcq("🎧 Dengar dan pilih gambar yang betul.", e, EMOJI_WORD.map((x) => x[0]), { listen: w, alt: `Pilih gambar <b>${w}</b>.` }); };
+const EJA_MUDAH = [["kucing", ["kuching", "kucin"]], ["bunga", ["bungga", "buga"]], ["meja", ["mejah", "meije"]], ["rumah", ["ruma", "rumh"]], ["sayur", ["sayor", "saiur"]], ["kereta", ["kreta", "keretah"]],
+  ["pokok", ["poko", "pokuk"]], ["burung", ["burong", "buruung"]], ["ayam", ["aiam", "ayem"]], ["sekolah", ["sekola", "sekulah"]], ["guru", ["gurru", "goru"]], ["pensel", ["pinsel", "pensal"]],
+  ["telinga", ["telingga", "talinga"]], ["tingkap", ["tinkap", "tingkab"]], ["jalan", ["jalen", "jallan"]], ["hujan", ["hujen", "ujan"]]];
+const dengarEja = () => { const [w, bad] = pick(EJA_MUDAH); return mcq("🎧 Dengar dan pilih ejaan yang betul.", w, bad, { listen: w, alt: "Pilih ejaan yang <b>betul</b>.", n: 3 }); };
+const DENGAR_AYAT = [["Adik tidur di atas katil.", ["Adik duduk di atas katil.", "Adik tidur di bawah katil.", "Kakak tidur di atas katil."]],
+  ["Ayah membaca surat khabar.", ["Ayah membeli surat khabar.", "Ibu membaca surat khabar.", "Ayah membaca buku cerita."]],
+  ["Kucing itu berwarna hitam.", ["Kucing itu berwarna putih.", "Kambing itu berwarna hitam.", "Kucing ini berwarna hitam."]],
+  ["Kami bermain bola di padang.", ["Kami bermain bola di taman.", "Kami menendang bola di padang.", "Mereka bermain bola di padang."]],
+  ["Ibu memasak nasi goreng.", ["Ibu memasak mi goreng.", "Ibu membeli nasi goreng.", "Nenek memasak nasi goreng."]],
+  ["Ada tiga ekor burung di dahan.", ["Ada dua ekor burung di dahan.", "Ada tiga ekor burung di bumbung.", "Ada tiga ekor kumbang di dahan."]],
+  ["Siti memakai baju merah.", ["Siti memakai baju biru.", "Siti membasuh baju merah.", "Siti memakai kasut merah."]],
+  ["Bas sekolah tiba pukul tujuh.", ["Bas sekolah tiba pukul lapan.", "Bas sekolah bertolak pukul tujuh.", "Van sekolah tiba pukul tujuh."]],
+  ["Tolong tutup pintu itu.", ["Tolong buka pintu itu.", "Tolong tutup tingkap itu.", "Tolong cat pintu itu."]],
+  ["Datuk menanam pokok rambutan.", ["Datuk menanam pokok durian.", "Datuk memetik buah rambutan.", "Nenek menanam pokok rambutan."]],
+  ["Kami ke perpustakaan pada hari Rabu.", ["Kami ke perpustakaan pada hari Selasa.", "Kami ke kantin pada hari Rabu.", "Mereka ke perpustakaan pada hari Rabu."]],
+  ["Abang mencuci kereta ayah.", ["Abang memandu kereta ayah.", "Abang mencuci kereta ibu.", "Adik mencuci kereta ayah."]]];
+const dengarAyat = () => { const [a, ds] = pick(DENGAR_AYAT); return mcq("🎧 Dengar. Ayat manakah yang kamu dengar?", a, ds, { listen: a, alt: `Cari ayat yang sama: <b>${a}</b>` }); };
+
 const ayatPasif = blend(
   [2, () => { const [s, v, o] = pick(AYAT.slice(0, 9)); const b = MEN.find((x) => x[1] === v)?.[0]; if (!b) return mcq("Ayat pasif bagi 'Ali membaca buku' ialah…", "Buku dibaca oleh Ali.", ["Buku membaca Ali.", "Ali dibaca buku.", "Buku baca oleh Ali."]); if (s === "Kami") return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} kami ${b}.`, [`${cap(o)} di${b} oleh kami.`, `${cap(o)} ${v} oleh kami.`, `Kami di${b} ${o}.`], { explain: "Kata ganti nama diri pertama (saya, kami, kita): objek + kata ganti + kata kerja tanpa imbuhan." });
     const by = s === "Mereka" ? "mereka" : s;
@@ -228,6 +265,7 @@ export const BM = {
     ["kata-tanya-asas", "Kata Tanya", "❓", kataTanya],
     ["susun-ayat", "Susun Ayat Mudah", "🧱", susunAyat(false)],
     ["tanda-baca", "Tanda Baca", "✏️", tandaBaca],
+    ["dengar-pilih", "Dengar & Pilih", "🎧", dengarPilih],
   ],
   2: [
     ["kata-kerja", "Kata Kerja & Imbuhan meN-", "🏃", imbuhanMen],
@@ -237,6 +275,8 @@ export const BM = {
     ["kata-hubung", "Kata Hubung", "🔗", kataHubung(false)],
     ["ayat-tunggal", "Susun Ayat Tunggal", "🧱", susunAyat(true)],
     ["ejaan", "Ejaan", "🔤", ejaan],
+    ["dengar-eja", "Dengar & Eja", "🎧", blend([2, dengarEja], [1, dengarPilih])],
+    ["baca-faham", "Baca & Faham", "📗", pemahaman(0)],
   ],
   3: [
     ["imbuhan-awalan", "Imbuhan Awalan (meN-, ber-, di-, ter-, peN-)", "🧩", blend([1, imbuhanMen], [2, imbuhanLain])],
@@ -245,7 +285,8 @@ export const BM = {
     ["kata-tanya", "Kata Tanya", "❓", kataTanya],
     ["kata-hubung-2", "Kata Hubung", "🔗", kataHubung(true)],
     ["simpulan-1", "Simpulan Bahasa", "📜", simpulan],
-    ["pemahaman-1", "Pemahaman", "📖", pemahaman],
+    ["pemahaman-1", "Pemahaman", "📖", pemahaman(0, 1)],
+    ["dengar-ayat", "Dengar Ayat", "🎧", blend([2, dengarAyat], [1, dengarEja])],
   ],
   4: [
     ["imbuhan-lanjut", "Imbuhan Lanjutan", "🧩", blend([1, imbuhanMen], [1, imbuhanLain])],
@@ -254,7 +295,7 @@ export const BM = {
     ["simpulan-2", "Simpulan Bahasa", "📜", simpulan],
     ["peribahasa-1", "Peribahasa", "🦉", peribahasa],
     ["ejaan-2", "Ejaan", "🔤", ejaan],
-    ["pemahaman-2", "Pemahaman", "📖", pemahaman],
+    ["pemahaman-2", "Pemahaman", "📖", pemahaman(1, 2)],
   ],
   5: [
     ["apitan", "Imbuhan Apitan", "🧩", apitan],
@@ -263,7 +304,7 @@ export const BM = {
     ["peribahasa-2", "Peribahasa", "🦉", peribahasa],
     ["sinonim-antonim", "Sinonim & Antonim", "↔️", blend([1, sinonim], [1, antonim])],
     ["kata-hubung-3", "Kata Hubung", "🔗", kataHubung(true)],
-    ["pemahaman-3", "Pemahaman", "📖", pemahaman],
+    ["pemahaman-3", "Pemahaman", "📖", pemahaman(2, 3)],
   ],
   6: [
     ["ayat-pasif", "Ayat Aktif & Pasif", "🔄", ayatPasif],
@@ -272,6 +313,6 @@ export const BM = {
     ["peribahasa-3", "Peribahasa", "🦉", peribahasa],
     ["simpulan-3", "Simpulan Bahasa", "📜", simpulan],
     ["ejaan-3", "Ejaan & Kata Majmuk", "🔤", blend([1, ejaan], [1, kataMajmuk])],
-    ["pemahaman-4", "Pemahaman", "📖", pemahaman],
+    ["pemahaman-4", "Pemahaman", "📖", pemahaman(3, 2)],
   ],
 };

@@ -1,10 +1,11 @@
 // App shell: router, layout, auth pages, hub, children, rewards, report, settings.
 import { store, STICKERS, STARS_PER_STICKER } from "./store.js";
-import { $, esc, toast, stopSpeak, speak, confirmBox, modal, isSoundOn, setSound, todayKey, notFound, safeNext } from "./util.js";
+import { $, esc, toast, stopSpeak, speak, confirmBox, modal, isSoundOn, setSound, todayKey, notFound, safeNext, confetti, sfx } from "./util.js";
 import { autoSpeakOn, setAutoSpeak } from "./engine.js";
 import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
 import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf, streak } from "./progression.js";
 import { mascot } from "./mascot.js";
+import { SLOTS, ITEMS, itemById, loadShop, balance, buyItem, toggleWear, applyOutfit, outfitLayers } from "./shop.js";
 import { GAMES } from "./data/games.js";
 import { MAPS } from "./data/maps.js";
 import { BOOKS } from "./data/books.js";
@@ -19,6 +20,8 @@ import { plannerList, plannerView } from "./pages/planner.js";
 import { tipsList, tipsView } from "./pages/tips.js";
 import { privacyPage } from "./pages/privacy.js";
 import { schoolHome, schoolChapter, schoolPlay, schoolReview, schoolDaily, schoolPrint, nextTopic, subjectProgress, chapterStars } from "./pages/school.js";
+import { schoolReport, schoolReportHtml } from "./school/report.js";
+import { loadReview } from "./school/review.js";
 import { SUBJECTS, gradeOf, gradeLabel, parseActivity, subjectById, topicById, STAGES, REVIEW_ID, DAILY_FAMILY } from "./school/curriculum.js";
 import { openFeedback, fabHtml, revealFab, feedbackAdminPage, feedbackBackend } from "./feedback.js";
 import { makeChallenge, checkAnswer, gateEnabled, setGateEnabled, parentOk, markParent, closeGate, LOCK_AFTER, LOCK_MS } from "./gate.js";
@@ -118,6 +121,7 @@ async function render() {
   }
   mount.innerHTML = `<div class="loading" role="status"><div class="spin"></div>Memuatkan…</div>`;
   try {
+    await applyOutfit(store.user ? store.activeChild : null);
     cleanup = await route.fn(mount, params, query);
     const h1 = mount.querySelector("h1")?.textContent.trim();
     document.title = h1 ? `${h1} · Playora` : "Playora — Belajar Sambil Bermain";
@@ -319,7 +323,7 @@ function hubPage(el) {
 /** Quick "continue" row for school-age children (Tahun 1–6). */
 function schoolStrip(c) {
   const g = gradeOf(c);
-  if (!g) return `<a class="school-strip mini" href="#/sekolah"><span class="ss-e">🎒</span><span><b>Sekolah Tahun 1–6</b><small>Matematik, BM & English ikut topik KSSR</small></span><span aria-hidden="true">→</span></a>`;
+  if (!g) return `<a class="school-strip mini" href="#/sekolah"><span class="ss-e">🎒</span><span><b>Sekolah Tahun 1–6</b><small>Matematik, BM, English & Sains ikut topik KSSR</small></span><span aria-hidden="true">→</span></a>`;
   return `<section class="school-strip" aria-label="Sekolah ${gradeLabel(g)}">
     <a class="ss-head" href="#/sekolah?t=${g}"><span class="ss-e">🎒</span><span><b>Sekolah · ${gradeLabel(g)}</b><small>Teruskan pembelajaran hari ini</small></span><span class="ss-all">Semua →</span></a>
     <div class="ss-subjects">${SUBJECTS.map((s, i) => { const t = nextTopic(s.id, g), p = subjectProgress(s.id, g); return `<a class="ss-sub" style="--tc:${s.color};--ta:${s.accent};--i:${i}" href="#/sekolah/bab/${s.id}/${g}/${t.id}">
@@ -531,7 +535,7 @@ const BADGES = [
   { id: "raja", e: "👑", name: "Raja Bab", desc: "Kuasai satu bab Sekolah (9⭐)", test: (r) => { const by = {}; for (const x of r) if (x.category === "sekolah" && /-(latihan|masa|bos)$/.test(x.activity_id)) { const k = x.activity_id.replace(/-(latihan|masa|bos)$/, ""); by[k] = (by[k] || 0) + x.stars; } return Object.values(by).some((v) => v >= 9); } },
   { id: "allgames", e: "🎮", name: "Pemain Serba Boleh", desc: "Main semua 9 games online", test: (r) => new Set(r.filter((x) => x.category === "games").map((x) => x.activity_id.split(":")[1])).size >= 9 },
 ];
-function rewardsPage(el) {
+async function rewardsPage(el) {
   const c = store.activeChild;
   const rows = Object.values(store.progress[c.id] || {});
   const stars = store.totalStars(c.id);
@@ -541,6 +545,7 @@ function rewardsPage(el) {
       <p class="small" style="margin-top:10px">Setiap <b>${STARS_PER_STICKER} bintang</b> membuka 1 pelekat baru!</p>
       <div class="progress" style="max-width:360px;margin:0 auto"><i style="width:${((stars % STARS_PER_STICKER) / STARS_PER_STICKER) * 100}%"></i></div>
     </section>
+    <section class="card shop" data-shop aria-label="Kedai Pipi"></section>
     <div class="card"><h2>🎁 Koleksi Pelekat</h2>
       <div class="stickers">${STICKERS.map((s, i) => `<div class="sticker ${i < have ? "on" : "off"}" title="${i < have ? "Dibuka" : `Perlu ${(i + 1) * STARS_PER_STICKER} bintang`}">${s}</div>`).join("")}</div>
     </div>
@@ -548,6 +553,44 @@ function rewardsPage(el) {
       <div class="grid">${BADGES.map((b) => { const ok = b.test(rows, stars); return `<div class="tile ${ok ? "" : "locked"}" style="cursor:default;min-height:130px"><span class="em">${b.e}</span><span class="tt">${b.name}</span><span class="ds">${b.desc}</span>${ok ? `<span class="badge">✓</span>` : ""}</div>`; }).join("")}</div>
     </div>
   </div>`;
+  const box = el.querySelector("[data-shop]");
+  let shop = await loadShop(c.id), tab = SLOTS[0].id, preview = null;
+  const draw = () => {
+    if (!box.isConnected) return;
+    const coins = balance(c.id, shop);
+    const look = outfitLayers(preview ? { ...shop.wear, [itemById(preview).slot]: preview } : shop.wear);
+    box.innerHTML = `
+      <div class="shop-head">
+        <div class="shop-stage">${mascot(preview ? "cheer" : "happy", 150, "bob", { outfit: look.ids.length ? look : null })}</div>
+        <div class="shop-info"><h2>🛍️ Kedai Pipi</h2>
+          <p class="small muted" style="margin:0 0 8px">Tukar bintang dengan aksesori untuk Pipi. Pelekat & lencana tidak hilang.</p>
+          <div class="shop-coin" data-coins>⭐ <b>${coins}</b> boleh dibelanjakan</div>
+          ${preview ? `<p class="small" style="margin:8px 0 0">👀 Mencuba: <b>${esc(itemById(preview).name)}</b></p>` : ""}</div>
+      </div>
+      <div class="shop-tabs" role="tablist">${SLOTS.map((t) => `<button role="tab" class="chip ${t.id === tab ? "on" : ""}" aria-selected="${t.id === tab}" data-tab="${t.id}">${t.emoji} ${t.title}</button>`).join("")}</div>
+      <div class="shop-grid">${ITEMS.filter((i) => i.slot === tab).map((i) => {
+        const own = shop.owned.includes(i.id), on = shop.wear[i.slot] === i.id, can = coins >= i.price;
+        return `<div class="shop-item ${on ? "on" : ""} ${own ? "own" : ""}" data-item="${i.id}">
+          <button class="shop-pic" data-try="${i.id}" aria-label="Cuba ${esc(i.name)}">${mascot("happy", 76, "", { outfit: outfitLayers({ [i.slot]: i.id }) })}</button>
+          <b>${esc(i.name)}</b>
+          ${own ? `<button class="btn sm ${on ? "ghost" : ""}" data-puton="${i.id}">${on ? "Tanggalkan" : "Pakai"}</button>`
+            : `<button class="btn sm" data-buy="${i.id}" ${can ? "" : "disabled"}>⭐ ${i.price}${can ? " Beli" : ""}</button>`}
+        </div>`; }).join("")}</div>
+      ${coins < Math.min(...ITEMS.filter((i) => !shop.owned.includes(i.id)).map((i) => i.price), Infinity) ? `<p class="small muted center" style="margin:6px 0 0">Main di Sekolah & Games untuk kumpul lebih banyak ⭐!</p>` : ""}`;
+    box.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { tab = b.dataset.tab; preview = null; draw(); }));
+    box.querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { preview = preview === b.dataset.try ? null : b.dataset.try; draw(); }));
+    box.querySelectorAll("[data-buy]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { shop = await buyItem(c.id, b.dataset.buy); preview = null; await applyOutfit(c); confetti(40); sfx("win"); toast(`🎉 ${itemById(b.dataset.buy).name} untuk Pipi!`); }
+      catch (e) { toast(e.message); }
+      draw();
+    }));
+    box.querySelectorAll("[data-puton]").forEach((b) => (b.onclick = async () => {
+      try { shop = await toggleWear(c.id, b.dataset.puton); preview = null; await applyOutfit(c); sfx("pop"); } catch (e) { toast(e.message); }
+      draw();
+    }));
+  };
+  draw();
 }
 
 // ---------------------------------------------------------------- report
@@ -568,7 +611,8 @@ async function reportPage(el) {
     box.appendChild(card);
     let attempts = [];
     let failed = false;
-    try { attempts = await store.attempts(c.id); } catch (e) { console.warn(e); failed = true; }
+    let reviewItems = [];
+    try { [attempts, reviewItems] = await Promise.all([store.attempts(c.id), loadReview(c.id).catch(() => [])]); } catch (e) { console.warn(e); failed = true; }
     if (!card.isConnected) return;
     const rows = Object.values(store.progress[c.id] || {}).sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
     const total = rows.reduce((s, r) => s + r.stars, 0);
@@ -593,6 +637,7 @@ async function reportPage(el) {
         <div class="progress" style="margin-top:6px"><i style="width:${wk.pct}%"></i></div>
         <p class="small muted" style="margin:4px 0 0">${wk.count} / ${wk.goal} aktiviti sejak Isnin${wk.reached ? " — sasaran tercapai 🎉" : ""}</p>
       </div>
+      ${schoolReportHtml(schoolReport({ child: c, starsOf: (id) => store.starsOf(id, c.id), attempts, reviewItems }), c.name)}
       ${by.length ? `<div>${by.map((b) => `<div style="margin-bottom:10px"><div class="row between small"><b>${cats[b.k]}</b><span>${b.n} aktiviti · ⭐ ${b.s}${b.k === "rutin" ? "" : "/" + b.max}</span></div><div class="bar"><i style="width:${b.max ? (b.s / b.max) * 100 : 0}%"></i></div></div>`).join("")}</div>` : `<p class="muted">Belum ada aktiviti. Jom mula dengan cadangan di bawah!</p>`}
       ${weak.length || lowStars.length ? `<div class="alert info small"><b>Perlu lebih latihan</b>
         <ul style="margin:6px 0 0;padding-left:18px">${weak.map((w) => `<li>${esc(familyLabel(w.family))}: ${w.wrong}/${w.answered} jawapan salah (14 hari)${w.examples.length ? ` — cth: <i>${w.examples.map(esc).join("; ")}</i>` : ""}</li>`).join("")}

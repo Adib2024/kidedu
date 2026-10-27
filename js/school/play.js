@@ -1,10 +1,10 @@
 // Interactive round player for Sekolah: all question types, three modes, animations and an answer log
 // the server can re-score. Modes: "latihan" (learn, hints, explanations), "masa" (shared countdown),
 // "bos" (3 lives, boss HP drops with every correct answer).
-import { esc, sfx, speak, stopSpeak, shuffle, pick } from "../util.js";
+import { esc, sfx, speak, stopSpeak, shuffle, pick, canSpeak } from "../util.js";
 import { mascot } from "../mascot.js";
 import { autoSpeakOn } from "../engine.js";
-import { norm, correctOf, isCorrect, plain } from "./qkit.js";
+import { norm, correctOf, isCorrect, plain, silent } from "./qkit.js";
 
 const PRAISE = { ms: ["Hebat!", "Betul!", "Bagus!", "Pandai!", "Syabas!", "Terbaik!"], en: ["Great!", "Correct!", "Well done!", "Super!", "Awesome!"] };
 const OOPS = { ms: ["Hampir!", "Tak apa!", "Cuba lagi nanti!"], en: ["Almost!", "Nice try!", "Keep going!"] };
@@ -15,7 +15,8 @@ const HINTS_PER_ROUND = 2;
  * result: { score, total, answers:[{q,a,c}], durationMs, wrong:[question], maxCombo, lives, timedOut, bossDefeated }
  */
 export function playRound(el, opts) {
-  const qs = opts.questions, mode = opts.mode || "latihan", subj = opts.subject || {};
+  // listening questions need speech synthesis; without it they are asked in written form
+  const qs = canSpeak() ? opts.questions : opts.questions.map(silent), mode = opts.mode || "latihan", subj = opts.subject || {};
   const lang = subj.lang || "ms";
   // __playoraTimeScale: lets automated tests shorten the time challenge; never set by the app itself
   const scale = Number(globalThis.__playoraTimeScale) || 1;
@@ -85,13 +86,14 @@ export function playRound(el, opts) {
     const q = qs[state.i];
     dots.forEach((d, k) => d.classList.toggle("now", k === state.i));
     el.querySelector("[data-count]").textContent = `${state.i + 1}/${qs.length}`;
-    const say = plain(q.say || q.prompt);
+    const say = q.listen || plain(q.say || q.prompt);
     const promptHtml = q.type === "fill" ? q.prompt.replace("___", `<span class="blank" data-blank>?</span>`) : q.prompt;
     stage.innerHTML = `<article class="qcard2 enter" data-type="${q.type}">
         <div class="q2-head">
           <div class="q2-prompt" ${q.lang === "en" ? 'lang="en"' : ""}>${promptHtml}</div>
           <button class="tool q2-say" data-say aria-label="Dengar soalan">🔊</button>
         </div>
+        ${q.listen ? `<div class="q2-visual"><button class="listen-btn" data-listen aria-label="${q.lang === "en" ? "Listen" : "Dengar"}"><span class="lb-e">🎧</span><span>${q.lang === "en" ? "Listen" : "Dengar"}</span></button></div>` : ""}
         ${q.visual ? `<div class="q2-visual">${q.visual}</div>` : ""}
         <div class="q2-body" data-body></div>
         <div class="q2-foot">
@@ -100,7 +102,9 @@ export function playRound(el, opts) {
         </div>
       </article>`;
     stage.querySelector("[data-say]").onclick = () => speak(say, { lang: q.lang || lang });
-    if (autoSpeakOn()) setTimeout(() => { if (el.isConnected && !state.done && qs[state.i] === q) speak(say, { lang: q.lang || lang }); }, 250);
+    const lb = stage.querySelector("[data-listen]");
+    if (lb) lb.onclick = () => { lb.classList.remove("playing"); void lb.offsetWidth; lb.classList.add("playing"); speak(q.listen, { lang: q.lang || lang, rate: 0.8, onend: () => lb.classList.remove("playing") }); };
+    if (autoSpeakOn() || q.listen) setTimeout(() => { if (el.isConnected && !state.done && qs[state.i] === q) (lb ? lb.click() : speak(say, { lang: q.lang || lang })); }, 250);
     const body = stage.querySelector("[data-body]");
     stage.querySelector(".qcard2").__q = q; // read by automated tests (not rendered)
     (RENDER[q.type] || RENDER.mcq)(body, q, (given, meta) => answer(q, given, meta));
@@ -229,7 +233,8 @@ export function playRound(el, opts) {
   const RENDER = {
     mcq(body, q, done) {
       const long = q.choices.some((c) => String(c).length > 18);
-      body.innerHTML = `<div class="opts2 ${long ? "long" : ""} n${q.choices.length}">${q.choices.map((c, k) =>
+      const pics = q.choices.every((c) => /^\p{Extended_Pictographic}[\u{FE0F}\u{200D}\p{Extended_Pictographic}]*$/u.test(c)); // picture answers
+      body.innerHTML = `<div class="opts2 ${long ? "long" : ""} ${pics ? "pics" : ""} n${q.choices.length}">${q.choices.map((c, k) =>
         `<button class="opt2" data-v="${esc(c)}" style="--i:${k}"><kbd>${k + 1}</kbd><span>${esc(c)}</span></button>`).join("")}</div>`;
       const pickIt = (b) => {
         const ok = isCorrect(q, b.dataset.v);

@@ -2,7 +2,10 @@
 // stored for spaced repetition and logged for server-side scoring.
 //
 // { type: "mcq"|"tf"|"input"|"order"|"match"|"fill",
-//   prompt, visual?, choices?, answer, tiles?, joiner?, pairs?, unit?, decimal?, explain?, say?, lang }
+//   prompt, visual?, choices?, answer, tiles?, joiner?, pairs?, unit?, decimal?, explain?, say?, lang,
+//   listen?, alt? }
+// `listen` is text the device reads aloud (the child answers from hearing it); `alt` is the prompt used
+// where audio is unavailable (printed sheets, devices without speech synthesis).
 // `visual` is trusted HTML/SVG produced by our own builders — never user text.
 import { shuffle, rnd, pick, sample } from "../util.js";
 
@@ -68,8 +71,15 @@ export function fill(sentence, answer, distractors, o = {}) {
 
 function pickO(o) {
   const out = {};
-  for (const k of ["visual", "explain", "say", "unit"]) if (o[k] != null) out[k] = o[k];
+  for (const k of ["visual", "explain", "say", "unit", "listen", "alt"]) if (o[k] != null) out[k] = o[k];
   return out;
+}
+
+/** The same question without audio: uses `alt` (or shows the spoken text) — for print and no-speech devices. */
+export function silent(q) {
+  if (!q.listen) return q;
+  const { listen, alt, ...rest } = q;
+  return { ...rest, prompt: alt || `${q.prompt} <b>${listen}</b>` };
 }
 
 /** Normalise an answer for comparison and for the answer log (server compares a === c). */
@@ -93,7 +103,7 @@ export function makeSet(gen, n = 10, tries = 60) {
   const out = [], seen = new Set();
   for (let k = 0; out.length < n && k < n * tries; k++) {
     const q = gen();
-    const key = plain(q.prompt) + "|" + (q.visual || "").length + "|" + q.answer;
+    const key = plain(q.prompt) + "|" + (q.listen || "") + "|" + (q.visual || "").length + "|" + q.answer;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(q);

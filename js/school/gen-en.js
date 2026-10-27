@@ -44,15 +44,36 @@ const SENTENCES = [["I", "like", "to", "eat", "apples"], ["She", "is", "my", "be
   ["I", "have", "a", "red", "bag"], ["He", "is", "my", "brother"], ["The", "sun", "is", "hot"], ["I", "can", "read", "a", "book"], ["We", "love", "our", "teacher"], ["This", "is", "my", "cat"], ["Open", "your", "books", "please"]];
 const SPELL = [["beautiful", "beatiful"], ["friend", "freind"], ["because", "becuase"], ["school", "shcool"], ["Wednesday", "Wensday"], ["February", "Febuary"], ["library", "libary"], ["tomorrow", "tommorow"],
   ["elephant", "elefant"], ["breakfast", "brekfast"], ["family", "famly"], ["different", "diffrent"], ["receive", "recieve"], ["knife", "nife"]];
+// [level, passage, questions] — level 0: Year 2 (very short), 1: Year 3, 2: Year 4–5, 3: Year 5–6
 const READING = [
-  ["Tom has a dog. Its name is Max. Max is brown and very playful. Every evening, Tom and Max play in the park. Max likes to chase the ball.",
+  [0, "Sam has a red ball. He plays with his cat. The cat is white.",
+    [["What colour is the ball?", "red", ["blue", "white", "green"]], ["Who plays with the cat?", "Sam", ["Tom", "Ali", "Mia"]], ["What colour is the cat?", "white", ["red", "black", "brown"]]]],
+  [0, "I am Lina. I am eight years old. I like bananas. My brother likes apples.",
+    [["How old is Lina?", "eight", ["seven", "nine", "six"]], ["What does Lina like?", "bananas", ["apples", "oranges", "grapes"]], ["Who likes apples?", "her brother", ["Lina", "her sister", "her mother"]]]],
+  [0, "It is Monday. Dan goes to school by bus. He sits next to his friend, Ben.",
+    [["What day is it?", "Monday", ["Sunday", "Friday", "Tuesday"]], ["How does Dan go to school?", "by bus", ["by car", "on foot", "by bicycle"]], ["Who is Dan's friend?", "Ben", ["Sam", "Tom", "Lina"]]]],
+  [0, "Look at the farm. There are three cows and two goats. The farmer gives them grass.",
+    [["How many cows are there?", "three", ["two", "four", "five"]], ["How many goats are there?", "two", ["three", "one", "four"]], ["What does the farmer give them?", "grass", ["milk", "rice", "bread"]]]],
+  [1, "Tom has a dog. Its name is Max. Max is brown and very playful. Every evening, Tom and Max play in the park. Max likes to chase the ball.",
     [["What is the name of Tom's dog?", "Max", ["Tom", "Rex", "Buddy"]], ["What colour is Max?", "brown", ["black", "white", "grey"]], ["When do they play in the park?", "every evening", ["every morning", "on Sunday", "at night"]], ["What does Max like to chase?", "the ball", ["a cat", "birds", "a stick"]]]],
-  ["Aina wakes up at six o'clock. She brushes her teeth and takes a bath. Then she eats bread and drinks milk for breakfast. Her father drives her to school at seven.",
+  [1, "Aina wakes up at six o'clock. She brushes her teeth and takes a bath. Then she eats bread and drinks milk for breakfast. Her father drives her to school at seven.",
     [["What time does Aina wake up?", "six o'clock", ["seven o'clock", "five o'clock", "eight o'clock"]], ["What does Aina drink for breakfast?", "milk", ["tea", "juice", "coffee"]], ["Who drives Aina to school?", "her father", ["her mother", "her brother", "the bus driver"]], ["What does she eat for breakfast?", "bread", ["rice", "noodles", "eggs"]]]],
-  ["Last Saturday, the pupils of Year Five visited the National Zoo. They saw elephants, tigers and orangutans. Ravi took many photos. Mei Ling fed the deer. Everyone was tired but happy when they returned to school.",
+  [2, "Last Saturday, the pupils of Year Five visited the National Zoo. They saw elephants, tigers and orangutans. Ravi took many photos. Mei Ling fed the deer. Everyone was tired but happy when they returned to school.",
     [["Where did the pupils go?", "the National Zoo", ["the museum", "the beach", "the park"]], ["Who took many photos?", "Ravi", ["Mei Ling", "the teacher", "Aina"]], ["What did Mei Ling feed?", "the deer", ["the tigers", "the elephants", "the birds"]], ["How did the pupils feel?", "tired but happy", ["sad", "angry", "bored"]]]],
-  ["Plastic bags are harmful to the environment. They take hundreds of years to break down. Many sea animals, such as turtles, mistake them for food. We should bring our own bags when we go shopping.",
+  [3, "Plastic bags are harmful to the environment. They take hundreds of years to break down. Many sea animals, such as turtles, mistake them for food. We should bring our own bags when we go shopping.",
     [["Why are plastic bags harmful?", "They take hundreds of years to break down.", ["They are too expensive.", "They are too heavy.", "They are colourful."]], ["Which animal mistakes plastic bags for food?", "turtles", ["cats", "birds", "cows"]], ["What should we do when we go shopping?", "bring our own bags", ["buy more plastic bags", "throw bags into the sea", "stay at home"]], ["The word 'harmful' means…", "causing damage", ["very helpful", "very cheap", "easy to carry"]]]],
+  [1, "My grandmother lives in a village in Kedah. Her house is near a paddy field. During the school holidays, I help her feed the chickens. In the evening, we sit on the porch and eat pisang goreng.",
+    [["Where does the grandmother live?", "in a village in Kedah", ["in a city in Kedah", "in Kuala Lumpur", "near the sea"]], ["What is near her house?", "a paddy field", ["a river", "a school", "a shop"]], ["What does the writer help to feed?", "the chickens", ["the cows", "the cats", "the ducks"]], ["What do they eat in the evening?", "pisang goreng", ["nasi lemak", "roti canai", "cake"]]]],
+  [1, "Mia's class has a new pet. It is a small green turtle. The pupils call it Speedy. Every day, one pupil feeds Speedy and cleans its tank. Today, it is Mia's turn.",
+    [["What is the class pet?", "a turtle", ["a fish", "a rabbit", "a hamster"]], ["What colour is the pet?", "green", ["brown", "yellow", "grey"]], ["What is the pet's name?", "Speedy", ["Mia", "Shelly", "Tiny"]], ["Whose turn is it today?", "Mia's", ["the teacher's", "Speedy's", "nobody's"]]]],
+  [2, "Kumar wanted to buy a birthday present for his mother. He saved some of his pocket money every day for two months. Finally, he bought her a beautiful scarf. His mother hugged him and said it was the best present ever.",
+    [["Why did Kumar save money?", "to buy a present for his mother", ["to buy a new bicycle", "to go on holiday", "to buy a toy"]], ["How long did he save?", "two months", ["two weeks", "two years", "two days"]], ["What did he buy?", "a scarf", ["a bag", "a watch", "flowers"]], ["How did his mother feel?", "very happy", ["angry", "worried", "bored"]]]],
+  [2, "On Sunday, there was a gotong-royong at Taman Bunga. The residents cleaned the drains and cut the grass. The children picked up rubbish around the playground. After that, everyone enjoyed nasi lemak together.",
+    [["When was the gotong-royong?", "on Sunday", ["on Saturday", "on Monday", "on Friday"]], ["What did the children do?", "picked up rubbish", ["cut the grass", "cleaned the drains", "cooked food"]], ["Where did the children work?", "around the playground", ["in the school", "at the market", "near the river"]], ["What did everyone eat after that?", "nasi lemak", ["roti canai", "satay", "mee goreng"]]]],
+  [3, "The Malayan tiger is our national animal, but fewer than two hundred are left in the wild. Forests are being cleared for farms and roads, so tigers lose their homes. Some people also hunt them illegally. Rangers patrol the forests to protect these beautiful animals.",
+    [["How many Malayan tigers are left in the wild?", "fewer than two hundred", ["more than two thousand", "about five hundred", "none"]], ["Why are tigers losing their homes?", "Forests are cleared for farms and roads.", ["They move to cities.", "There is too much rain.", "They like to travel."]], ["Who patrols the forests?", "rangers", ["farmers", "tourists", "teachers"]], ["The word 'illegally' means…", "against the law", ["very quickly", "with permission", "at night"]]]],
+  [3, "Lee Chong Wei began playing badminton when he was a young boy in Penang. He trained for many hours every day, even when he was tired. He became the world number one player and won three Olympic silver medals. He shows us that hard work brings success.",
+    [["Where did Lee Chong Wei grow up?", "Penang", ["Johor", "Sabah", "Perak"]], ["What sport does he play?", "badminton", ["football", "tennis", "squash"]], ["How many Olympic silver medals did he win?", "three", ["two", "one", "four"]], ["What is the main message of the passage?", "Hard work brings success.", ["Sport is easy.", "Penang is beautiful.", "Medals are expensive."]]]],
 ];
 
 // ---------------------------------------------------------------- generators
@@ -114,7 +135,32 @@ const opposites = blend([3, () => { const [a, b] = pick(OPP); return mcq(`The op
 const synonyms = blend([3, () => { const [a, b] = pick(SYN); return mcq(`Which word means the same as "${a}"?`, b, SYN.map((x) => x[1]).concat(OPP.filter((x) => x[0] === a).map((x) => x[1])), E()); }], [1, () => match("Match the words with the same meaning.", sample(SYN, 4), E())]);
 const sentenceOrder = (long) => () => { const w = pick(long ? SENTENCES : SENTENCES.filter((s) => s.length <= 5)); return order("Arrange the words to make a sentence.", w, E()); };
 const spelling = () => { const [r, w] = pick(SPELL); return mcq("Choose the correct spelling.", r, [w, r.replace(/(.)\1/, "$1"), r + "e"].filter((x) => x !== r), E()); };
-const reading = () => { const [text, qs] = pick(READING); const [q, a, ds] = pick(qs); return mcq(q, a, ds, E({ visual: `<div class="passage" lang="en">${text}</div>` })); };
+const reading = (...levels) => () => { const [, text, qs] = pick(READING.filter((r) => levels.includes(r[0]))); const [q, a, ds] = pick(qs); return mcq(q, a, ds, E({ visual: `<div class="passage" lang="en">${text}</div>` })); };
+
+// ---------------------------------------------------------------- listening (read aloud by the device)
+const listenPic = (...groups) => () => {
+  const pool = groups.flatMap((g) => (g === "colours" ? COLOURS : VOCAB[g]));
+  const [e, w] = pick(pool);
+  return mcq("🎧 Listen and choose the picture.", e, pool.map((x) => x[0]), E({ listen: w, alt: `Which picture is <b>${w}</b>?` }));
+};
+const listenNumber = () => { const n = Math.floor(Math.random() * 21); return mcq("🎧 Listen and choose the number.", String(n), [n + 1, n - 1, n + 10, n - 10, 20 - n, (n * 2) % 21].filter((x) => x >= 0 && x <= 30).map(String), E({ listen: NUMBERS[n], alt: `Which number is <b>${NUMBERS[n]}</b>?` })); };
+const LSPELL = [["apple", ["aple", "appel"]], ["school", ["scool", "skool"]], ["happy", ["hapy", "happi"]], ["water", ["watter", "woter"]], ["green", ["grean", "gren"]], ["house", ["hause", "hous"]],
+  ["chair", ["chare", "cheir"]], ["teacher", ["teecher", "techer"]], ["friend", ["frend", "freind"]], ["yellow", ["yelow", "yello"]], ["rabbit", ["rabit", "rabbet"]], ["banana", ["bananna", "banan"]],
+  ["mouth", ["mouf", "mauth"]], ["purple", ["purpel", "perple"]], ["monkey", ["monky", "mongkey"]], ["window", ["windo", "windaw"]]];
+const listenSpell = () => { const [w, bad] = pick(LSPELL); return mcq("🎧 Listen and choose the correct spelling.", w, bad, E({ listen: w, alt: "Choose the correct spelling.", n: 3 })); };
+const LSENT = [["The cat is under the table.", ["The cat is on the table.", "The hat is under the table.", "The cat is under the chair."]],
+  ["Ali has two red balls.", ["Ali has three red balls.", "Ali has two blue balls.", "Ali had two red bells."]],
+  ["She is reading a book in the library.", ["She is reading a book in the kitchen.", "She is cooking in the library.", "He is reading a book in the library."]],
+  ["We play football every Sunday.", ["We play football every Saturday.", "We watch football every Sunday.", "We play badminton every Sunday."]],
+  ["My mother buys fish at the market.", ["My mother buys fish at the shop.", "My father buys fish at the market.", "My mother sells fish at the market."]],
+  ["The bus leaves at eight o'clock.", ["The bus leaves at nine o'clock.", "The bus arrives at eight o'clock.", "The van leaves at eight o'clock."]],
+  ["There are five birds in the tree.", ["There are four birds in the tree.", "There are five birds on the roof.", "There are five bees in the tree."]],
+  ["Please close the window.", ["Please open the window.", "Please close the door.", "Please clean the window."]],
+  ["I drink a glass of milk every morning.", ["I drink a glass of water every morning.", "I drink a glass of milk every night.", "I drink a cup of tea every morning."]],
+  ["The baby is sleeping in the room.", ["The baby is crying in the room.", "The baby is sleeping in the car.", "The lady is sleeping in the room."]],
+  ["Siti wears a blue dress.", ["Siti wears a red dress.", "Siti wears a blue hat.", "Siti washes a blue dress."]],
+  ["The shop opens on Monday.", ["The shop closes on Monday.", "The shop opens on Sunday.", "The shop opens in May."]]];
+const listenSentence = () => { const [s0, ds] = pick(LSENT); return mcq("🎧 Listen. Which sentence did you hear?", s0, ds, E({ listen: s0, alt: `Find the same sentence: <b>${s0}</b>` })); };
 const FUT = [["Tomorrow, we ___ visit our grandmother.", "will"], ["Look at the clouds! It is ___ to rain.", "going"], ["I ___ help you with your homework later.", "will"], ["Next year, my sister ___ be ten years old.", "will"],
   ["We are ___ to have a picnic on Sunday.", "going"], ["I think it ___ be sunny tomorrow.", "will"], ["Ali is ___ to visit Sabah next month.", "going"], ["The shop ___ open at nine tomorrow.", "will"],
   ["She is ___ to bake a cake tonight.", "going"], ["Don't worry, I ___ call you later.", "will"], ["They are ___ to watch the match.", "going"], ["Our teacher ___ give us a test next week.", "will"]];
@@ -161,6 +207,7 @@ export const EN = {
     ["phonics", "Letters & Sounds", "🔤", firstLetter],
     ["a-an", "A or An", "🅰️", article],
     ["sentences-1", "Make a Sentence", "🧱", sentenceOrder(false)],
+    ["listen-1", "Listen & Choose", "🎧", blend([3, listenPic("animals", "food", "colours")], [2, listenNumber])],
   ],
   2: [
     ["school-things", "Things in School", "🎒", picWord("school")],
@@ -170,6 +217,8 @@ export const EN = {
     ["to-be", "Am, Is, Are", "🟰", toBe],
     ["have-has", "Have or Has", "🤲", haveHas],
     ["prepositions", "Where Is It?", "📦", preps],
+    ["listen-2", "Listen & Spell", "🎧", blend([2, listenSpell], [1, listenPic("school", "body", "home")])],
+    ["read-short", "Short Reading", "📗", reading(0)],
   ],
   3: [
     ["present-simple", "Present Simple", "🔁", presentSimple],
@@ -178,7 +227,8 @@ export const EN = {
     ["question-words", "Question Words", "❓", qwords],
     ["plurals-irr", "Irregular Plurals", "🐑", plurals(true)],
     ["opposites", "Opposites", "↔️", opposites],
-    ["reading-1", "Reading", "📖", reading],
+    ["reading-1", "Reading", "📖", reading(0, 1)],
+    ["listen-3", "Listen to Sentences", "🎧", blend([2, listenSentence], [1, listenSpell])],
   ],
   4: [
     ["past-regular", "Past Tense (-ed)", "⏪", pastSimple(false)],
@@ -187,7 +237,7 @@ export const EN = {
     ["time-prep", "In, On, At", "🗓️", timePreps],
     ["conjunctions", "And, But, Because", "🔗", conj],
     ["spelling", "Spelling", "✍️", spelling],
-    ["reading-2", "Reading", "📖", reading],
+    ["reading-2", "Reading", "📖", reading(1, 2)],
   ],
   5: [
     ["superlatives", "Superlatives (-est, most)", "🏆", comparatives(true)],
@@ -196,7 +246,7 @@ export const EN = {
     ["much-many", "Much, Many, Some", "🧺", muchMany],
     ["synonyms", "Synonyms", "🟰", synonyms],
     ["sentences-2", "Sentence Building", "🧱", sentenceOrder(true)],
-    ["reading-3", "Reading", "📖", reading],
+    ["reading-3", "Reading", "📖", reading(2, 3)],
   ],
   6: [
     ["present-perfect", "Present Perfect", "✅", presentPerfect],
@@ -205,6 +255,6 @@ export const EN = {
     ["punctuation", "Punctuation", "❗", punctuation],
     ["past-review", "Past Tense Review", "⏮️", blend([1, pastSimple(true)], [1, pastSimple(false)])],
     ["vocab-review", "Opposites & Synonyms", "↔️", blend([1, opposites], [1, synonyms])],
-    ["reading-4", "Reading", "📖", reading],
+    ["reading-4", "Reading", "📖", reading(3, 2)],
   ],
 };

@@ -11,7 +11,7 @@ export const BOX_DAYS = [0, 1, 3, 7, 14];
 export const MAX_ITEMS = 80;
 
 const idOf = (q) => {
-  const s = plain(q.prompt) + "|" + correctOf(q) + "|" + (q.visual || "").length;
+  const s = plain(q.prompt) + "|" + correctOf(q) + "|" + (q.visual || "").length + (q.listen ? "|" + q.listen : "");
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return "r" + (h >>> 0).toString(36);

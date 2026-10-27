@@ -20,6 +20,13 @@ function check(q, where) {
     assert.equal(q.choices.filter((c) => c === q.answer).length, 1, `${where}: answer "${q.answer}" not in ${q.choices}`);
     for (const c of q.choices) assert.ok(!bad(c) && String(c).trim(), `${where}: bad choice "${c}"`);
   }
+  if (q.listen != null) {
+    // listening: the spoken text must not be printed in the prompt, and a written fallback must exist
+    assert.ok(typeof q.listen === "string" && q.listen.trim(), `${where}: empty listen`);
+    assert.ok(!(" " + K.plain(q.prompt).toLowerCase().replace(/[^\p{L}\p{N} ]/gu, " ") + " ").includes(` ${q.listen.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, " ")} `), `${where}: prompt gives away "${q.listen}"`);
+    const w = K.silent(q);
+    assert.ok(!("listen" in w) && w.prompt && !bad(w.prompt), `${where}: silent version`);
+  }
   if (q.type === "fill") assert.match(q.prompt, /___/, `${where}: fill without blank`);
   if (q.type === "input") {
     assert.ok(Number.isFinite(Number(q.answer)), `${where}: input answer ${q.answer}`);
@@ -44,10 +51,10 @@ function check(q, where) {
   }
 }
 
-test("curriculum: 3 subjects × 6 years, 7–8 topics each, unique ids", () => {
+test("curriculum: 4 subjects × 6 years, 6–9 topics each, unique ids", () => {
   for (const s of C.SUBJECTS) for (const y of C.YEARS) {
     const ts = C.topics(s.id, y);
-    assert.ok(ts.length >= 7 && ts.length <= 8, `${s.id} T${y}: ${ts.length} topics`);
+    assert.ok(ts.length >= 6 && ts.length <= 9, `${s.id} T${y}: ${ts.length} topics`);
     assert.equal(new Set(ts.map((t) => t.id)).size, ts.length, `${s.id} T${y}: duplicate topic ids`);
     for (const t of ts) assert.match(t.id, /^[a-z0-9-]+$/);
   }
@@ -59,11 +66,25 @@ for (const s of C.SUBJECTS) {
       for (let i = 0; i < N; i++) check(t.gen(), `${s.id}-t${y}:${t.id}`);
       const round = C.roundFor(t);
       assert.equal(round.length, 10);
-      const distinct = new Set(round.map((q) => K.plain(q.prompt) + (q.visual || "").length + q.answer)).size;
+      const distinct = new Set(round.map((q) => K.plain(q.prompt) + (q.listen || "") + (q.visual || "").length + q.answer)).size;
       assert.ok(distinct >= 8, `${s.id}-t${y}:${t.id}: only ${distinct} distinct questions in a round`);
     }
   });
 }
+
+test("listening questions exist for BM, English and Maths and fall back to text", () => {
+  const listening = (sid) => C.SUBJECTS.find((x) => x.id === sid) && C.YEARS.flatMap((y) => C.topics(sid, y)).filter((t) => Array.from({ length: 40 }, t.gen).some((q) => q.listen));
+  for (const sid of ["bm", "en", "mat"]) assert.ok(listening(sid).length >= 2, `${sid}: listening topics`);
+  const q = K.mcq("🎧 Dengar dan pilih.", "🐱", ["🐶", "🐟"], { listen: "kucing", alt: "Pilih gambar <b>kucing</b>." });
+  assert.equal(K.silent(q).prompt, "Pilih gambar <b>kucing</b>.");
+  assert.equal(K.silent(K.mcq("x", "1", ["2"])).prompt, "x");
+});
+
+test("reading passages are levelled: Year 2 texts are short, Year 6 texts longer", () => {
+  const len = (sid, y, id) => { const t = C.topicById(sid, y, id); return Math.max(...Array.from({ length: 60 }, () => K.plain(t.gen().visual).split(" ").length)); };
+  assert.ok(len("bm", 2, "baca-faham") <= 25 && len("en", 2, "read-short") <= 25);
+  assert.ok(len("bm", 6, "pemahaman-4") > 40 && len("en", 6, "reading-4") > 40);
+});
 
 test("answers: normalisation used for scoring", () => {
   const q = K.input("1 + 1 = ?", 2);
@@ -83,7 +104,8 @@ test("Malay number words", () => {
 
 test("catalogue ids satisfy the server's rules", () => {
   const rows = C.catalogRows();
-  assert.equal(rows.length, 3 * 6 + 2);
+  assert.equal(rows.length, C.SUBJECTS.length * 6 + 2);
+  assert.deepEqual(C.SUBJECTS.map((x) => x.id), ["mat", "bm", "en", "sai"]);
   for (const r of rows) {
     assert.match(r.id, /^[a-z]+(:[a-z0-9-]+)?$/, r.id);
     assert.ok(r.id.length <= 80);
@@ -107,4 +129,33 @@ test("grade from age / profile", () => {
   assert.equal(C.gradeOf({ age: 9 }), 3);
   assert.equal(C.gradeOf({ age: 9, grade: 2 }), 2);
   assert.equal(C.gradeOf({ age: 9, grade: 0 }), 0);
+});
+
+test("parent school report: progress, accuracy, weekly time, weak chapters, review queue", async () => {
+  const { schoolReport, schoolReportHtml } = await import("../../js/school/report.js");
+  const now = Date.parse("2026-10-27T10:00:00Z");
+  const ago = (d) => new Date(now - d * 864e5).toISOString();
+  const log = (right, n = 10) => Array.from({ length: n }, (_, i) => ({ q: "q" + i, a: i < right ? "1" : "x", c: "1" }));
+  const attempts = [
+    { category: "sekolah", activity_id: "sek:mat-t3:pecahan-setara-latihan", answers: log(3), duration_ms: 240000, created_at: ago(1) },
+    { category: "sekolah", activity_id: "sek:mat-t3:pecahan-setara-masa", answers: log(4), duration_ms: 120000, created_at: ago(2) },
+    { category: "sekolah", activity_id: "sek:sai-t3:rangka-latihan", answers: log(10), duration_ms: 3 * 3600e3, created_at: ago(3) },
+    { category: "sekolah", activity_id: "sek:bm-t2:ejaan-latihan", answers: log(9), duration_ms: 60000, created_at: ago(20) },
+    { category: "games", activity_id: "game:bijak-sifir:0", answers: log(1), duration_ms: 60000, created_at: ago(1) },
+  ];
+  const stars = { "sek:mat-t3:pecahan-setara-latihan": 1, "sek:sai-t3:rangka-latihan": 3, "sek:sai-t3:rangka-masa": 3, "sek:sai-t3:rangka-bos": 3, "sek:bm-t2:ejaan-latihan": 3 };
+  const r = schoolReport({ child: { name: "Ali", age: 9, grade: 3 }, starsOf: (id) => stars[id] || 0, attempts, reviewItems: [{ due: now - 1 }, { due: now + 864e5 }], now });
+  assert.deepEqual(r.years.map((y) => y.year), [2, 3], "own year + years with attempts");
+  const mat = r.years[1].subjects.find((s) => s.id === "mat"), sai = r.years[1].subjects.find((s) => s.id === "sai");
+  assert.equal(mat.started, 1); assert.equal(mat.accuracy, 35);
+  assert.equal(sai.mastered, 1); assert.equal(sai.stars, 9);
+  assert.deepEqual(r.week, { rounds: 3, minutes: 6 + 30, days: 3 }, "one round capped at 30 min; games and old rounds excluded");
+  assert.equal(r.weak.length, 1); assert.equal(r.weak[0].topic, "pecahan-setara"); assert.equal(r.weak[0].pct, 35);
+  assert.equal(r.weak[0].print, "#/sekolah/cetak/mat/3/pecahan-setara");
+  assert.deepEqual(r.review, { total: 2, due: 1 });
+  assert.equal(r.accuracy, Math.round((3 + 4 + 10) / 30 * 100));
+  const html = schoolReportHtml(r, "Ali");
+  assert.match(html, /Pecahan Setara/); assert.match(html, /Fokus minggu ini/); assert.ok(!/undefined|NaN/.test(html));
+  assert.equal(schoolReport({ child: { name: "Bayi", age: 5 }, starsOf: () => 0, attempts: [], now }), null);
+  assert.match(schoolReportHtml(null, "Bayi"), /Darjah/);
 });

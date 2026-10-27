@@ -3,12 +3,14 @@
 import { MATH } from "./gen-math.js";
 import { BM } from "./gen-bm.js";
 import { EN } from "./gen-en.js";
+import { SAINS } from "./gen-sains.js";
 import { makeSet } from "./qkit.js";
 
 export const SUBJECTS = [
   { id: "mat", title: "Matematik", short: "Mat", emoji: "🧮", color: "#ddf3ff", accent: "#0b78c2", boss: "🐉", bossName: "Naga Nombor", lang: "ms", data: MATH },
   { id: "bm", title: "Bahasa Melayu", short: "BM", emoji: "📝", color: "#ffe0f0", accent: "#d1137a", boss: "👹", bossName: "Gergasi Kata", lang: "ms", data: BM },
   { id: "en", title: "English", short: "English", emoji: "🔤", color: "#ecfbd6", accent: "#3b7f0c", boss: "🦖", bossName: "Word Rex", lang: "en", data: EN },
+  { id: "sai", title: "Sains", short: "Sains", emoji: "🔬", color: "#fff1d9", accent: "#c25a00", boss: "🦠", bossName: "Kuman Gergasi", lang: "ms", data: SAINS },
 ];
 export const YEARS = [1, 2, 3, 4, 5, 6];
 export const STAGES = [
@@ -37,7 +39,7 @@ export const roundFor = (t, n = QUESTIONS_PER_ROUND) => makeSet(t.gen, n).map((q
 
 /** Parse "sek:mat-t3:pecahan-setara-bos" → parts (null if not a chapter attempt). */
 export function parseActivity(id) {
-  const m = /^sek:(mat|bm|en)-t([1-6]):(.+)-(latihan|masa|bos)$/.exec(id || "");
+  const m = /^sek:(mat|bm|en|sai)-t([1-6]):(.+)-(latihan|masa|bos)$/.exec(id || "");
   return m ? { subject: m[1], year: Number(m[2]), topic: m[3], stage: m[4] } : null;
 }
 /** Every family and its allowed items — used to generate the server catalogue. */

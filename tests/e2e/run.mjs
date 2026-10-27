@@ -515,7 +515,7 @@ await scenario("sekolah: home shows the child's year, subjects and chapter path;
   await b.hash("#/games");
   await b.hash("#/app");
   await b.waitFor(".school-strip .ss-sub");
-  assert.equal(await b.eval("document.querySelectorAll('.school-strip .ss-sub').length"), 3);
+  assert.equal(await b.eval("document.querySelectorAll('.school-strip .ss-sub').length"), 4);
   assert.match(await b.text(".school-strip"), /Tahun 3/);
   await b.click(".bottomnav a[href='#/sekolah']");
   await b.waitFor(".path .node");
@@ -609,6 +609,63 @@ await scenario("sekolah: daily challenge, printable sheet, Darjah in child profi
   await b.hash("#/sekolah");
   await b.waitFor(".school-hero");
   assert.match(await b.text(".school-hero"), /Tahun 6/);
+});
+
+await scenario("sekolah: Sains chapter plays and saves; listening questions show a 🎧 button and picture answers; print uses the written form", async (b) => {
+  await schoolKid(b, 4);
+  await b.hash("#/sekolah?t=4&s=sai");
+  await b.waitFor(".path .node");
+  assert.match(await b.text(".school-hero"), /Sains\s+Tahun 4/);
+  assert.equal(await b.eval("document.querySelectorAll('.subj-tabs .stab').length"), 4);
+  await b.hash("#/sekolah/main/sai/4/sistem-suria/latihan");
+  await playSchool(b);
+  assert.match(await b.text(".result"), /Markah: 10 \/ 10/);
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.starsOf('sek:sai-t4:sistem-suria-latihan'))"), 3);
+  // listening round (English Year 1): every question is spoken, picture choices are big emoji buttons
+  await b.hash("#/sekolah/main/en/1/listen-1/latihan");
+  await b.waitFor(".qcard2");
+  assert.ok(await b.exists(".qcard2 [data-listen]"), "listen button");
+  assert.equal(await b.eval("document.querySelector('.qcard2').__q.listen.length > 0"), true);
+  assert.ok(!(await b.text(".q2-prompt")).includes(await b.eval("document.querySelector('.qcard2').__q.listen")), "spoken word not printed");
+  await playSchool(b);
+  assert.match(await b.text(".result"), /Markah: 10 \/ 10/);
+  // printed sheet: no audio, so listening questions use their written alternative
+  await b.hash("#/sekolah/cetak/bm/1/dengar-pilih");
+  await b.waitFor(".school-sheet .p-q");
+  assert.match(await b.text(".school-sheet"), /Pilih gambar/);
+  assert.ok(!/Dengar dan pilih/.test(await b.text(".school-sheet")));
+  // the parent report shows the chapter grid, accuracy and study time
+  await b.hash("/laporan");
+  await b.waitFor(".sr .sr-topics");
+  assert.match(await b.text(".sr"), /Sekolah · Tahun 4/);
+  assert.match(await b.text(".sr"), /Sains[\s\S]*1\/6 bab · ⭐ 3\/54 · 100% betul/);
+  assert.ok(await b.eval("[...document.querySelectorAll('.sr-topics li.s2')].some((li) => li.title.startsWith('Sistem Suria: 3/9'))"));
+  assert.match(await b.text(".sr-kpis"), /2\s*Pusingan dimainkan/);
+});
+
+await scenario("Kedai Pipi: spend stars on an accessory, Pipi wears it across the app, can take it off", async (b) => {
+  await schoolKid(b, 2);
+  await b.hash("#/ganjaran");
+  await b.waitFor("[data-shop] [data-buy]");
+  assert.match(await b.text("[data-coins]"), /⭐\s*0\s*boleh dibelanjakan/);
+  assert.equal(await b.eval("document.querySelector('[data-buy=reben]').disabled"), true, "cannot afford yet");
+  await b.eval("import('/js/store.js').then(async (m) => { for (const i of [0, 1, 2]) await m.store.record('game:bijak-sifir:' + i, 'games', { stars: 3, score: 10, total: 10 }); })");
+  await b.hash("#/games"); await b.hash("#/ganjaran");
+  await b.waitFor("[data-buy=reben]:not([disabled])");
+  await b.click("[data-try=topi]");
+  assert.match(await b.eval("document.querySelector('.shop-stage svg').dataset.wear"), /topi/, "try on before buying");
+  await b.click("[data-buy=reben]");
+  await b.waitFor("[data-puton=reben]");
+  assert.match(await b.text("[data-coins]"), /⭐\s*4\s*boleh dibelanjakan/);
+  assert.match(await b.text(".banner"), /⭐ 9 bintang/, "stars earned are unchanged");
+  await b.hash("#/sekolah/main/mat/2/darab-asas/latihan");
+  await b.waitFor(".play-buddy svg");
+  assert.equal(await b.eval("document.querySelector('.play-buddy svg').dataset.wear"), "reben", "Pipi wears it in Sekolah");
+  await b.hash("#/ganjaran");
+  await b.click("[data-puton=reben]");
+  await b.hash("#/sekolah");
+  await b.waitFor(".sh-art svg");
+  assert.equal(await b.eval("document.querySelector('.sh-art svg').dataset.wear"), undefined, "taken off");
 });
 
 await scenario("level-up celebration shows the new level and closes with Esc", async (b) => {
@@ -747,7 +804,7 @@ await scenario("cloud: quiz is scored by the server; admin can hide an activity 
 });
 
 // ------------------------------------------------------------------ layout
-const ROUTES = ["/sekolah", "/sekolah?t=6&s=bm", "/sekolah/bab/mat/4/koordinat", "/sekolah/main/en/1/sentences-1/latihan", "/sekolah/main/mat/2/darab-asas/masa", "/sekolah/ulang-kaji", "/sekolah/harian", "/sekolah/cetak/mat/5/purata", "/privasi", "/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/masa-skrin", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
+const ROUTES = ["/sekolah", "/sekolah?t=6&s=bm", "/sekolah/bab/mat/4/koordinat", "/sekolah/main/en/1/sentences-1/latihan", "/sekolah/main/mat/2/darab-asas/masa", "/sekolah/ulang-kaji", "/sekolah/harian", "/sekolah/cetak/mat/5/purata", "/sekolah?t=5&s=sai", "/sekolah/main/en/3/listen-3/latihan", "/sekolah/main/sai/6/kelajuan/latihan", "/privasi", "/admin", "/app", "/games", "/games/bijak-sifir", "/peta", "/peta/rumah-pokok", "/buku", "/buku/oyen-berkongsi", "/worksheet", "/worksheet/meet-letter", "/pensel", "/pensel/colour-object", "/pensel/bentuk-warna", "/zon-ibu", "/ibu", "/ibu/emosi-ibu", "/ibu/ibu-okay", "/ibu/impian-ibu", "/planner", "/planner/tabiat", "/planner/jadual", "/planner/menu", "/planner/tenang", "/tips", "/tips/masa-skrin", "/ganjaran", "/laporan", "/tetapan", "/anak", "/tiada"];
 for (const width of [360, 1280]) {
   await scenario(`no horizontal overflow on ${ROUTES.length} routes at ${width}px`, async (b) => {
     await guest(b);

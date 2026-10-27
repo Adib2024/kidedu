@@ -9,7 +9,7 @@ import {
 } from "../school/curriculum.js";
 import { playRound } from "../school/play.js";
 import { loadReview, addMistakes, applyReview, dueItems, buildReviewRound } from "../school/review.js";
-import { makeSet, plain, correctOf } from "../school/qkit.js";
+import { makeSet, plain, correctOf, silent } from "../school/qkit.js";
 
 // ------------------------------------------------------------ progress helpers
 const stageStars = (s, y, t, st) => store.starsOf(activityId(s, y, t, st));
@@ -173,7 +173,7 @@ async function finishRound(view, r, { id, subj, title, mode, actions, onSaved })
   if (r.maxCombo >= 3) extra.push(`<p class="res-combo">🔥 Combo terbaik: <b>${r.maxCombo}</b></p>`);
   if (r.wrong.length) {
     extra.push(`<details class="res-review" ${r.wrong.length <= 3 ? "open" : ""}><summary>Semak ${r.wrong.length} soalan yang salah</summary><ul>${r.wrong.slice(0, 8).map((q) =>
-      `<li><span>${esc(plain(q.prompt).slice(0, 90))}</span><b>✔ ${esc(q.type === "match" ? "padankan semua pasangan" : q.answer)}</b></li>`).join("")}</ul>
+      `<li><span>${esc(plain(silent(q).prompt).slice(0, 90))}</span><b>✔ ${esc(q.type === "match" ? "padankan semua pasangan" : q.answer)}</b></li>`).join("")}</ul>
       <p class="small muted">🔁 Soalan ini disimpan dalam <a href="#/sekolah/ulang-kaji">Ulang Kaji Pintar</a>.</p></details>`);
   }
   showResult(view, { score: r.score, total: r.total, earned: shownStars, newSticker: res.newSticker, saveFailed: res.saveFailed, xpGained: res.xpGained, totalXp: res.totalXp,
@@ -259,7 +259,7 @@ export function schoolPrint(el, { subject, year, topic }) {
   if (!t) return notFound(el, "#/sekolah");
   const L = "ABCD";
   const draw = () => {
-    const qs = makeSet(t.gen, 12);
+    const qs = makeSet(t.gen, 12).map(silent); // paper has no audio
     const body = qs.map((q, i) => {
       let a = "";
       if (["mcq", "fill", "tf"].includes(q.type)) a = `<div class="p-opts">${q.choices.map((c, k) => `<span>${L[k]}. ${esc(c)}</span>`).join("")}</div>`;

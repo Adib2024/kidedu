@@ -28,7 +28,7 @@ export function landing(el) {
       </div>
       <div class="lp-art" aria-hidden="true">
         <div class="lp-phone">
-          <div class="lp-phone-top">${mascot("cheer", 40)}<b>Hai, Adik!</b><span class="star-pill">⭐ 12</span></div>
+          <div class="lp-phone-top">${mascot("cheer", 40, "", { outfit: null })}<b>Hai, Adik!</b><span class="star-pill">⭐ 12</span></div>
           <div class="lp-phone-grid">
             ${SECTIONS.filter((x) => x.zone === "anak").slice(0, 4).map((x) => `<div style="background:${x.color}"><span>${x.emoji}</span><b>${esc(x.title)}</b></div>`).join("")}
           </div>
@@ -85,7 +85,7 @@ export function landing(el) {
       </div>
 
       <section class="lp-final">
-        <div style="display:grid;place-items:center">${mascot("cheer", 110, "bob")}</div>
+        <div style="display:grid;place-items:center">${mascot("cheer", 110, "bob", { outfit: null })}</div>
         <h2>Jom mula hari ini!</h2>
         <p>Percuma semasa beta. Tiada kad kredit diperlukan.</p>
         <div class="lp-cta center-x">${cta}</div>

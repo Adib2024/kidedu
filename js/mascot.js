@@ -21,9 +21,16 @@ const EXTRA = {
 };
 const LABEL = { happy: "Pipi Panda tersenyum", cheer: "Pipi Panda bersorak", think: "Pipi Panda sedang berfikir", oops: "Pipi Panda memberi semangat" };
 
-export function mascot(mood = "happy", size = 96, cls = "") {
+// Items the active child bought in Kedai Pipi ({ back, front, ids } of trusted SVG from shop.js)
+let OUTFIT = null;
+export const setOutfit = (o) => { OUTFIT = o && o.ids?.length ? o : null; };
+
+/** opts.outfit: draw this outfit instead of the active child's (shop previews); null = plain Pipi. */
+export function mascot(mood = "happy", size = 96, cls = "", opts = {}) {
   const m = EYES[mood] ? mood : "happy";
-  return `<svg class="mascot ${cls}" width="${size}" height="${size}" viewBox="0 0 120 120" role="img" aria-label="${LABEL[m]}">
+  const o = "outfit" in opts ? opts.outfit : OUTFIT;
+  return `<svg class="mascot ${cls}" width="${size}" height="${size}" viewBox="0 0 120 120" role="img" aria-label="${LABEL[m]}"${o ? ` data-wear="${o.ids.join(" ")}"` : ""}>
+    ${o?.back || ""}
     <circle cx="30" cy="32" r="16" fill="${INK}"/><circle cx="90" cy="32" r="16" fill="${INK}"/>
     <circle cx="30" cy="32" r="7" fill="#ff9cc2" opacity=".55"/><circle cx="90" cy="32" r="7" fill="#ff9cc2" opacity=".55"/>
     <ellipse cx="60" cy="66" rx="44" ry="40" fill="#fff" stroke="${INK}" stroke-width="3.5"/>
@@ -32,7 +39,7 @@ export function mascot(mood = "happy", size = 96, cls = "") {
     ${EYES[m]}
     <ellipse cx="60" cy="72" rx="6.5" ry="4.5" fill="${INK}"/>
     <circle cx="31" cy="77" r="6.5" fill="#ff9cc2" opacity=".7"/><circle cx="89" cy="77" r="6.5" fill="#ff9cc2" opacity=".7"/>
-    ${MOUTH[m]}${EXTRA[m]}
+    ${MOUTH[m]}${o?.front || ""}${o?.front && m === "cheer" ? "" : EXTRA[m]}
   </svg>`;
 }
 
