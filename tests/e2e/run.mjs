@@ -626,7 +626,9 @@ await scenario("sekolah: Sains chapter plays and saves; listening questions show
   await b.waitFor(".qcard2");
   assert.ok(await b.exists(".qcard2 [data-listen]"), "listen button");
   assert.equal(await b.eval("document.querySelector('.qcard2').__q.listen.length > 0"), true);
-  assert.ok(!(await b.text(".q2-prompt")).includes(await b.eval("document.querySelector('.qcard2').__q.listen")), "spoken word not printed");
+  // whole-word check ("ten" may be spoken while the prompt says "Listen")
+  assert.equal(await b.eval(`(() => { const words = (t) => " " + t.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ") + " ";
+    return words(document.querySelector('.q2-prompt').innerText).includes(words(document.querySelector('.qcard2').__q.listen)); })()`), false, "spoken word not printed");
   await playSchool(b);
   assert.match(await b.text(".result"), /Markah: 10 \/ 10/);
   // printed sheet: no audio, so listening questions use their written alternative
