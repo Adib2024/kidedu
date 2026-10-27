@@ -6,6 +6,7 @@ import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
 import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf, streak } from "./progression.js";
 import { mascot } from "./mascot.js";
 import { installCard, bindInstall, installMode } from "./install.js";
+import { loadClips } from "./voice.js";
 import { SLOTS, ITEMS, itemById, loadShop, balance, buyItem, toggleWear, applyOutfit, outfitLayers } from "./shop.js";
 import { GAMES } from "./data/games.js";
 import { MAPS } from "./data/maps.js";
@@ -122,7 +123,7 @@ async function render() {
   }
   mount.innerHTML = `<div class="loading" role="status"><div class="spin"></div>Memuatkan…</div>`;
   try {
-    await applyOutfit(store.user ? store.activeChild : null);
+    await Promise.all([applyOutfit(store.user ? store.activeChild : null), loadClips()]);
     cleanup = await route.fn(mount, params, query);
     const h1 = mount.querySelector("h1")?.textContent.trim();
     document.title = h1 ? `${h1} · Playora` : "Playora — Belajar Sambil Bermain";

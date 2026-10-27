@@ -1,5 +1,6 @@
 // Shared helpers: escaping, randomness, sound, speech, confetti, toast, modal.
 import { mascot } from "./mascot.js";
+import { playClip, stopClip } from "./voice.js";
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -160,7 +161,17 @@ export function pickVoice(lang = "ms") {
   }
   return null;
 }
-export function speak(text, { lang = "ms", rate = 0.95, onend, onboundary } = {}) {
+/** Speak: a natural pre-recorded clip when there is one (js/voice.js), otherwise the device voice. */
+export function speak(text, opts = {}) {
+  const { lang = "ms" } = opts;
+  if (text && playClip(lang, text, { ...opts, fallback: () => speakDevice(text, opts) })) {
+    if (canSpeak()) window.speechSynthesis.cancel();
+    return null;
+  }
+  stopClip();
+  return speakDevice(text, opts);
+}
+function speakDevice(text, { lang = "ms", rate = 0.95, onend, onboundary, onerror } = {}) {
   if (!canSpeak() || !text) { onend?.(); return null; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -171,10 +182,11 @@ export function speak(text, { lang = "ms", rate = 0.95, onend, onboundary } = {}
   u.pitch = 1.05;
   if (onend) u.onend = onend;
   if (onboundary) u.onboundary = onboundary;
+  if (onerror) u.onerror = (e) => { if (e.error !== "interrupted" && e.error !== "canceled") onerror(e); };
   window.speechSynthesis.speak(u);
   return u;
 }
-export const stopSpeak = () => canSpeak() && window.speechSynthesis.cancel();
+export const stopSpeak = () => { stopClip(); if (canSpeak()) window.speechSynthesis.cancel(); };
 
 // ---------- confetti ----------
 export function confetti(n = 40, set = ["🎉", "⭐", "🍬", "🎈", "🌈", "💖", "🍭"]) {

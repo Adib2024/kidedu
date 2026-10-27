@@ -125,3 +125,10 @@ export const TIPS = [
 ];
 
 export const tipById = (id) => TIPS.find((t) => t.id === id);
+/** The tip as readable chunks (sentences) — played one by one, and pre-recorded by scripts/gen-audio.mjs. */
+export function tipBlocks(t) {
+  const blocks = [t.title + ".", t.intro];
+  t.sections.forEach((s) => { blocks.push(s.h + "."); (s.items || []).forEach((x) => blocks.push(x)); if (s.p) blocks.push(s.p); });
+  blocks.push("Tugasan hari ini. " + t.action);
+  return blocks;
+}

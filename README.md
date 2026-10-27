@@ -80,6 +80,18 @@ Sekali sahaja:
 
 **Rollback:** Actions → pilih larian deploy terdahulu yang berjaya → *Re-run jobs* (atau `git revert` commit bermasalah dan push). Migrasi pangkalan data hanya menambah objek; jika perlu berpatah balik, nyahterbit aktiviti melalui halaman admin atau tulis migrasi pembetulan baharu — jangan sunting migrasi yang telah digunakan.
 
+## Suara semula jadi (Google Cloud Text-to-Speech)
+
+Suara peranti (Web Speech) selalunya berbunyi seperti robot, terutama apabila telefon tiada suara Bahasa Melayu. Playora boleh memainkan **rakaman suara neural** untuk ~5,000 ayat tetap (cerita, tips, perkataan & ayat dengar, nombor, bank soalan). Ayat tanpa rakaman (cth. soalan tambah rawak) masih guna suara peranti.
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → cipta projek (cth. `playora`) → aktifkan **Billing** (diperlukan walaupun dalam kuota percuma).
+2. *APIs & Services → Library* → aktifkan **Cloud Text-to-Speech API**.
+3. *APIs & Services → Credentials → Create credentials → API key* → *Edit* → **API restrictions: Cloud Text-to-Speech API sahaja**.
+4. GitHub repo → *Settings → Secrets and variables → Actions → New repository secret*: `GOOGLE_TTS_API_KEY` = kunci tadi. (Jangan sesekali letak kunci ini dalam `config.js` atau kod pelayar.)
+5. *Actions → Deploy to GitHub Pages → Run workflow*. Larian pertama menjana ~5,000 klip (~173k aksara — dalam kuota percuma WaveNet ~1 juta aksara/bulan; semak harga terkini). Klip disimpan dalam cache Actions, jadi deploy seterusnya hanya menjana ayat baharu.
+
+Suara: `ms-MY-Wavenet-A` (perempuan) & `en-US-Neural2-F` (perempuan). Tukar melalui *Variables* `TTS_VOICE_MS` / `TTS_VOICE_EN`. Senarai ayat penuh: `npm run audio:dry -- --csv skrip-audio.csv`. Jana secara lokal: `GOOGLE_TTS_API_KEY=… npm run audio`.
+
 ## Ujian & semakan
 
 Tiada dependency npm (Node 20+; E2E perlukan Chrome/Chromium; ujian DB perlukan binari PostgreSQL).
@@ -115,6 +127,8 @@ js/pages/*               — setiap seksyen
 js/progression.js        — XP/tahap, misi, matlamat mingguan, titik lemah, cadangan (fungsi tulen)
 js/school/*              — Sekolah: kurikulum, penjana soalan (gen-math/bm/en/sains), pemain pusingan, ulang kaji, laporan
 js/shop.js               — Kedai Pipi (aksesori maskot dibeli dengan bintang)
+js/voice.js, js/voicekey.js — suara semula jadi: main klip MP3, sandaran suara peranti
+scripts/gen-audio.mjs, scripts/tts-texts.mjs — senarai ayat & penjana klip Google TTS
 supabase/migrations/     — migrasi berversi (tanpa DROP, idempoten)
 scripts/check.mjs        — semakan statik ("build")
 scripts/build-site.mjs   — bina _site untuk deploy (config.js dari pembolehubah persekitaran)

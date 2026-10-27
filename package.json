@@ -2,9 +2,11 @@
   "name": "playora",
   "version": "2.0.0",
   "private": true,
-  "description": "Playora — platform pembelajaran kanak-kanak (PWA statik, tiada build step)",
+  "description": "Playora \u2014 platform pembelajaran kanak-kanak (PWA statik, tiada build step)",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "python3 -m http.server 8000",
     "check": "node scripts/check.mjs",
@@ -12,6 +14,8 @@
     "test:db": "node tests/db/run.mjs",
     "test:e2e": "node tests/e2e/run.mjs",
     "build": "node scripts/build-site.mjs",
-    "verify": "node scripts/check.mjs && node --test tests/unit/*.test.mjs && node tests/db/run.mjs && node tests/e2e/run.mjs"
+    "verify": "node scripts/check.mjs && node --test tests/unit/*.test.mjs && node tests/db/run.mjs && node tests/e2e/run.mjs",
+    "audio": "node scripts/gen-audio.mjs",
+    "audio:dry": "node scripts/gen-audio.mjs --dry-run"
   }
 }

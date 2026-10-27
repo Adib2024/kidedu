@@ -16,6 +16,8 @@ export function staticServer(port, opts = {}) {
     if (!file.startsWith(ROOT) || file.includes("/.git/")) { res.writeHead(403).end(); return; }
     try {
       if (p === "/config.js" && opts.config) { res.writeHead(200, { "Content-Type": "text/javascript" }).end(opts.config); return; }
+      if (opts.files?.[p]) { opts.hits?.push(p); res.writeHead(200, { "Content-Type": p.endsWith(".json") ? "application/json" : "audio/mpeg", "Cache-Control": "no-store" }).end(opts.files[p]); return; }
+      if (p.startsWith("/audio/") && opts.files) { res.writeHead(404).end("not found"); return; } // tests never see real generated clips
       let body = await readFile(file);
       if (p === "/index.html" && opts.stripCsp) body = Buffer.from(String(body).replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, ""));
       res.writeHead(200, { "Content-Type": TYPES[extname(file)] || "application/octet-stream", "Cache-Control": "no-store" }).end(body);

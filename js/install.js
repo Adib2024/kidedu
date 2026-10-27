@@ -4,7 +4,7 @@ import { modal } from "./util.js";
 
 let deferred = null;
 const listeners = new Set();
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; listeners.forEach((fn) => fn()); });
   window.addEventListener("appinstalled", () => { deferred = null; listeners.forEach((fn) => fn()); });
 }

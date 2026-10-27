@@ -24,7 +24,7 @@ assertPublicKey(key);
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT);
-for (const f of ["index.html", "manifest.webmanifest", "sw.js", ".nojekyll", "css", "js", "icons"]) {
+for (const f of ["index.html", "manifest.webmanifest", "sw.js", ".nojekyll", "css", "js", "icons", "audio"]) {
   if (existsSync(join(ROOT, f))) cpSync(join(ROOT, f), join(OUT, f), { recursive: true });
 }
 writeFileSync(join(OUT, "config.js"), `// Generated at deploy time by scripts/build-site.mjs

@@ -7,8 +7,14 @@ import { buildCatalog, buildSchoolCatalog } from "../../scripts/activity-catalog
 if (!chromePath()) { console.log("SKIP: no Chromium found (set CHROME_PATH)"); process.exit(0); }
 
 const APP = 4310, CLOUD_APP = 4311, SB = 4312;
+// natural-voice fixture: one recorded clip (a short silent WAV) for the first sentence of the first tip
+const { clipKey } = await import("../../js/voicekey.js");
+const { TIPS, tipBlocks } = await import("../../js/data/tips.js");
+const VOICE_KEY = clipKey("ms", tipBlocks(TIPS[0])[0]);
+const wav = (() => { const n = 2400, b = Buffer.alloc(44 + n, 128); b.write("RIFF", 0); b.writeUInt32LE(36 + n, 4); b.write("WAVEfmt ", 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24); b.writeUInt32LE(8000, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write("data", 36); b.writeUInt32LE(n, 40); return b; })();
+const voiceHits = [];
 const servers = [
-  await staticServer(APP),
+  await staticServer(APP, { hits: voiceHits, files: { "/audio/index.json": JSON.stringify({ version: 1, clips: [VOICE_KEY] }), [`/audio/${VOICE_KEY}.mp3`]: wav } }),
   await staticServer(CLOUD_APP, { stripCsp: true, config: `window.PPL_CONFIG = { SUPABASE_URL: "http://127.0.0.1:${SB}", SUPABASE_ANON_KEY: "anon-test" };` }),
 ];
 const sb = await mockSupabase(SB, { catalog: [...(await buildCatalog()), ...(await buildSchoolCatalog())] });
@@ -753,6 +759,25 @@ await scenario("Pasang Playora: install card on landing, hub & settings; steps s
   assert.equal(await b.exists("#view [data-install-card]"), false, "dismissed on the hub");
   await b.hash("#/tetapan");
   await b.waitFor("[data-install]");
+});
+
+await scenario("natural voice: a recorded clip plays instead of the device voice, then playback continues; no clip → device voice", async (b) => {
+  await guest(b);
+  await b.eval("localStorage.setItem('ppl_gate_off','1')");
+  await b.hash(`#/tips/${TIPS[0].id}`);
+  await b.waitFor("[data-play]");
+  assert.match(await b.text(".audio-bar"), /Suara semula jadi/);
+  await b.click("[data-play]");
+  for (let t = 0; t < 40 && !voiceHits.includes(`/audio/${VOICE_KEY}.mp3`); t++) await b.wait(100);
+  assert.ok(voiceHits.includes(`/audio/${VOICE_KEY}.mp3`), "clip fetched");
+  // the 0.3 s clip ends → the player moves on to the next sentence (which has no clip: device voice)
+  for (let t = 0; t < 50 && !(await b.eval("document.querySelector('[data-b=\"1\"]').style.background !== ''")); t++) await b.wait(100);
+  assert.equal(await b.eval("document.querySelector('[data-b=\"1\"]').style.background !== ''"), true, "moved to sentence 2 after the clip");
+  await b.click("[data-stop]");
+  // a page without clips keeps the old behaviour
+  await b.hash(`#/tips/${TIPS[1].id}`);
+  await b.waitFor("[data-play]");
+  assert.ok(!/Suara semula jadi/.test(await b.text(".audio-bar")));
 });
 
 await scenario("level-up celebration shows the new level and closes with Esc", async (b) => {

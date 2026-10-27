@@ -15,7 +15,7 @@ export async function launch({ width = 412, height = 900, port = 9400 + Math.flo
   let proc, targets = [];
   for (let attempt = 0; attempt < 2 && !targets.length; attempt++) {
     if (attempt) { proc.kill("SIGKILL"); port += 1; }
-    proc = spawn(chromePath(), ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+    proc = spawn(chromePath(), ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--autoplay-policy=no-user-gesture-required", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
     for (let i = 0; i < 200 && !targets.length; i++) {
       try { targets = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).filter((t) => t.type === "page"); } catch {}
       if (!targets.length) await new Promise((r) => setTimeout(r, 150));

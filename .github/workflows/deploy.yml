@@ -34,6 +34,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Natural voice: clips are cached between deploys, so only new sentences are synthesised.
+      # Without the GOOGLE_TTS_API_KEY secret this makes nothing and the app uses the device voice.
+      - name: Restore natural-voice clips
+        uses: actions/cache/restore@v4
+        with:
+          path: audio
+          key: tts-v1-${{ github.sha }}
+          restore-keys: tts-v1-
+      - name: Natural voice (Google Cloud Text-to-Speech)
+        continue-on-error: true   # a voice problem must never block a deploy
+        run: node scripts/gen-audio.mjs --prune
+        env:
+          GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
+          TTS_VOICE_MS: ${{ vars.TTS_VOICE_MS || 'ms-MY-Wavenet-A' }}
+          TTS_VOICE_EN: ${{ vars.TTS_VOICE_EN || 'en-US-Neural2-F' }}
+      - name: Save natural-voice clips
+        if: hashFiles('audio/*.mp3') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: audio
+          key: tts-v1-${{ hashFiles('audio/*.mp3') }}
       # Public values (they ship to every browser in config.js anyway). Repository Variables or
       # Secrets override the defaults below; build-site.mjs refuses secret/service-role keys.
       - name: Build static site (config.js from repository variables)

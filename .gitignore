@@ -5,3 +5,7 @@ node_modules/
 .env.*
 !.env.example
 _site/
+
+# natural-voice clips are generated at deploy time (scripts/gen-audio.mjs, cached in Actions);
+# audio/index.json stays tracked as an empty list so the app never requests a missing file
+audio/*.mp3
