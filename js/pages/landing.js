@@ -2,12 +2,13 @@ import { store } from "../store.js";
 import { esc, uid, toast } from "../util.js";
 import { SECTIONS, TOTAL_TOPICS } from "../sections.js";
 import { mascot } from "../mascot.js";
+import { installCard, bindInstall } from "../install.js";
 
 export function landing(el) {
   const logged = !!store.user;
   const cta = logged
     ? `<a class="btn big" href="#/app">Masuk ke App 🎈</a>`
-    : `<a class="btn big" href="#/daftar">Daftar Percuma 🎉</a>${store.mode === "demo" ? `<button class="btn big sun" data-guest>Cuba Terus ▶️</button>` : `<a class="btn big ghost" href="#/masuk">Log Masuk</a>`}`;
+    : `<a class="btn big" href="#/daftar">Daftar Percuma 🎉</a><button class="btn big sun" data-guest>Cuba Terus ▶️</button>${store.mode === "cloud" ? `<a class="btn big ghost" href="#/masuk">Log Masuk</a>` : ""}`;
 
   const kidsCount = SECTIONS.filter((x) => x.zone === "anak").reduce((n, x) => n + x.count, 0);
   el.innerHTML = `
@@ -89,17 +90,24 @@ export function landing(el) {
         <h2>Jom mula hari ini!</h2>
         <p>Percuma semasa beta. Tiada kad kredit diperlukan.</p>
         <div class="lp-cta center-x">${cta}</div>
+        <div class="lp-install">${installCard()}</div>
       </section>
     </div>
   </main>
   <footer class="footer">🐼 <b>Playora</b> · Belajar sambil bermain · <a href="#/privasi">Polisi Privasi</a><br>© ${new Date().getFullYear()} · Dibina dengan 💖 untuk anak-anak Malaysia</footer>`;
 
+  bindInstall(el);
   el.querySelectorAll("[data-guest]").forEach((b) => (b.onclick = async () => {
     b.disabled = true;
     try {
-      await store.signUp({ name: "Tetamu", email: `tetamu-${uid()}@demo.local`, password: uid() + uid() });
-      await store.addChild({ name: "Adik", age: 5, avatar: "🐼" });
-      toast("Selamat datang! 🎉 (akaun tetamu)");
+      if (store.mode === "cloud") {
+        await store.startTrial({ name: "Adik", age: 7 }); // device-only until they sign up (Simpan ke akaun)
+        toast("Selamat mencuba! 🎉 Tiada pendaftaran diperlukan.");
+      } else {
+        await store.signUp({ name: "Tetamu", email: `tetamu-${uid()}@demo.local`, password: uid() + uid() });
+        await store.addChild({ name: "Adik", age: 5, avatar: "🐼" });
+        toast("Selamat datang! 🎉 (akaun tetamu)");
+      }
       location.hash = "/app";
     } catch (e) { toast(e.message); b.disabled = false; }
   }));

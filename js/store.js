@@ -209,7 +209,7 @@ const cloud = {
       body: JSON.stringify(body),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(msErr(j.msg || j.error_description || j.message || j.error));
+    if (!r.ok) { const e = new Error(msErr(j.msg || j.error_description || j.message || j.error)); e.status = r.status; throw e; }
     return j;
   },
   async _refresh() {
@@ -217,9 +217,10 @@ const cloud = {
     try {
       this._store(await this._auth("token?grant_type=refresh_token", { refresh_token: this._s.refresh_token }));
       return true;
-    } catch {
-      this._store(null);
-      onSessionExpired();
+    } catch (e) {
+      // Only a refused refresh token ends the session. Offline / server hiccups keep the family signed in
+      // (stay logged in on this device); the next request simply tries again.
+      if (e?.status >= 400 && e.status < 500) { this._store(null); onSessionExpired(); }
       return false;
     }
   },
@@ -248,6 +249,8 @@ const cloud = {
     if (!(await this._token())) return null;
     return this._user(this._s.user);
   },
+  /** One-time move of a trial's attempts into a new child (migration 0009; re-scored on the server). */
+  importTrial(childId, attempts) { return this._rest("rpc/import_trial_attempts", { method: "POST", body: { p_child: childId, p_attempts: attempts } }); },
   async signUp({ name, email, password }) {
     const j = await this._auth("signup", { email: email.trim(), password, data: { name: name.trim() } });
     if (j.access_token) { this._store(j); return { user: this._user(j.user) }; }
@@ -408,7 +411,10 @@ function onSessionExpired() {
 // =====================================================================
 // Public store (with in-memory cache + listeners)
 // =====================================================================
-const be = CLOUD ? cloud : demo;
+// "Cuba Terus": in a Supabase build, a family can try Playora without signing up. The trial lives on this
+// device only (demo backend) until they create an account and move it across (store.importTrial).
+const TRIAL = "ppl_trial";
+let be = CLOUD && ls.get(TRIAL) ? demo : CLOUD ? cloud : demo;
 const listeners = new Set();
 const kvCache = new Map();
 const kvTimers = new Map();
@@ -421,6 +427,8 @@ export const STARS_PER_STICKER = 6;
 
 export const store = {
   mode: CLOUD ? "cloud" : "demo",
+  /** True while a Supabase build is running a device-only trial (Cuba Terus). */
+  get trial() { return CLOUD && be === demo; },
   user: null,
   children: [],
   progress: {},
@@ -437,6 +445,7 @@ export const store = {
     try {
       if (CLOUD) {
         const type = await cloud.consumeRedirect().catch(() => null);
+        if (type) this._leaveTrial(); // e-mail link confirmed an account: the trial (if any) waits to be imported
         if (type) history.replaceState(null, "", location.pathname + (type === "recovery" ? "#/kata-laluan-baru" : "#/app"));
       }
       if (CLOUD) await this.loadCatalog();
@@ -470,12 +479,16 @@ export const store = {
     return !r || r.published !== false;
   },
   async signUp(data) {
-    const r = await be.signUp(data);
-    if (r.user) { this.user = r.user; await this.load(); this.emit(); }
+    const target = this.trial ? cloud : be;
+    const r = await target.signUp(data);
+    if (r.user) { this._leaveTrial(); this.user = r.user; await this.load(); this.emit(); }
     return r;
   },
   async signIn(data) {
-    this.user = await be.signIn(data);
+    const target = this.trial ? cloud : be;
+    const u = await target.signIn(data);
+    this._leaveTrial();
+    this.user = u;
     sessionExpiredHandled = false;
     await this.load();
     this.emit();
@@ -483,14 +496,105 @@ export const store = {
   },
   async signOut() {
     await be.signOut();
+    this._leaveTrial();
     this._resetLocal();
+  },
+
+  // ----- Cuba Terus (trial without an account; Supabase builds) -----
+  /** Start a device-only trial with one child profile. */
+  async startTrial({ name = "Adik", age = 7 } = {}) {
+    if (!CLOUD) throw new Error("Cuba Terus hanya untuk versi awan.");
+    ls.set(TRIAL, true);
+    be = demo;
+    const prev = this.trialOnDevice();
+    if (prev) { // come back to the same trial instead of leaving the old one behind
+      ls.set("ppl_session", { userId: prev.owner });
+      this.user = await demo.session();
+      if (this.user) { await this.load(); this.emit(); return; }
+    }
+    const r = await demo.signUp({ name: "Tetamu", email: `cuba-${uid()}@cuba.local`, password: uid() + uid() });
+    ls.set("ppl_trial_owner", r.user.id);
+    this.user = r.user;
+    await this.load();
+    await this.addChild({ name, age, avatar: "🐼" });
+    this.emit();
+  },
+  _leaveTrial() {
+    if (!CLOUD) return;
+    ls.del(TRIAL);
+    be = cloud;
+  },
+  /** Trial data still on this device (to offer moving it into the signed-in account), or null. */
+  trialOnDevice() {
+    if (!CLOUD) return null;
+    const owner = ls.get("ppl_trial_owner");
+    if (!owner) return null;
+    const db = demo._db(owner);
+    if (!db.children?.length) return null;
+    const stars = Object.values(db.progress || {}).reduce((n, byAct) => n + Object.values(byAct).reduce((m, r) => m + (r.stars || 0), 0), 0);
+    return { owner, children: db.children, stars, attempts: (db.attempts || []).length };
+  },
+  /** Throw away the trial on this device. */
+  async discardTrial() {
+    const t = this.trialOnDevice();
+    if (t) await demo.deleteAccount(t.owner);
+    ls.del("ppl_trial_owner");
+    ls.del(TRIAL);
+    this.emit();
+  },
+  /**
+   * Move the trial into the signed-in Supabase account: each child becomes a new profile, attempts are
+   * re-scored by the server (import_trial_attempts), saved data (Kedai, Ulang Kaji, planner…) is copied
+   * without overwriting anything already in the account. Returns { children, imported, skipped }.
+   */
+  async importTrial(onStep = () => {}) {
+    const t = this.trialOnDevice();
+    if (!t || be !== cloud || !this.user) throw new Error("Tiada data percubaan untuk dipindahkan.");
+    const db = demo._db(t.owner);
+    const idMap = new Map();
+    let imported = 0, skipped = 0;
+    for (const c of t.children) {
+      onStep(`Profil ${c.name}…`);
+      const { id, created_at, parent_id, ...fields } = c;
+      const nc = await cloud.addChild(null, { name: fields.name, age: fields.age ?? null, avatar: fields.avatar ?? null, ...(fields.grade != null ? { grade: fields.grade } : {}), ...(fields.weekly_goal ? { weekly_goal: fields.weekly_goal } : {}) });
+      idMap.set(id, nc.id);
+      const rows = (db.attempts || []).filter((a) => a.child_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map((a) => {
+          const quiz = Array.isArray(a.answers);
+          return { activity: a.activity_id, score: quiz ? a.score : a.category === "rutin" ? 1 : a.stars, total: quiz ? a.total : a.category === "rutin" ? 1 : 3, answers: quiz ? a.answers : null, duration_ms: a.duration_ms ?? null };
+        }).slice(-400);
+      if (rows.length) {
+        onStep(`Kemajuan ${c.name} (${rows.length})…`);
+        const r = await cloud.importTrial(nc.id, rows);
+        imported += r.imported; skipped += r.skipped;
+      }
+      const onb = localStorage.getItem(`ppl_onb_${id}`);
+      if (onb != null) localStorage.setItem(`ppl_onb_${nc.id}`, onb);
+    }
+    onStep("Data simpanan…");
+    const prefix = demo._kvKey(t.owner, "");
+    for (const k of Object.keys(localStorage).filter((x) => x.startsWith(prefix))) {
+      let key = k.slice(prefix.length);
+      for (const [o, n] of idMap) key = key.split(o).join(n);
+      if ((await cloud.kvGet(null, key)) !== undefined) continue; // never overwrite account data
+      await cloud.kvSet(null, key, ls.get(k));
+    }
+    await demo.deleteAccount(t.owner);
+    ls.del("ppl_trial_owner");
+    const first = idMap.values().next().value;
+    await this.load();
+    if (first) this.setActiveChild(first);
+    this.emit();
+    return { children: idMap.size, imported, skipped };
   },
   /** Permanently delete the parent account and all family data (children, progress, planner…). */
   async deleteAccount() {
     const kids = this.children.map((c) => c.id);
+    const wasTrial = this.trial;
     await be.deleteAccount(this.user.id);
     for (const id of kids) ls.del(`ppl_onb_${id}`);
     ls.del("ppl_child");
+    if (wasTrial) { ls.del("ppl_trial_owner"); this._leaveTrial(); }
     this._resetLocal();
   },
   _resetLocal() {
@@ -507,7 +611,7 @@ export const store = {
   },
   resetPassword: (email) => be.resetPassword(email),
   submitFeedback: (entry) => (CLOUD ? cloud.submitFeedback(entry) : Promise.reject(new Error("Tidak tersedia dalam Mod Demo"))),
-  updatePassword: (pw) => (CLOUD ? cloud.updatePassword(pw) : Promise.reject(new Error("Tidak tersedia dalam Mod Demo"))),
+  updatePassword: (pw) => (be === cloud ? cloud.updatePassword(pw) : Promise.reject(new Error("Tidak tersedia dalam Mod Demo"))),
 
   // ----- children -----
   get activeChild() {
@@ -591,22 +695,22 @@ export const store = {
   // ----- favourites -----
   async favorites() {
     if (this._favs) return this._favs;
-    this._favs = new Set(CLOUD ? await cloud.favorites() : await this.kv("favorites", []));
+    this._favs = new Set(be === cloud ? await cloud.favorites() : await this.kv("favorites", []));
     return this._favs;
   },
   async toggleFavorite(type, id) {
     const favs = await this.favorites();
     const key = `${type}:${id}`;
     const on = !favs.has(key);
-    if (CLOUD) await cloud.setFavorite(null, type, id, on);
+    if (be === cloud) await cloud.setFavorite(null, type, id, on);
     if (on) favs.add(key); else favs.delete(key);
-    if (!CLOUD) await this.setKv("favorites", [...favs], { immediate: true });
+    if (be !== cloud) await this.setKv("favorites", [...favs], { immediate: true });
     return on;
   },
 
   // ----- administration (Supabase mode only; enforced by RLS on the server) -----
   async isAdmin() {
-    if (!CLOUD || !this.user) return false;
+    if (be !== cloud || !this.user) return false;
     if (this._admin === undefined) { try { this._admin = await cloud.isAdmin(); } catch { this._admin = false; } }
     return this._admin;
   },
@@ -651,7 +755,7 @@ export const store = {
       toastLater(e?.code === "storage_full" ? e.message : "Gagal menyimpan. Semak sambungan internet.");
       return false;
     });
-    if (immediate || !CLOUD) { kvPending.delete(key); return run(); }
+    if (immediate || be !== cloud) { kvPending.delete(key); return run(); }
     kvPending.set(key, run);
     kvTimers.set(key, setTimeout(() => { kvPending.delete(key); run(); }, 600));
     return Promise.resolve();

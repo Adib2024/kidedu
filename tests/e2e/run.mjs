@@ -390,6 +390,72 @@ await scenario("feedback with artifact db: validation, submit, owner summary", a
 });
 
 // ------------------------------------------------------------------ cloud (Supabase REST) mode
+await scenario("Cuba Terus (cloud build): play without an account, then Simpan ke akaun moves progress, Kedai & review to the server", async (b) => {
+  await b.goto(CLOUD + "#/");
+  await b.eval("localStorage.setItem('ppl_autospeak','off'); localStorage.setItem('ppl_gate_off','1')");
+  await b.waitFor("[data-guest]");
+  const usersBefore = sb.db.users.size;
+  await b.click("[data-guest]");
+  await b.waitFor(".trial-note");
+  assert.equal(sb.db.users.size, usersBefore, "no server account for a trial");
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.trial)"), true);
+  await b.hash("/games/bijak-sifir?lv=0");
+  await playQuiz(b);
+  await b.eval("import('/js/store.js').then(async (m) => { for (const i of [1, 2]) await m.store.record('game:bijak-sifir:' + i, 'games', { stars: 3, score: 10, total: 10, answers: Array.from({ length: 10 }, (_, k) => ({ q: 'q' + k, a: '1', c: '1' })) }); })");
+  await b.hash("#/ganjaran");
+  await b.waitFor("[data-buy=reben]:not([disabled])");
+  await b.click("[data-buy=reben]");
+  await b.waitFor("[data-puton=reben]");
+  const trialStars = await b.eval("import('/js/store.js').then(m => m.store.totalStars())");
+  assert.ok(trialStars >= 6, `trial stars ${trialStars}`); // 6 recorded + whatever the random quiz earned
+  // refresh: still in the trial
+  await b.reload();
+  await b.waitFor(".trial-note");
+  await b.click(".trial-note a[href='#/daftar']");
+  await b.waitFor("[data-f] [name=email]");
+  assert.match(await b.text("#bare, #view, body"), /dipindahkan ke akaun anda/);
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Ibu Cuba'; f.email.value='cuba@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  for (let t = 0; t < 60 && !(await b.eval("location.hash === '#/app' && !!document.querySelector('.hello')")); t++) await b.wait(100);
+  assert.equal(await b.exists(".trial-note"), false, "trial banner gone");
+  assert.equal(await b.exists("[data-trial-move]"), false, "nothing left to move");
+  const owner = [...sb.db.users.values()].find((e) => e.user.email === "cuba@e2e.my").user.id;
+  const kid = sb.db.children.find((c) => c.parent_id === owner);
+  assert.equal(kid.name, "Adik");
+  const serverStars = [...sb.db.progress.values()].filter((r) => r.child_id === kid.id).reduce((n, r) => n + r.stars, 0);
+  assert.equal(serverStars, trialStars, "stars re-scored by the server");
+  assert.ok(sb.db.kv.has(`${owner}|shop:${kid.id}`), "Kedai Pipi moved with the new child id");
+  assert.equal(await b.eval("import('/js/store.js').then(m => [m.store.trial, m.store.trialOnDevice()])").then(JSON.stringify), "[false,null]");
+  await b.hash("#/sekolah");
+  await b.waitFor(".sh-art svg");
+  assert.equal(await b.eval("document.querySelector('.sh-art svg').dataset.wear"), "reben", "Pipi kept the accessory");
+});
+
+await scenario("Cuba Terus then log in to an existing account: the hub offers to move or discard the trial", async (b) => {
+  await b.goto(CLOUD + "#/daftar");
+  await b.eval("localStorage.setItem('ppl_autospeak','off'); localStorage.setItem('ppl_gate_off','1')");
+  await b.waitFor("[data-f] [name=email]");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Lama'; f.email.value='lama@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  await b.wait(1200);
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.name.value='Sara'; f.requestSubmit();})()`);
+  await b.wait(900);
+  await b.eval("import('/js/store.js').then(m => m.store.signOut())");
+  await b.goto(CLOUD + "#/");
+  await b.waitFor("[data-guest]");
+  await b.click("[data-guest]");
+  await b.waitFor(".trial-note");
+  await b.eval("import('/js/store.js').then(m => m.store.record('game:bijak-sifir:0', 'games', { stars: 3, score: 10, total: 10, answers: Array.from({ length: 10 }, (_, k) => ({ q: 'q' + k, a: '1', c: '1' })) }))");
+  await b.hash("/masuk");
+  await b.waitFor("[data-f] [name=email]");
+  await b.eval(`(()=>{const f=document.querySelector('[data-f]'); f.email.value='lama@e2e.my'; f.password.value='rahsia123'; f.requestSubmit();})()`);
+  await b.waitFor("[data-trial-move]", 8000);
+  assert.match(await b.text("[data-trial-move]"), /Adik · ⭐ 3/);
+  await b.click("[data-trial-go]");
+  for (let t = 0; t < 60 && (await b.exists("[data-trial-move]")); t++) await b.wait(100);
+  const owner = [...sb.db.users.values()].find((e) => e.user.email === "lama@e2e.my").user.id;
+  assert.deepEqual(sb.db.children.filter((c) => c.parent_id === owner).map((c) => c.name).sort(), ["Adik", "Sara"]);
+  assert.equal(await b.eval("import('/js/store.js').then(m => m.store.activeChild.name)"), "Adik");
+});
+
 await scenario("cloud mode: signup, child, progress & data sync, re-login on clean device", async (b) => {
   await b.goto(CLOUD + "#/daftar");
   await b.eval("localStorage.setItem('ppl_autospeak','off')");
@@ -668,6 +734,25 @@ await scenario("Kedai Pipi: spend stars on an accessory, Pipi wears it across th
   await b.hash("#/sekolah");
   await b.waitFor(".sh-art svg");
   assert.equal(await b.eval("document.querySelector('.sh-art svg').dataset.wear"), undefined, "taken off");
+});
+
+await scenario("Pasang Playora: install card on landing, hub & settings; steps shown when the browser has no prompt; hub card can be dismissed", async (b) => {
+  await b.goto(URL_);
+  await b.waitFor(".lp-install [data-install]");
+  await b.click(".lp-install [data-install]");
+  await b.waitFor(".modal .install-steps");
+  assert.match(await b.text(".modal"), /Pasang Playora[\s\S]*skrin utama/i);
+  await b.click(".modal [data-close]");
+  assert.equal(await b.exists(".modal"), false);
+  await guest(b);
+  await b.waitFor(".hello");
+  assert.ok(await b.exists("#view [data-install-card]"));
+  await b.click("[data-install-x]");
+  await b.hash("#/games"); await b.hash("#/app");
+  await b.waitFor(".hello");
+  assert.equal(await b.exists("#view [data-install-card]"), false, "dismissed on the hub");
+  await b.hash("#/tetapan");
+  await b.waitFor("[data-install]");
 });
 
 await scenario("level-up celebration shows the new level and closes with Esc", async (b) => {

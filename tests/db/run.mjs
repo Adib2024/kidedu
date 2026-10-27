@@ -199,6 +199,36 @@ try {
     psql(`update public.children set grade = 6 where id = '${kid}'`, { as: S });
     fails(`update public.children set grade = 7 where id = '${kid}'`, S, /children_grade_range|check constraint/);
   });
+  t("trial import: one-time into a new child, every attempt re-scored, rate limit skipped, bad rows left out", () => {
+    const T = psql(`insert into auth.users (email) values ('trial@t.my') returning id`);
+    const O = psql(`insert into auth.users (email) values ('other@t.my') returning id`);
+    const kid = psql(`insert into public.children (name, age, grade) values ('Cuba', 8, 2) returning id`, { as: T });
+    const log = (right) => Array.from({ length: 10 }, (_, i) => ({ q: "q" + i, a: i < right ? "x" : "y", c: "x" }));
+    const rows = [];
+    for (let i = 0; i < 45; i++) rows.push({ activity: `sek:mat-t2:darab-asas-latihan`, score: 9, total: 10, answers: log(9), duration_ms: 60000 }); // > 40 in 10 min
+    rows.push({ activity: "sek:sai-t1:magnet-bos", score: 10, total: 10, answers: log(10) });
+    rows.push({ activity: "sek:sai-t1:magnet-masa", score: 10, total: 10, answers: log(3) });      // forged score → skipped
+    rows.push({ activity: "sek:sai-t1:tiada-latihan", score: 5, total: 10, answers: log(5) });     // unknown chapter → skipped
+    rows.push({ activity: "pensel:tulis-nombor:3", score: 2, total: 3, answers: null });           // stars kind
+    const body = `'${JSON.stringify(rows).replace(/'/g, "''")}'::jsonb`;
+    denied(`select public.import_trial_attempts('${kid}', ${body})`, O, /child_not_found/);
+    denied(`select public.import_trial_attempts('${kid}', ${body})`, null, /not_authenticated|permission denied/);
+    const r = JSON.parse(psql(`select public.import_trial_attempts('${kid}', ${body})`, { as: T }));
+    assert.equal(r.skipped, 2, JSON.stringify(r)); assert.equal(r.imported, 47);
+    assert.equal(psql(`select stars from public.progress where child_id = '${kid}' and activity_id = 'sek:sai-t1:magnet-bos'`), "3");
+    assert.equal(psql(`select count(*) from public.progress where child_id = '${kid}' and activity_id = 'sek:sai-t1:magnet-masa'`), "0");
+    // one time only, and the normal rate limit still applies to record_attempt
+    fails(`select public.import_trial_attempts('${kid}', '[]'::jsonb)`, T, /import_not_allowed/);
+    fails(`select public.record_attempt('${kid}', 'sek:mat-t2:darab-asas-masa', 5, 10, ${quiz(5)})`, T, /rate_limited/);
+    // an older profile cannot be used to bypass the limits
+    const old = psql(`insert into public.children (name, age) values ('Lama', 9) returning id`, { as: T });
+    psql(`update public.children set created_at = now() - interval '2 hours' where id = '${old}'`);
+    fails(`select public.import_trial_attempts('${old}', '[]'::jsonb)`, T, /import_not_allowed/);
+    const big = `'${JSON.stringify(Array.from({ length: 401 }, () => ({ activity: "x" })))}'::jsonb`;
+    const fresh = psql(`insert into public.children (name, age) values ('Baru', 7) returning id`, { as: T });
+    fails(`select public.import_trial_attempts('${fresh}', ${big})`, T, /import_too_large/);
+    denied(`select public.attempt_core('${T}', '${fresh}', 'sek:sai-t1:magnet-bos', 10, 10, ${quiz(10)}, null, false)`, T, /permission denied/);
+  });
   t("delete_my_account: anon refused; deletes only the caller and cascades their family data", () => {
     denied(`select public.delete_my_account()`, null, /permission denied/);
     const D = psql(`insert into auth.users (email, raw_user_meta_data) values ('d@t.my', '{"name":"Ibu D"}') returning id`);

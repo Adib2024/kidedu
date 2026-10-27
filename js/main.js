@@ -5,6 +5,7 @@ import { autoSpeakOn, setAutoSpeak } from "./engine.js";
 import { SECTIONS, sectionProgress, searchTopics } from "./sections.js";
 import { levelInfo, levelTitle, dailyMissions, weeklyProgress, recommendations, weakSpots, familyOf, streak } from "./progression.js";
 import { mascot } from "./mascot.js";
+import { installCard, bindInstall, installMode } from "./install.js";
 import { SLOTS, ITEMS, itemById, loadShop, balance, buyItem, toggleWear, applyOutfit, outfitLayers } from "./shop.js";
 import { GAMES } from "./data/games.js";
 import { MAPS } from "./data/maps.js";
@@ -99,7 +100,7 @@ async function render() {
   const params = Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
 
   if (route.meta.auth && !store.user) { go(`/masuk?next=${encodeURIComponent(path)}`); return; }
-  if ((path === "/masuk" || path === "/daftar") && store.user) { go(safeNext(query.next)); return; }
+  if ((path === "/masuk" || path === "/daftar") && store.user && !store.trial) { go(safeNext(query.next)); return; }
   if (route.meta.child && store.user && !store.children.length) { go("/anak?baru=1"); return; }
 
   let mount = app;
@@ -147,6 +148,7 @@ function shell(nav) {
       <a class="icon-btn" href="#/tetapan" aria-label="Tetapan">⚙️</a>
     </div>
   </header>
+  ${store.trial ? `<div class="wrap no-print"><div class="demo-note trial-note" role="note"><span>🧪 <b>Mod Cuba</b> — kemajuan disimpan dalam peranti ini sahaja.</span><a class="btn sm" href="#/daftar">💾 Simpan ke akaun</a></div></div>` : ""}
   ${store.mode === "demo" && !demoNoteDismissed() ? `<div class="wrap no-print"><div class="demo-note" role="note"><span>🧪 <b>Mod Demo</b> — data disimpan dalam pelayar ini sahaja.</span><button data-demo-ok aria-label="Tutup nota Mod Demo">✕</button></div></div>` : ""}
   <main id="view"></main>
   <nav class="bottomnav no-print" aria-label="Navigasi utama">
@@ -174,7 +176,37 @@ function authFrame(inner) {
       <div class="logo-type" style="font-size:2.4rem;margin:0"><span class="a">Play</span><span class="b">ora</span></div></div>
     <div class="card pad-lg">${inner}</div>
     ${store.mode === "demo" ? `<p class="small muted center" style="margin-top:12px">🧪 Mod Demo — akaun disimpan dalam pelayar ini sahaja.</p>` : ""}
+    ${store.trial ? `<p class="alert info small" style="margin-top:12px">💾 Kemajuan dari <b>Mod Cuba</b> (profil anak, bintang, Kedai Pipi, ulang kaji) akan dipindahkan ke akaun anda.</p>` : ""}
   </div>`;
+}
+const installHidden = () => { try { return !!localStorage.getItem("ppl_install_x"); } catch { return false; } };
+/** Offer to move a device trial into the account that just signed in (hub + Profil Anak). */
+function trialMoveCard() {
+  const t = !store.trial && store.user && store.trialOnDevice();
+  if (!t) return "";
+  return `<section class="card trial-move" data-trial-move>
+    <div class="row"><span style="font-size:2rem" aria-hidden="true">💾</span><div class="grow"><b>Ada kemajuan dari Mod Cuba dalam peranti ini</b>
+      <p class="small muted" style="margin:2px 0 0">${t.children.map((k) => esc(k.name)).join(", ")} · ⭐ ${t.stars} · ${t.attempts} aktiviti. Pindahkan ke akaun ini?</p></div></div>
+    <div class="row" style="margin-top:8px"><button class="btn lime" data-trial-go>💾 Pindahkan</button><button class="btn ghost" data-trial-drop>Buang</button></div></section>`;
+}
+function bindTrialMove(el, after) {
+  const box = el.querySelector("[data-trial-move]");
+  if (!box) return;
+  box.querySelector("[data-trial-go]").onclick = async () => {
+    try { await runTrialImport(box); after(); } catch (e) { toast(e.message); after(); }
+  };
+  box.querySelector("[data-trial-drop]").onclick = async () => {
+    if (!(await confirmBox("Buang kemajuan Mod Cuba dari peranti ini? Ia tidak boleh dikembalikan."))) return;
+    await store.discardTrial();
+    box.remove();
+  };
+}
+/** Move a device trial into the signed-in account, showing progress inside `box`. */
+async function runTrialImport(box) {
+  box.innerHTML = `<div class="loading" role="status"><div class="spin"></div><span data-step>Memindahkan kemajuan…</span></div>`;
+  const r = await store.importTrial((t) => { const st = box.querySelector("[data-step]"); if (st) st.textContent = t; });
+  toast(`💾 ${r.children} profil anak dipindahkan${r.imported ? ` · ${r.imported} aktiviti` : ""} 🎉`);
+  return r;
 }
 function loginPage(el, _p, query) {
   el.innerHTML = authFrame(`
@@ -188,7 +220,7 @@ function loginPage(el, _p, query) {
     <p class="center" style="margin-top:14px">Belum ada akaun? <a href="#/daftar${query.next ? "?next=" + encodeURIComponent(query.next) : ""}">Daftar percuma</a><br><a href="#/lupa" class="small">Lupa kata laluan?</a></p>`);
   formHandler(el, async (d) => {
     await store.signIn(d);
-    go(safeNext(query.next));
+    go(store.trialOnDevice() ? "/app" : safeNext(query.next)); // the hub offers to move the trial
   });
 }
 function signupPage(el, _p, query) {
@@ -209,10 +241,15 @@ function signupPage(el, _p, query) {
     if (d.password.length < 6) throw new Error("Kata laluan mesti sekurang-kurangnya 6 aksara.");
     const r = await store.signUp(d);
     if (r.needsConfirm) {
-      el.querySelector(".card").innerHTML = `<h2>Semak emel anda 📧</h2><p>Kami telah menghantar pautan pengesahan ke <b>${esc(d.email)}</b>. Klik pautan itu, kemudian log masuk.</p><a class="btn block" href="#/masuk">Ke Log Masuk</a>`;
+      el.querySelector(".card").innerHTML = `<h2>Semak emel anda 📧</h2><p>Kami telah menghantar pautan pengesahan ke <b>${esc(d.email)}</b>. Klik pautan itu, kemudian log masuk.</p>${store.trial ? `<p class="small muted">Sementara itu, anak boleh terus bermain dalam Mod Cuba — kemajuan akan dipindahkan selepas anda log masuk.</p>` : ""}<a class="btn block" href="#/masuk">Ke Log Masuk</a>`;
       return;
     }
     toast("Akaun berjaya dicipta! 🎉");
+    if (store.trialOnDevice()) {
+      try { await runTrialImport(el.querySelector(".card")); go("/app"); }
+      catch (e) { toast(e.message); go("/app"); } // the hub keeps offering the move until it works
+      return;
+    }
     go("/anak?baru=1");
   });
 }
@@ -291,6 +328,8 @@ function hubPage(el) {
         <p class="small hello-next">Kumpul <b>${toNext}</b> ⭐ lagi untuk pelekat baru!</p>
       </div>
     </section>
+    ${trialMoveCard()}
+    ${!installHidden() ? installCard().replace('data-install-card>', 'data-install-card><button class="install-x" data-install-x aria-label="Tutup">✕</button>') : ""}
     <div data-onb></div>
     ${schoolStrip(c)}
     <div class="search" role="search">
@@ -376,7 +415,10 @@ async function fillLearning(el, c) {
   mBox.innerHTML = `<div class="stack">${ms.map((m) => `<div class="mission ${m.complete ? "done" : ""}"><span class="e" aria-hidden="true">${m.complete ? "✅" : m.emoji}</span><span class="grow">${esc(m.text)}</span><b>${m.done}/${m.need}</b></div>`).join("")}</div>
     <p class="small muted" style="margin:10px 0 0">${allDone ? "Hebat! Semua misi hari ini selesai 🎉" : "Misi baharu setiap hari — tiada denda jika terlepas."}</p>`;
   const recs = recommendations({ child: c, progress: store.progress[c.id] || {}, attempts, catalog: { ...CATALOG, school: schoolCatalog(c) }, isPublished: (f) => store.isPublished(f) });
-  if (!attempts.length && !onboardingSeen(c.id)) onboarding(el.querySelector("[data-onb]"), c, recs);
+  bindTrialMove(el, () => render());
+  bindInstall(el);
+  el.querySelector("[data-install-x]")?.addEventListener("click", (e) => { try { localStorage.setItem("ppl_install_x", "1"); } catch {} e.target.closest("[data-install-card]").remove(); });
+  if (!attempts.length && !onboardingSeen(c.id) && !el.querySelector("[data-trial-move]")) onboarding(el.querySelector("[data-onb]"), c, recs);
   rBox.innerHTML = recs.length
     ? `<div class="stack">${recs.map((r) => `<a class="rec" href="${r.href}"><span class="e" aria-hidden="true">${r.emoji}</span><span class="grow"><b>${esc(r.title)}</b><span class="small muted" style="display:block">${esc(r.reason)}</span></span><span aria-hidden="true">➡️</span></a>`).join("")}</div>`
     : `<p class="muted">Teruskan bermain — cadangan akan muncul berdasarkan aktiviti ${esc(c.name)}.</p>`;
@@ -453,6 +495,7 @@ function childrenPage(el, _p, query) {
     const active = store.activeChild;
     el.innerHTML = `<div class="wrap page stack" style="max-width:720px">
       <div class="pagehead">${store.children.length ? `<a class="back" href="#/app" aria-label="Kembali">←</a>` : ""}<h1>Profil Anak</h1></div>
+      ${trialMoveCard()}
       ${query.baru && !store.children.length ? `<div class="alert info">👋 Selamat datang! Tambah profil anak dahulu supaya bintang & kemajuan dapat disimpan.</div>` : ""}
       <div class="stack">
         ${store.children.map((c) => `
@@ -483,6 +526,7 @@ function childrenPage(el, _p, query) {
     const syncChips = () => f.querySelectorAll(".chip").forEach((ch) => ch.classList.toggle("on", ch.querySelector("input").checked));
     f.querySelectorAll(".chip input").forEach((r) => (r.onchange = syncChips));
     syncChips();
+    bindTrialMove(el, () => (store.children.length ? go("/app") : draw()));
     el.querySelectorAll("[data-use]").forEach((b) => (b.onclick = () => { store.setActiveChild(b.dataset.use); toast("Profil ditukar"); go("/app"); }));
     el.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => {
       const c = store.children.find((x) => x.id === b.dataset.edit);
@@ -764,13 +808,12 @@ function settingsPage(el) {
     <div class="card">
       <h3>Akaun</h3>
       <p><b>${esc(store.user.name)}</b><br><span class="muted">${esc(store.user.email)}</span></p>
-      <p class="small muted">Mod: ${store.mode === "cloud" ? "☁️ Awan (Supabase) — data disegerakkan" : "🧪 Demo — data dalam pelayar ini sahaja"}</p>
+      <p class="small muted">Mod: ${store.trial ? `🧪 Cuba — data dalam peranti ini sahaja. <a href="#/daftar">Simpan ke akaun</a>` : store.mode === "cloud" ? "☁️ Awan (Supabase) — data disegerakkan" : "🧪 Demo — data dalam pelayar ini sahaja"}</p>
       <div class="row"><a class="btn sm ghost" href="#/anak">👨‍👩‍👧 Urus profil anak</a><a class="btn sm grape" href="#/admin" data-admin hidden>🛠️ Pentadbiran kandungan</a><button class="btn sm" data-out>Log keluar</button></div>
     </div>
     <div class="card">
       <h3>Pasang sebagai App 📱</h3>
-      <p class="small">Android/Chrome: tekan menu ⋮ → <b>Tambah ke skrin utama</b>. iPhone/Safari: butang Kongsi → <b>Add to Home Screen</b>.</p>
-      <button class="btn sm sky" data-install hidden>Pasang sekarang</button>
+      ${installMode() === "installed" ? `<p class="small">✅ Playora sudah dipasang di peranti ini.</p>` : installCard()}
     </div>
     <div class="card" data-fbcard hidden>
       <h3>💬 Maklum balas pilot</h3>
@@ -795,8 +838,7 @@ function settingsPage(el) {
     el.querySelector("[data-fbcard]").hidden = false;
     if (be.kind === "claude" && (await be.user.isOwner())) el.querySelector("[data-fbadmin]").hidden = false;
   });
-  const ib = el.querySelector("[data-install]");
-  if (deferredInstall) { ib.hidden = false; ib.onclick = () => { deferredInstall.prompt(); deferredInstall = null; ib.hidden = true; }; }
+  bindInstall(el);
 }
 
 // ---------------------------------------------------------------- admin (content publishing)
@@ -837,8 +879,6 @@ async function adminPage(el) {
 }
 
 // ---------------------------------------------------------------- boot
-let deferredInstall = null;
-window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstall = e; });
 window.addEventListener("hashchange", render);
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-fb]")) { e.preventDefault(); openFeedback(); }

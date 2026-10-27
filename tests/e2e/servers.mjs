@@ -24,6 +24,37 @@ export function staticServer(port, opts = {}) {
   return new Promise((r) => srv.listen(port, "127.0.0.1", () => r(srv)));
 }
 
+/** Mirrors public.attempt_core(): validation + scoring of one attempt. Returns [status, json]. */
+function attempt(DB, uid, body, limits) {
+  const reply = (st, j) => [st, j];
+
+      // mirrors the validation of public.record_attempt()
+      const { p_child, p_activity, p_score, p_total, p_answers } = body;
+      if (!DB.children.some((c) => c.id === p_child && c.parent_id === uid)) return reply(403, { message: "child_not_found" });
+      const fam = [...DB.activities.values()].filter((a) => a.published && (p_activity === a.id || p_activity.startsWith(a.id + ":"))).sort((a, b) => b.id.length - a.id.length)[0];
+      if (!fam) return reply(400, { message: "unknown_activity" });
+      let stars;
+      if (fam.kind === "quiz") {
+        if (p_total !== fam.question_count) return reply(400, { message: "invalid_total" });
+        if (!Array.isArray(p_answers) || p_answers.length !== p_total) return reply(400, { message: "answers_required" });
+        if (p_answers.filter((a) => a.a === a.c).length !== p_score) return reply(400, { message: "score_mismatch" });
+        const r = p_score / p_total;
+        stars = fam.category === "buku" ? Math.min(3, p_score) : r >= 0.9 ? 3 : r >= 0.7 ? 2 : r >= 0.5 ? 1 : 0;
+      } else if (fam.kind === "stars") {
+        if (p_total !== 3 || p_score < 0 || p_score > 3) return reply(400, { message: "invalid_score" });
+        stars = p_score;
+      } else stars = 1;
+      if (limits && DB.attempts.some((a) => a.child_id === p_child && a.activity_id === p_activity && Date.now() - a.t < 5000)) return reply(400, { message: "too_fast" });
+      const key = p_child + "|" + p_activity;
+      const prev = DB.progress.get(key);
+      const xp = 5 + 10 * Math.max(0, stars - (prev?.stars || 0));
+      DB.attempts.push({ child_id: p_child, parent_id: uid, activity_id: p_activity, category: fam.category, score: p_score, total: p_total, stars, xp, answers: p_answers, created_at: new Date().toISOString(), t: Date.now() });
+      const row = { child_id: p_child, activity_id: p_activity, parent_id: uid, category: fam.category, stars: Math.max(prev?.stars || 0, stars), best_score: Math.max(prev?.best_score || 0, p_score), total: p_total, plays: (prev?.plays || 0) + 1, updated_at: new Date().toISOString() };
+      DB.progress.set(key, row);
+      const total_xp = DB.attempts.filter((a) => a.child_id === p_child).reduce((s, a) => s + a.xp, 0);
+      return reply(200, { stars, xp, progress: row, total_xp });
+}
+
 export function mockSupabase(port, { catalog = [] } = {}) {
   const DB = { users: new Map(), children: [], progress: new Map(), kv: new Map(), feedback: [], attempts: [], favorites: [], admins: new Set(), audit: [],
     activities: new Map(catalog.map((a) => [a.id, { ...a, published: true }])) };
@@ -69,32 +100,18 @@ export function mockSupabase(port, { catalog = [] } = {}) {
       if (req.method === "GET") return out(200, [...DB.progress.values()].filter((r) => r.parent_id === uid));
       return out(403, { message: "permission denied for table progress" }); // writes only via record_attempt
     }
-    if (u.pathname === "/rest/v1/rpc/record_attempt") {
-      // mirrors the validation of public.record_attempt()
-      const { p_child, p_activity, p_score, p_total, p_answers } = body;
-      if (!DB.children.some((c) => c.id === p_child && c.parent_id === uid)) return out(403, { message: "child_not_found" });
-      const fam = [...DB.activities.values()].filter((a) => a.published && (p_activity === a.id || p_activity.startsWith(a.id + ":"))).sort((a, b) => b.id.length - a.id.length)[0];
-      if (!fam) return out(400, { message: "unknown_activity" });
-      let stars;
-      if (fam.kind === "quiz") {
-        if (p_total !== fam.question_count) return out(400, { message: "invalid_total" });
-        if (!Array.isArray(p_answers) || p_answers.length !== p_total) return out(400, { message: "answers_required" });
-        if (p_answers.filter((a) => a.a === a.c).length !== p_score) return out(400, { message: "score_mismatch" });
-        const r = p_score / p_total;
-        stars = fam.category === "buku" ? Math.min(3, p_score) : r >= 0.9 ? 3 : r >= 0.7 ? 2 : r >= 0.5 ? 1 : 0;
-      } else if (fam.kind === "stars") {
-        if (p_total !== 3 || p_score < 0 || p_score > 3) return out(400, { message: "invalid_score" });
-        stars = p_score;
-      } else stars = 1;
-      if (DB.attempts.some((a) => a.child_id === p_child && a.activity_id === p_activity && Date.now() - a.t < 5000)) return out(400, { message: "too_fast" });
-      const key = p_child + "|" + p_activity;
-      const prev = DB.progress.get(key);
-      const xp = 5 + 10 * Math.max(0, stars - (prev?.stars || 0));
-      DB.attempts.push({ child_id: p_child, parent_id: uid, activity_id: p_activity, category: fam.category, score: p_score, total: p_total, stars, xp, answers: p_answers, created_at: new Date().toISOString(), t: Date.now() });
-      const row = { child_id: p_child, activity_id: p_activity, parent_id: uid, category: fam.category, stars: Math.max(prev?.stars || 0, stars), best_score: Math.max(prev?.best_score || 0, p_score), total: p_total, plays: (prev?.plays || 0) + 1, updated_at: new Date().toISOString() };
-      DB.progress.set(key, row);
-      const total_xp = DB.attempts.filter((a) => a.child_id === p_child).reduce((s, a) => s + a.xp, 0);
-      return out(200, { stars, xp, progress: row, total_xp });
+    if (u.pathname === "/rest/v1/rpc/record_attempt") return out(...attempt(DB, uid, body, true));
+    if (u.pathname === "/rest/v1/rpc/import_trial_attempts") { // mirrors migration 0009
+      const c = DB.children.find((x) => x.id === body.p_child && x.parent_id === uid);
+      if (!c) return out(403, { message: "child_not_found" });
+      if (Date.now() - Date.parse(c.created_at) > 3600e3 || DB.attempts.some((a) => a.child_id === c.id)) return out(403, { message: "import_not_allowed" });
+      if (!Array.isArray(body.p_attempts) || body.p_attempts.length > 400) return out(400, { message: "import_too_large" });
+      let imported = 0, skipped = 0;
+      for (const e of body.p_attempts) {
+        const [st] = attempt(DB, uid, { p_child: c.id, p_activity: e.activity, p_score: e.score, p_total: e.total, p_answers: e.answers }, false);
+        if (st === 200) imported++; else skipped++;
+      }
+      return out(200, { imported, skipped, total_xp: DB.attempts.filter((a) => a.child_id === c.id).reduce((n, a) => n + a.xp, 0) });
     }
     if (u.pathname === "/rest/v1/child_stats") {
       const by = {};
