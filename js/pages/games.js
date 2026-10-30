@@ -57,7 +57,7 @@ export function gamePlay(el, { id }, query) {
     });
     return;
   }
-  view.innerHTML = `<h2 class="center" style="margin-bottom:10px">${g.emoji} ${esc(g.title)} · <span style="color:var(--pink)">${esc(lvl.name)}</span></h2><div data-play></div>`;
+  view.innerHTML = `<h2 class="center" style="margin-bottom:10px">${g.emoji} ${esc(g.title)} · <span style="color:var(--pink-dk)">${esc(lvl.name)}</span></h2><div data-play></div>`;
   const play = view.querySelector("[data-play]");
   runQuiz(play, {
     questions: lvl.gen(),

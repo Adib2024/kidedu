@@ -9,7 +9,23 @@ import {
 } from "../school/curriculum.js";
 import { playRound } from "../school/play.js";
 import { loadReview, addMistakes, applyReview, dueItems, buildReviewRound } from "../school/review.js";
-import { makeSet, plain, correctOf, silent } from "../school/qkit.js";
+import { makeSet, plain, correctOf, silent, qKey } from "../school/qkit.js";
+
+// ------------------------------------------------------------ question rotation
+// Remember what this child saw recently in each chapter, so the next round brings questions not yet seen.
+const SEEN_MAX = 60;
+const seenKey = (t) => `ppl_seen:${store.activeChild?.id || "-"}:${t.subject}-t${t.year}:${t.id}`;
+const hashKey = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193); return (h >>> 0).toString(36); };
+const shortKey = (q) => hashKey(qKey(q));
+function freshRound(t) {
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(seenKey(t)) || "[]"); } catch {}
+  const recent = new Set(seen);
+  const qs = roundFor(t, undefined, { avoid: { has: (key) => recent.has(hashKey(key)) } });
+  const keys = qs.map(shortKey);
+  try { localStorage.setItem(seenKey(t), JSON.stringify([...seen.filter((k) => !keys.includes(k)), ...keys].slice(-SEEN_MAX))); } catch {}
+  return qs;
+}
 
 // ------------------------------------------------------------ progress helpers
 const stageStars = (s, y, t, st) => store.starsOf(activityId(s, y, t, st));
@@ -139,9 +155,9 @@ export function schoolPlay(el, { subject, year, topic, stage }) {
   let ctl = null;
   const start = () => {
     ctl?.stop?.();
-    view.innerHTML = `<div data-play></div>`;
+    view.innerHTML = `<h1 class="sr-only">${esc(subj.title)} Tahun ${y}: ${esc(t.title)} — ${esc(st.title)}</h1><div data-play></div>`;
     ctl = playRound(view.querySelector("[data-play]"), {
-      questions: roundFor(t), mode: stage, subject: subj, timeSec: timeLimit(y),
+      questions: freshRound(t), mode: stage, subject: subj, timeSec: timeLimit(y),
       onExit: () => (location.hash = chapterHref(subject, y, t.id).slice(1)),
       onFinish: (r) => finishRound(view, r, {
         id, subj, title: `${t.title} · ${st.title}`, mode: stage,

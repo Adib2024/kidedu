@@ -11,7 +11,11 @@ export const MEN = [
   ["ambil", "mengambil"], ["angkat", "mengangkat"], ["ikat", "mengikat"], ["ajar", "mengajar"], ["gosok", "menggosok"], ["gunting", "menggunting"],
   ["hantar", "menghantar"], ["lukis", "melukis"], ["lompat", "melompat"], ["masak", "memasak"], ["nyanyi", "menyanyi"], ["rasa", "merasa"],
   ["warna", "mewarna"], ["isi", "mengisi"], ["ukur", "mengukur"], ["jawab", "menjawab"], ["cari", "mencari"],
-];
+  ["pandu", "memandu"],
+  ["kejar", "mengejar"],
+  ["tonton", "menonton"],
+  ["tangkap", "menangkap"],
+  ["jual", "menjual"]];
 const WRONG_MEN = (b) => uniqS([`me${b}`, `mem${b}`, `men${b}`, `meng${b}`, `meny${b.slice(1)}`, `mem${b.slice(1)}`, `men${b.slice(1)}`, `meng${b.slice(1)}`]);
 function uniqS(a) { return [...new Set(a)]; }
 // [kata dasar, ber- form]
@@ -43,11 +47,30 @@ export const SINONIM = [["gembira", "riang"], ["cepat", "pantas"], ["rajin", "te
   ["lapar", "kebuluran"], ["hadiah", "anugerah"], ["sihat", "segar"], ["ajar", "didik"], ["kawan", "sahabat"]];
 const KATA_TANYA = [["Siapa", "orang", "___ nama guru kelas kamu?"], ["Apa", "benda", "___ yang kamu makan pagi tadi?"], ["Bila", "masa", "___ kamu akan pergi ke Melaka?"],
   ["Di mana", "tempat", "___ kamu letakkan beg itu?"], ["Mengapa", "sebab", "___ kamu lewat ke sekolah?"], ["Bagaimana", "cara", "___ kamu pergi ke sekolah?"],
-  ["Berapa", "bilangan", "___ orang adik-beradik kamu?"]];
+  ["Berapa", "bilangan", "___ orang adik-beradik kamu?"],
+  ["Siapa", "orang", "___ yang menang pertandingan itu?"],
+  ["Apa", "benda", "___ warna kegemaran kamu?"],
+  ["Bila", "masa", "___ cuti sekolah bermula?"],
+  ["Di mana", "tempat", "___ kamu tinggal?"],
+  ["Mengapa", "sebab", "___ adik menangis?"],
+  ["Bagaimana", "cara", "___ kamu membuat kek ini?"],
+  ["Berapa", "bilangan", "___ harga sebiji tembikai?"],
+  ["Siapa", "orang", "___ yang membersihkan kelas pagi tadi?"],
+  ["Di mana", "tempat", "___ letaknya Menara Kuala Lumpur?"]];
 // [sentence with ___, answer, distractors]
 const SENDI = [["Ali pergi ___ kedai.", "ke", ["di", "dari", "pada"]], ["Buku itu ada ___ atas meja.", "di", ["ke", "dari", "kepada"]], ["Ayah baru pulang ___ pejabat.", "dari", ["ke", "di", "daripada"]],
   ["Hadiah itu ___ ibu saya.", "daripada", ["dari", "di", "ke"]], ["Siti memberi bunga ___ guru.", "kepada", ["ke", "di", "pada"]], ["Kami bercuti ___ hari Sabtu.", "pada", ["di", "ke", "kepada"]],
-  ["Adik lebih tinggi ___ kakak.", "daripada", ["dari", "kepada", "pada"]], ["Kek itu dibuat ___ tepung.", "daripada", ["dari", "di", "ke"]], ["Hadiah ini ___ kamu.", "untuk", ["di", "ke", "dari"]]];
+  ["Adik lebih tinggi ___ kakak.", "daripada", ["dari", "kepada", "pada"]], ["Kek itu dibuat ___ tepung.", "daripada", ["dari", "di", "ke"]], ["Hadiah ini ___ kamu.", "untuk", ["di", "ke", "dari"]],
+  ["Kami belajar ___ dalam kelas.", "di", ["ke", "dari", "kepada"]],
+  ["Pak Cik Ahmad baru tiba ___ Kelantan.", "dari", ["daripada", "kepada", "pada"]],
+  ["Surat itu dihantar ___ Encik Lim.", "kepada", ["ke", "di", "dari"]],
+  ["Kakak lebih rajin ___ abang.", "daripada", ["dari", "kepada", "di"]],
+  ["Baju itu diperbuat ___ kain sutera.", "daripada", ["dari", "di", "ke"]],
+  ["Adik pergi ___ sekolah dengan menaiki bas.", "ke", ["di", "dari", "pada"]],
+  ["Kami berkumpul ___ dewan sekolah.", "di", ["ke", "kepada", "dari"]],
+  ["Mesyuarat itu diadakan ___ pukul tiga petang.", "pada", ["di", "ke", "kepada"]],
+  ["Ali menerima hadiah ___ guru besar.", "daripada", ["dari", "kepada", "ke"]],
+  ["Sumbangan ini ___ mangsa banjir.", "untuk", ["di", "dari", "ke"]]];
 const HUBUNG = [["Saya suka membaca ___ melukis.", "dan", ["tetapi", "kerana", "atau"]], ["Ali rajin ___ adiknya malas.", "tetapi", ["dan", "kerana", "supaya"]],
   ["Dia tidak datang ___ demam.", "kerana", ["tetapi", "atau", "dan"]], ["Kamu mahu teh ___ kopi?", "atau", ["dan", "tetapi", "kerana"]],
   ["Ibu memasak ___ menyanyi.", "sambil", ["kerana", "atau", "tetapi"]], ["Belajarlah bersungguh-sungguh ___ lulus peperiksaan.", "supaya", ["tetapi", "atau", "sambil"]],
@@ -55,7 +78,15 @@ const HUBUNG = [["Saya suka membaca ___ melukis.", "dan", ["tetapi", "kerana", "
   ["Ayah membeli roti ___ susu.", "dan", ["tetapi", "kerana", "supaya"]], ["Hari hujan ___ kami tetap bermain.", "tetapi", ["dan", "kerana", "atau"]],
   ["Adik menangis ___ jatuh dari basikal.", "kerana", ["tetapi", "atau", "dan"]], ["Kamu mahu baju merah ___ biru?", "atau", ["dan", "kerana", "tetapi"]],
   ["Kakak membaca buku ___ adik melukis.", "dan", ["kerana", "atau", "supaya"]], ["Rumah itu kecil ___ bersih.", "tetapi", ["kerana", "atau", "supaya"]],
-  ["Ali tidak ke sekolah ___ hujan lebat.", "kerana", ["dan", "atau", "tetapi"]], ["Mahu naik bas ___ teksi?", "atau", ["dan", "kerana", "tetapi"]]];
+  ["Ali tidak ke sekolah ___ hujan lebat.", "kerana", ["dan", "atau", "tetapi"]], ["Mahu naik bas ___ teksi?", "atau", ["dan", "kerana", "tetapi"]],
+  ["Saya mahu minum air ___ dahaga.", "kerana", ["tetapi", "atau", "supaya"]],
+  ["Bawa payung ___ tidak basah.", "supaya", ["tetapi", "kerana", "atau"]],
+  ["Kamu mahu pensel ___ pen?", "atau", ["kerana", "supaya", "tetapi"]],
+  ["Ali pandai ___ tidak sombong.", "tetapi", ["kerana", "atau", "supaya"]],
+  ["Datuk membaca akhbar ___ minum kopi.", "sambil", ["kerana", "atau", "supaya"]],
+  ["Siti gembira ___ mendapat hadiah.", "kerana", ["tetapi", "atau", "supaya"]],
+  ["Kami bermain bola ___ hari sudah petang.", "apabila", ["tetapi", "atau", "supaya"]],
+  ["Cikgu memberitahu ___ lawatan itu dibatalkan.", "bahawa", ["supaya", "atau", "sambil"]]];
 const HUBUNG_ASAS = HUBUNG.filter(([, a]) => ["dan", "tetapi", "kerana", "atau"].includes(a));
 // [word, syllables]
 const SUKU = [["buku", "bu-ku"], ["meja", "me-ja"], ["kereta", "ke-re-ta"], ["sekolah", "se-ko-lah"], ["bola", "bo-la"], ["rumah", "ru-mah"], ["pantai", "pan-tai"],
@@ -69,7 +100,12 @@ const EJAAN = [["sekolah", "sekola"], ["perpustakaan", "perpustakan"], ["kerusi"
   ["televisyen", "televisen"], ["jadual", "jadwal"], ["doktor", "dokter"], ["kualiti", "kwaliti"], ["aktiviti", "aktivitas"], ["ubat", "obat"], ["fikir", "pikir"],
   ["Isnin", "Senin"], ["kompleks", "komplek"], ["risiko", "resiko"], ["teksi", "taksi"], ["kereta api", "keretapi"], ["sukan", "sokan"], ["musim", "musem"]];
 const GANDA_BERENTAK = [["sayur", "sayur-mayur"], ["lauk", "lauk-pauk"], ["kuih", "kuih-muih"], ["kayu", "kayu-kayan"], ["gunung", "gunung-ganang"], ["saudara", "saudara-mara"],
-  ["bukit", "bukit-bukau"], ["batu", "batu-batan"], ["ramah", "ramah-tamah"], ["cerai", "cerai-berai"]];
+  ["bukit", "bukit-bukau"], ["batu", "batu-batan"], ["ramah", "ramah-tamah"], ["cerai", "cerai-berai"],
+  ["semak", "semak-samun"],
+  ["kacau", "kacau-bilau"],
+  ["anak", "anak-pinak"],
+  ["hiruk", "hiruk-pikuk"],
+  ["sunyi", "sunyi-sepi"]];
 const MAJMUK = [["kapal", "terbang"], ["jalan", "raya"], ["kereta", "api"], ["bilik", "darjah"], ["guru", "besar"], ["air", "terjun"], ["alat", "tulis"], ["meja", "tulis"], ["rumah", "sakit"], ["balai", "raya"]];
 const PERIBAHASA = [
   ["Bagai aur dengan tebing", "Hidup saling tolong-menolong"],
@@ -91,12 +127,26 @@ const PERIBAHASA = [
 const AYAT = [["Ali", "membaca", "buku", "di perpustakaan"], ["Ibu", "memasak", "nasi", "di dapur"], ["Adik", "menendang", "bola", "di padang"],
   ["Siti", "menyiram", "pokok bunga", "setiap pagi"], ["Kami", "membeli", "roti", "di kedai"], ["Ayah", "mencuci", "kereta", "pada hari Sabtu"],
   ["Mereka", "menulis", "karangan", "di dalam kelas"], ["Cikgu", "mengajar", "matematik", "dengan sabar"], ["Abang", "mengayuh", "basikal", "ke sekolah"],
-  ["Kakak", "menjahit", "baju", "untuk adik"], ["Datuk", "menanam", "pokok pisang", "di kebun"], ["Murid-murid", "menyapu", "sampah", "di halaman sekolah"]];
+  ["Kakak", "menjahit", "baju", "untuk adik"], ["Datuk", "menanam", "pokok pisang", "di kebun"], ["Murid-murid", "menyapu", "sampah", "di halaman sekolah"],
+  ["Nenek", "menjahit", "langsir", "di ruang tamu"],
+  ["Pak Mat", "memandu", "lori", "ke pasar"],
+  ["Kucing", "mengejar", "tikus", "di dapur"],
+  ["Puan Lim", "membaca", "akhbar", "pada waktu pagi"],
+  ["Kami", "menonton", "wayang", "di pawagam"],
+  ["Atuk", "menangkap", "ikan", "di sungai"],
+  ["Murid itu", "melukis", "gambar", "di dalam kelas"],
+  ["Mak Cik", "menjual", "kuih", "di gerai"]];
 const PEMERI = [["Ini ___ adik saya.", "ialah", ["adalah", "dengan", "pada"]], ["Rumah itu ___ besar.", "adalah", ["ialah", "dengan", "pada"]], ["Kuala Lumpur ___ ibu negara Malaysia.", "ialah", ["adalah", "pada", "dengan"]],
   ["Hasil kerjanya ___ cantik.", "adalah", ["ialah", "kepada", "di"]], ["Encik Lim ___ guru besar sekolah kami.", "ialah", ["adalah", "pada", "dengan"]], ["Pertandingan itu ___ untuk murid Tahun 6.", "adalah", ["ialah", "dengan", "kepada"]],
   ["Gunung Kinabalu ___ gunung tertinggi di Malaysia.", "ialah", ["adalah", "dengan", "pada"]], ["Buku itu ___ milik saya.", "adalah", ["ialah", "kepada", "dengan"]],
   ["Durian ___ raja buah-buahan.", "ialah", ["adalah", "pada", "dengan"]], ["Keputusan peperiksaannya ___ sangat baik.", "adalah", ["ialah", "dengan", "kepada"]],
-  ["Ahmad ___ ketua kelas kami.", "ialah", ["adalah", "kepada", "pada"]], ["Hadiah itu ___ daripada ibu.", "adalah", ["ialah", "dengan", "pada"]]];
+  ["Ahmad ___ ketua kelas kami.", "ialah", ["adalah", "kepada", "pada"]], ["Hadiah itu ___ daripada ibu.", "adalah", ["ialah", "dengan", "pada"]],
+  ["Kucing ___ haiwan peliharaan saya.", "ialah", ["adalah", "pada", "dengan"]],
+  ["Kelas kami ___ bersih dan ceria.", "adalah", ["ialah", "kepada", "dengan"]],
+  ["Encik Rahman ___ seorang petani.", "ialah", ["adalah", "dengan", "pada"]],
+  ["Lukisan itu ___ untuk pertandingan.", "adalah", ["ialah", "pada", "kepada"]],
+  ["Bahasa Melayu ___ bahasa kebangsaan Malaysia.", "ialah", ["adalah", "dengan", "pada"]],
+  ["Cuaca hari ini ___ panas.", "adalah", ["ialah", "dengan", "kepada"]]];
 const PERBANDINGAN = [["Gajah ___ besar daripada kucing.", "lebih", ["paling", "ter", "sangat"]], ["Gunung Kinabalu ialah gunung yang ___ tinggi di Malaysia.", "paling", ["lebih", "kurang", "sama"]],
   ["Ali sama ___ dengan Abu.", "tinggi", ["setinggi", "tertinggi", "lebih tinggi"]], ["Siti murid yang ___ di dalam kelas.", "terpandai", ["lebih pandai", "pandai sekali dengan", "sepandai"]],
   ["Kereta itu ___ laju daripada basikal.", "lebih", ["paling", "ter", "se"]],
@@ -104,11 +154,23 @@ const PERBANDINGAN = [["Gajah ___ besar daripada kucing.", "lebih", ["paling", "
   ["Adik ___ tinggi dengan kakak.", "sama", ["lebih", "paling", "ter"]], ["Kucing itu ___ comel daripada kucing saya.", "lebih", ["paling", "ter", "se"]],
   ["Rumahnya ___ besar di kampung itu.", "paling", ["lebih", "kurang", "se"]],
   ["Ali berlari ___ daripada Abu.", "lebih laju", ["paling laju", "terlaju", "selaju"]], ["Hari ini ___ panas daripada semalam.", "lebih", ["paling", "ter", "se"]],
-  ["Pensel itu ___ panjang dengan pembaris kecil.", "sama", ["lebih", "paling", "ter"]]];
+  ["Pensel itu ___ panjang dengan pembaris kecil.", "sama", ["lebih", "paling", "ter"]],
+  ["Pensel saya ___ panjang daripada pensel kamu.", "lebih", ["paling", "ter", "se"]],
+  ["Gunung itu ___ tinggi di negeri ini.", "paling", ["lebih", "kurang", "se"]],
+  ["Rumah Ali sama ___ dengan rumah Abu.", "besar", ["sebesar", "terbesar", "lebih besar"]],
+  ["Harimau ___ laju daripada kura-kura.", "lebih", ["paling", "ter", "se"]],
+  ["Durian ialah buah yang ___ mahal di gerai itu.", "paling", ["lebih", "kurang", "se"]],
+  ["Adik ___ rendah daripada abang.", "lebih", ["paling", "ter", "se"]]];
 
 // Pemahaman: [petikan, [[soalan, jawapan, [salah…]] …]]
 // [tahap, petikan, soalan] — 0: Tahun 1–2 (sangat pendek), 1: Tahun 3, 2: Tahun 4–5, 3: Tahun 5–6
 const PETIKAN = [
+  [0, "Abang Amir suka berbasikal. Basikalnya berwarna biru. Setiap petang, dia berbasikal di taman bersama kawan-kawannya.",
+    [["Apakah hobi Abang Amir?", "berbasikal", ["berenang", "melukis", "memasak"]], ["Apakah warna basikalnya?", "biru", ["merah", "hijau", "hitam"]], ["Bilakah dia berbasikal?", "setiap petang", ["setiap pagi", "malam", "hari Isnin sahaja"]]]],
+  [0, "Puan Salmah menanam pokok bunga di halaman rumah. Dia menyiram pokok itu setiap pagi. Bunga itu berwarna merah dan wangi.",
+    [["Di manakah Puan Salmah menanam pokok bunga?", "di halaman rumah", ["di sekolah", "di pasar", "di dalam kelas"]], ["Bilakah dia menyiram pokok itu?", "setiap pagi", ["setiap malam", "seminggu sekali", "tengah hari"]], ["Apakah warna bunga itu?", "merah", ["kuning", "putih", "ungu"]]]],
+  [0, "Hari ini Lina menyambut hari jadinya yang ketujuh. Ibu membuat kek coklat. Kawan-kawan Lina datang dan menyanyikan lagu.",
+    [["Berapakah umur Lina sekarang?", "tujuh tahun", ["enam tahun", "lapan tahun", "lima tahun"]], ["Siapakah yang membuat kek?", "ibu", ["ayah", "Lina", "nenek"]], ["Apakah jenis kek itu?", "kek coklat", ["kek pisang", "kek keju", "kek buah"]]]],
   [0, "Ini Adam. Adam ada seekor kucing. Nama kucing itu Comel. Comel suka makan ikan.",
     [["Siapakah tuan kucing itu?", "Adam", ["Comel", "Ali", "Siti"]], ["Apakah nama kucing itu?", "Comel", ["Adam", "Tompok", "Manja"]], ["Apakah makanan kegemaran Comel?", "ikan", ["nasi", "susu", "roti"]]]],
   [0, "Hari ini hari Ahad. Mira pergi ke taman bersama ibu. Mira bermain buaian. Ibu membeli aiskrim.",
@@ -136,7 +198,9 @@ const PETIKAN = [
 ];
 
 // ---------------------------------------------------------------- generators
-const kataNamaPic = () => { const [e, w] = pick(EMOJI_WORD); return mcq("Apakah nama gambar ini?", w, EMOJI_WORD.map((x) => x[1]), { visual: `<span class="qbig">${e}</span>`, say: "Apakah nama gambar ini?" }); };
+const kataNamaPic = () => { const [e, w] = pick(EMOJI_WORD);
+  if (Math.random() < 0.4) return mcq(`Pilih gambar <b>${w}</b>.`, e, EMOJI_WORD.map((x) => x[0])); // perkataan → gambar
+  return mcq("Apakah nama gambar ini?", w, EMOJI_WORD.map((x) => x[1]), { visual: `<span class="qbig">${e}</span>`, say: "Apakah nama gambar ini?" }); };
 const sukuKata = blend(
   [2, () => { const [w, s] = pick(SUKU); return mcq(`Berapakah suku kata dalam perkataan <b>${w}</b>?`, String(s.split("-").length), ["1", "2", "3", "4", "5"], { explain: `${w} → ${s}` }); }],
   [2, () => { const [w, s] = pick(SUKU); return order(`Susun suku kata untuk membina perkataan <b>${w}</b>.`, s.split("-"), { joiner: "" }); }],
@@ -174,8 +238,8 @@ const imbuhanLain = blend(
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 const PASIF_OK = ["baca", "tulis", "beli", "potong", "siram", "tendang", "cuci", "jahit", "sapu", "ambil", "angkat", "hantar", "jawab", "cari", "masak", "lukis", "kira", "gunting", "isi", "pukul", "kayuh", "pakai", "tanam", "buang", "ukur"];
 const apitan = blend(
-  [2, () => { const [b, f] = pick([["baik", "kebaikan"], ["sihat", "kesihatan"], ["bersih", "kebersihan"], ["cantik", "kecantikan"], ["selamat", "keselamatan"], ["gembira", "kegembiraan"]]); return mcq(`Apitan <b>ke-…-an</b> + ${b} menjadi…`, f, [`ke${b}`, `${b}an`, `pe${b}an`, `per${b}an`].filter((x) => x !== f)); }],
-  [2, () => { const [b, f] = pick([["ajar", "pengajaran"], ["didik", "pendidikan"], ["tulis", "penulisan"], ["baca", "pembacaan"], ["jual", "penjualan"], ["kira", "pengiraan"]]); return mcq(`Apitan <b>peN-…-an</b> + ${b} menjadi…`, f, [`pe${b}an`, `per${b}an`, `ke${b}an`, `${b}an`].filter((x) => x !== f)); }],
+  [2, () => { const [b, f] = pick([["baik", "kebaikan"], ["sihat", "kesihatan"], ["bersih", "kebersihan"], ["cantik", "kecantikan"], ["selamat", "keselamatan"], ["gembira", "kegembiraan"], ["sedih", "kesedihan"], ["indah", "keindahan"], ["sejuk", "kesejukan"], ["sakit", "kesakitan"]]); return mcq(`Apitan <b>ke-…-an</b> + ${b} menjadi…`, f, [`ke${b}`, `${b}an`, `pe${b}an`, `per${b}an`].filter((x) => x !== f)); }],
+  [2, () => { const [b, f] = pick([["ajar", "pengajaran"], ["didik", "pendidikan"], ["tulis", "penulisan"], ["baca", "pembacaan"], ["jual", "penjualan"], ["kira", "pengiraan"], ["pandu", "pemanduan"], ["lukis", "pelukisan"], ["dengar", "pendengaran"], ["tanam", "penanaman"]]); return mcq(`Apitan <b>peN-…-an</b> + ${b} menjadi…`, f, [`pe${b}an`, `per${b}an`, `ke${b}an`, `${b}an`].filter((x) => x !== f)); }],
   [1, () => { const [b, f, s] = pick([["besar", "membesarkan", "Ibu ___ anak-anaknya dengan penuh kasih sayang."], ["hantar", "menghantarkan", "Ayah ___ adik ke sekolah."], ["bersih", "membersihkan", "Kami ___ kelas setiap petang."], ["naik", "menaikkan", "Pengawas ___ bendera pada pagi Isnin."]]); return fill(s, f, [`mem${b}`.replace("memb", "memb"), `di${b}kan`, `${b}kan`].filter((x) => x !== f)); }],
 );
 const antonim = blend(
@@ -188,7 +252,7 @@ const sinonim = blend(
 );
 const kataTanya = blend(
   [3, () => { const [w, , s] = pick(KATA_TANYA); return fill(s, w, KATA_TANYA.map((x) => x[0])); }],
-  [1, () => match("Padankan kata tanya dengan kegunaannya.", sample(KATA_TANYA, 4).map(([w, use]) => [w, use]))],
+  [1, () => match("Padankan kata tanya dengan kegunaannya.", sample(KATA_TANYA.filter((x, i, a) => a.findIndex((y) => y[0] === x[0]) === i), 4).map(([w, use]) => [w, use]))],
 );
 const kataSendi = () => { const [s, a, ds] = pick(SENDI); return fill(s, a, ds, { explain: { di: "di — tempat", ke: "ke — arah tempat", dari: "dari — tempat / masa asal", daripada: "daripada — orang, punca bahan atau perbandingan", kepada: "kepada — orang / pihak yang menerima", pada: "pada — masa atau orang", untuk: "untuk — tujuan / bahagian" }[a] }); };
 const kataHubung = (adv) => () => { const pool = adv ? HUBUNG : HUBUNG_ASAS; const [s, a, ds] = pick(pool); return fill(s, a, ds); };
@@ -199,7 +263,9 @@ const susunAyat = (long) => () => {
 };
 const tandaBaca = blend(
   [2, () => { const [s, t] = pick([["Siapakah nama kamu", "?"], ["Saya suka makan nasi lemak", "."], ["Wah, cantiknya bunga itu", "!"], ["Di manakah rumah kamu", "?"], ["Adik sedang tidur", "."], ["Aduh, sakitnya", "!"],
-    ["Bilakah kamu pulang", "?"], ["Ibu memasak di dapur", "."], ["Syabas, kamu menang", "!"], ["Berapakah harga buku ini", "?"], ["Kami pergi ke taman", "."], ["Hore, esok cuti", "!"]]); return mcq(`Tanda baca yang sesuai: "${s}☐"`, t, [".", "?", "!", ","], { n: 4 }); }],
+    ["Bilakah kamu pulang", "?"], ["Ibu memasak di dapur", "."], ["Syabas, kamu menang", "!"], ["Berapakah harga buku ini", "?"], ["Kami pergi ke taman", "."], ["Hore, esok cuti", "!"],
+    ["Mengapakah kamu ketawa", "?"], ["Ayah membaca surat khabar", "."], ["Tolong, ada api", "!"], ["Bagaimanakah cara membuat wau", "?"], ["Kucing itu tidur di atas sofa", "."], ["Wah, besarnya rumah itu", "!"],
+    ["Siapakah guru kelas kamu", "?"], ["Hari ini hari Isnin", "."]]); return mcq(`Tanda baca yang sesuai: "${s}☐"`, t, [".", "?", "!", ","], { n: 4 }); }],
   [1, () => tf(`"saya pergi ke sekolah." — ayat ini betul.`, false, { explain: "Ayat mesti bermula dengan huruf besar: Saya pergi ke sekolah." })],
 );
 const ejaan = () => { const [r, w] = pick(EJAAN); return mcq("Pilih ejaan yang <b>betul</b>.", r, [w, r.replace(/a/, "e"), r + "h"].filter((x) => x !== r)); };
@@ -247,8 +313,8 @@ const DENGAR_AYAT = [["Adik tidur di atas katil.", ["Adik duduk di atas katil.",
 const dengarAyat = () => { const [a, ds] = pick(DENGAR_AYAT); return mcq("🎧 Dengar. Ayat manakah yang kamu dengar?", a, ds, { listen: a, alt: `Cari ayat yang sama: <b>${a}</b>` }); };
 
 const ayatPasif = blend(
-  [2, () => { const [s, v, o] = pick(AYAT.slice(0, 9)); const b = MEN.find((x) => x[1] === v)?.[0]; if (!b) return mcq("Ayat pasif bagi 'Ali membaca buku' ialah…", "Buku dibaca oleh Ali.", ["Buku membaca Ali.", "Ali dibaca buku.", "Buku baca oleh Ali."]); if (s === "Kami") return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} kami ${b}.`, [`${cap(o)} di${b} oleh kami.`, `${cap(o)} ${v} oleh kami.`, `Kami di${b} ${o}.`], { explain: "Kata ganti nama diri pertama (saya, kami, kita): objek + kata ganti + kata kerja tanpa imbuhan." });
-    const by = s === "Mereka" ? "mereka" : s;
+  [2, () => { const [s, v, o] = pick(AYAT.filter(([, v]) => MEN.some((x) => x[1] === v))); const b = MEN.find((x) => x[1] === v)?.[0]; if (!b) return mcq("Ayat pasif bagi 'Ali membaca buku' ialah…", "Buku dibaca oleh Ali.", ["Buku membaca Ali.", "Ali dibaca buku.", "Buku baca oleh Ali."]); if (s === "Kami") return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} kami ${b}.`, [`${cap(o)} di${b} oleh kami.`, `${cap(o)} ${v} oleh kami.`, `Kami di${b} ${o}.`], { explain: "Kata ganti nama diri pertama (saya, kami, kita): objek + kata ganti + kata kerja tanpa imbuhan." });
+    const by = s === "Mereka" ? "mereka" : /^(Kucing|Murid)/.test(s) ? s.toLowerCase() : s; // "oleh kucing", but "oleh Ibu"
     return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} di${b} oleh ${by}.`, [`${cap(o)} ${v} oleh ${by}.`, `${s} di${b} ${o}.`, `${cap(o)} di${b} ${by}`]); }],
   [1, () => fill("Kerja rumah itu sudah ___ siapkan.", "saya", ["disaya", "menyaya", "oleh saya"], { explain: "Ayat pasif dengan kata ganti nama diri pertama: kata ganti + kata kerja tanpa imbuhan." })],
 );

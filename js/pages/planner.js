@@ -103,14 +103,14 @@ async function tabiat(el, frame) {
       <div class="pl-day no-print"><button class="btn sm ghost" data-m="-1">⬅️</button><b>${monthName(m)} ${y}</b><button class="btn sm ghost" data-m="1">➡️</button></div>
       <h3 class="print-only">${monthName(m)} ${y}</h3>
       <div class="card table-scroll"><table class="habit-table">
-        <thead><tr><th></th>${Array.from({ length: days }, (_, d) => `<th style="${isToday(d + 1) ? "color:var(--pink)" : ""}">${d + 1}</th>`).join("")}<th>%</th></tr></thead>
+        <thead><tr><th></th>${Array.from({ length: days }, (_, d) => `<th style="${isToday(d + 1) ? "color:var(--pink-dk)" : ""}">${d + 1}</th>`).join("")}<th>%</th></tr></thead>
         <tbody>${habits.map((h, hi) => {
           const n = Object.values(marks[h] || {}).filter(Boolean).length;
           return `<tr><td class="nm">${esc(h)}</td>${Array.from({ length: days }, (_, d) => `<td><button class="${marks[h]?.[d + 1] ? "on" : ""}" data-h="${hi}" data-day="${d + 1}" aria-pressed="${!!marks[h]?.[d + 1]}" aria-label="${esc(h)} hari ${d + 1}">${marks[h]?.[d + 1] ? "✓" : ""}</button></td>`).join("")}<td><b>${Math.round((n / days) * 100)}</b></td></tr>`;
         }).join("")}</tbody></table></div>
       <div class="card no-print"><h3>Urus tabiat</h3>
         <div class="stack">${habits.map((h, i) => `<div class="list-item"><span class="grow">${esc(h)}</span><button class="x-btn" data-rm="${i}" aria-label="Buang">✕</button></div>`).join("")}</div>
-        <form class="row" data-add style="margin-top:8px"><input class="input" style="flex:1" maxlength="60" placeholder="Tabiat baru…"><button class="btn sm">+</button></form></div>`);
+        <form class="row" data-add style="margin-top:8px"><input class="input" style="flex:1" maxlength="60" placeholder="Tabiat baru…" aria-label="Tabiat baru"><button class="btn sm">+</button></form></div>`);
     el.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { m += +b.dataset.m; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } draw(); }));
     el.querySelectorAll("[data-h]").forEach((b) => (b.onclick = () => {
       const hi = habits[+b.dataset.h], d = b.dataset.day;
@@ -312,8 +312,8 @@ async function jadual(el, frame) {
       <div class="card" style="background:linear-gradient(135deg,#ecfccb,#fef9c3)">
         <h2 class="center">🦕 Jadual Mingguan ${child ? esc(child.name) : ""} 🦖</h2>
         <div class="table-scroll"><table style="width:100%;border-collapse:separate;border-spacing:4px;min-width:640px">
-          <thead><tr><th></th>${DAYS.map((x) => `<th style="background:#84cc16;color:#fff;border-radius:10px;padding:6px">${x}</th>`).join("")}</tr></thead>
-          <tbody>${d.slots.map((s, si) => `<tr><th style="background:#fde68a;border-radius:10px;padding:6px;font-size:.85rem">${esc(s)}</th>${DAYS.map((_, di) => `<td><textarea class="input" data-c="${si}-${di}" style="min-height:64px;padding:6px;font-size:.85rem;resize:none" maxlength="60">${esc(d.cells[`${si}-${di}`] || "")}</textarea></td>`).join("")}</tr>`).join("")}</tbody>
+          <thead><tr><th></th>${DAYS.map((x) => `<th style="background:#84cc16;color:#1a2e05;border-radius:10px;padding:6px">${x}</th>`).join("")}</tr></thead>
+          <tbody>${d.slots.map((s, si) => `<tr><th style="background:#fde68a;border-radius:10px;padding:6px;font-size:.85rem">${esc(s)}</th>${DAYS.map((_, di) => `<td><textarea class="input" data-c="${si}-${di}" aria-label="${esc(s)}, ${DAYS[di]}" style="min-height:64px;padding:6px;font-size:.85rem;resize:none" maxlength="60">${esc(d.cells[`${si}-${di}`] || "")}</textarea></td>`).join("")}</tr>`).join("")}</tbody>
         </table></div>
       </div>
       <p class="small muted no-print">💡 Idea: 📚 Mengaji, ⚽ Bola, 🎨 Seni, 🏊 Renang, 📝 Kerja sekolah, 🧩 Puzzle, 🛝 Taman</p>`);
@@ -333,13 +333,13 @@ async function menu(el, frame) {
     el.innerHTML = frame(`
       <div class="card"><h3>🍽️ Menu Minggu Ini</h3>
         <div class="table-scroll"><table style="width:100%;border-collapse:separate;border-spacing:4px;min-width:560px">
-          <thead><tr><th></th>${MEALS.map((x) => `<th style="background:var(--pink-2);color:#fff;border-radius:10px;padding:6px">${x}</th>`).join("")}</tr></thead>
-          <tbody>${DAYS.map((day, di) => `<tr><th style="background:var(--pink-3);border-radius:10px;padding:6px;font-size:.85rem">${day}</th>${MEALS.map((_, mi) => `<td><input class="input" data-plan="${di}-${mi}" value="${esc(d.plan[`${di}-${mi}`] || "")}" maxlength="60" style="padding:6px 8px;font-size:.9rem"></td>`).join("")}</tr>`).join("")}</tbody>
+          <thead><tr><th></th>${MEALS.map((x) => `<th style="background:var(--pink-2);color:#3b0a24;border-radius:10px;padding:6px">${x}</th>`).join("")}</tr></thead>
+          <tbody>${DAYS.map((day, di) => `<tr><th style="background:var(--pink-3);border-radius:10px;padding:6px;font-size:.85rem">${day}</th>${MEALS.map((_, mi) => `<td><input class="input" data-plan="${di}-${mi}" aria-label="${MEALS[mi]}, ${day}" value="${esc(d.plan[`${di}-${mi}`] || "")}" maxlength="60" style="padding:6px 8px;font-size:.9rem"></td>`).join("")}</tr>`).join("")}</tbody>
         </table></div></div>
       <div class="card"><h3>🛒 Senarai Beli-belah</h3>
         <div class="stack">${d.shop.map((it) => `<div class="list-item ${it.done ? "done" : ""}"><input type="checkbox" data-chk="${it.id}" ${it.done ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--pink)">
           <span class="grow" style="${it.done ? "text-decoration:line-through;color:var(--ink-2)" : ""}">${esc(it.text)}</span><span class="small">${it.price ? "RM" + Number(it.price).toFixed(2) : ""}</span><button class="x-btn no-print" data-rm="${it.id}">✕</button></div>`).join("") || `<p class="muted">Senarai kosong.</p>`}</div>
-        <form class="row no-print" data-add style="margin-top:8px"><input class="input" name="text" style="flex:2;min-width:140px" maxlength="60" placeholder="Barang (cth: Telur 30 biji)" required><input class="input" name="price" type="number" min="0" step="0.01" style="flex:1;min-width:90px" placeholder="RM"><button class="btn sm">+</button></form>
+        <form class="row no-print" data-add style="margin-top:8px"><input class="input" name="text" style="flex:2;min-width:140px" maxlength="60" placeholder="Barang (cth: Telur 30 biji)" aria-label="Barang" required><input class="input" name="price" type="number" min="0" step="0.01" style="flex:1;min-width:90px" placeholder="RM" aria-label="Harga (RM)"><button class="btn sm">+</button></form>
         <p style="margin-top:10px"><b>Jumlah anggaran: RM${total.toFixed(2)}</b> · Belum dibeli: RM${left.toFixed(2)}</p>
         <button class="btn sm ghost no-print" data-clear>🧹 Buang barang yang sudah dibeli</button></div>`);
     el.querySelectorAll("[data-plan]").forEach((i) => (i.oninput = () => { d.plan[i.dataset.plan] = i.value; save(); }));

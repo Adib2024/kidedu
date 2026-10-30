@@ -408,6 +408,11 @@ function onSessionExpired() {
   store.emit();
 }
 
+/** Sekolah question rotation memory for a child (device only). */
+function forgetSeen(childId) {
+  try { Object.keys(localStorage).filter((k) => k.startsWith(`ppl_seen:${childId}:`)).forEach((k) => localStorage.removeItem(k)); } catch {}
+}
+
 // =====================================================================
 // Public store (with in-memory cache + listeners)
 // =====================================================================
@@ -592,7 +597,7 @@ export const store = {
     const kids = this.children.map((c) => c.id);
     const wasTrial = this.trial;
     await be.deleteAccount(this.user.id);
-    for (const id of kids) ls.del(`ppl_onb_${id}`);
+    for (const id of kids) { ls.del(`ppl_onb_${id}`); forgetSeen(id); }
     ls.del("ppl_child");
     if (wasTrial) { ls.del("ppl_trial_owner"); this._leaveTrial(); }
     this._resetLocal();
@@ -640,6 +645,7 @@ export const store = {
     }
     this.children = this.children.filter((c) => c.id !== id);
     delete this.progress[id];
+    forgetSeen(id);
     this.emit();
   },
 

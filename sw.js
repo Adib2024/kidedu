@@ -4,7 +4,7 @@ const VERSION = "playora-v13";
 const SHELL = [
   "./", "index.html", "config.js", "css/style.css", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png",
   "js/main.js", "js/feedback.js", "js/gate.js", "js/mascot.js",
-  "js/school/qkit.js", "js/school/gen-math.js", "js/school/gen-bm.js", "js/school/gen-en.js", "js/school/gen-sains.js", "js/school/report.js", "js/shop.js", "js/install.js", "js/voice.js", "js/voicekey.js", "js/school/curriculum.js", "js/school/play.js", "js/school/review.js", "js/pages/school.js", "js/progression.js", "js/util.js", "js/store.js", "js/engine.js", "js/sections.js",
+  "js/school/qkit.js", "js/school/gen-math.js", "js/school/gen-bm.js", "js/school/gen-en.js", "js/school/gen-sains.js", "js/school/bank-sains-extra.js", "js/school/report.js", "js/shop.js", "js/install.js", "js/voice.js", "js/voicekey.js", "js/school/curriculum.js", "js/school/play.js", "js/school/review.js", "js/pages/school.js", "js/progression.js", "js/util.js", "js/store.js", "js/engine.js", "js/sections.js",
   "js/data/lexicon.js", "js/data/visuals.js", "js/data/questions.js", "js/data/games.js", "js/data/maps.js",
   "js/data/books.js", "js/data/pictures.js", "js/data/tips.js",
   "js/pages/landing.js", "js/pages/games.js", "js/pages/maps.js", "js/pages/books.js", "js/pages/worksheets.js",

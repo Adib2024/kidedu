@@ -1,6 +1,7 @@
 // Sains Tahun 1–6 (topik selaras KSSR): hidupan, manusia, bahan, fizik, bumi & angkasa.
 // Banks of facts turned into questions; emoji pictures keep it visual for younger pupils.
 import { mcq, tf, input, order, match, blend, pick, sample, rnd } from "./qkit.js";
+import { SAINS_EXTRA } from "./bank-sains-extra.js";
 
 const pic = (e) => `<span class="qbig">${e}</span>`;
 /** Multiple choice from [prompt, answer, distractors, emoji?] rows. */
@@ -313,3 +314,15 @@ export const SAINS = {
     ["pemuliharaan", "Pemuliharaan Alam Sekitar", "♻️", pemuliharaan],
   ],
 };
+
+// more questions per chapter (bank-sains-extra.js), mixed in with the chapter's own generator
+for (const y of Object.keys(SAINS)) {
+  SAINS[y] = SAINS[y].map(([id, title, emoji, gen]) => {
+    const x = SAINS_EXTRA[id];
+    if (!x) return [id, title, emoji, gen];
+    const parts = [[3, gen]];
+    if (x.ask?.length) parts.push([2, ask(x.ask)]);
+    if (x.tf?.length) parts.push([1, tfq(x.tf)]);
+    return [id, title, emoji, blend(...parts)];
+  });
+}

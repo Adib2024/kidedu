@@ -10,7 +10,7 @@ export const SUBJECTS = [
   { id: "mat", title: "Matematik", short: "Mat", emoji: "🧮", color: "#ddf3ff", accent: "#0b78c2", boss: "🐉", bossName: "Naga Nombor", lang: "ms", data: MATH },
   { id: "bm", title: "Bahasa Melayu", short: "BM", emoji: "📝", color: "#ffe0f0", accent: "#d1137a", boss: "👹", bossName: "Gergasi Kata", lang: "ms", data: BM },
   { id: "en", title: "English", short: "English", emoji: "🔤", color: "#ecfbd6", accent: "#3b7f0c", boss: "🦖", bossName: "Word Rex", lang: "en", data: EN },
-  { id: "sai", title: "Sains", short: "Sains", emoji: "🔬", color: "#fff1d9", accent: "#c25a00", boss: "🦠", bossName: "Kuman Gergasi", lang: "ms", data: SAINS },
+  { id: "sai", title: "Sains", short: "Sains", emoji: "🔬", color: "#fff1d9", accent: "#a84e00", boss: "🦠", bossName: "Kuman Gergasi", lang: "ms", data: SAINS },
 ];
 export const YEARS = [1, 2, 3, 4, 5, 6];
 export const STAGES = [
@@ -35,7 +35,7 @@ export function topics(subject, year) {
 }
 export const topicById = (subject, year, id) => topics(subject, year).find((t) => t.id === id) || null;
 /** A round of questions for a topic (always QUESTIONS_PER_ROUND, distinct where possible). */
-export const roundFor = (t, n = QUESTIONS_PER_ROUND) => makeSet(t.gen, n).map((q) => ({ ...q, lang: q.lang || t.lang, topic: `${t.subject}-t${t.year}:${t.id}` }));
+export const roundFor = (t, n = QUESTIONS_PER_ROUND, { avoid } = {}) => makeSet(t.gen, n, 60, { avoid }).map((q) => ({ ...q, lang: q.lang || t.lang, topic: `${t.subject}-t${t.year}:${t.id}` }));
 
 /** Parse "sek:mat-t3:pecahan-setara-bos" → parts (null if not a chapter attempt). */
 export function parseActivity(id) {

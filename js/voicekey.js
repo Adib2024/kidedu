@@ -1,6 +1,9 @@
 // Shared by the app (js/voice.js) and the generator (scripts/gen-audio.mjs): which pre-recorded clip
 // belongs to a spoken sentence. The key only depends on the language and the normalised text.
-export const normSay = (t) => String(t ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+export const normSay = (t) => String(t ?? "")
+  .replace(/<sup>(.*?)<\/sup>\s*<sub>(.*?)<\/sub>/g, " $1/$2 ")
+  .replace(/<br\s*\/?>|<\/?(div|p|li|ul|ol|h\d)\b[^>]*>/gi, " ")
+  .replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 export const sayLang = (lang) => (lang === "en" ? "en" : "ms");
 
 export function clipKey(lang, text) {

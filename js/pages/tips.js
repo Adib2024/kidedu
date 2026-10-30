@@ -11,7 +11,7 @@ export async function tipsList(el) {
     <div class="pagehead"><a class="back" href="#/zon-ibu" aria-label="Kembali">←</a><h1>Tips & Info</h1></div>
     <section class="banner" style="background:linear-gradient(135deg,#e0f2fe,#fef3c7)"><h1>Tips Keibubapaan</h1><span class="sub">🎧 ${TIPS.length} audio · panduan ringkas & praktikal</span>
       <p class="small" style="margin-top:10px">Selesai: <b>${done.length}/${TIPS.length}</b></p></section>
-    <div class="grid">${TIPS.map((t, i) => `<a class="tile" href="#/tips/${t.id}" style="--tile:${t.color}"><span class="small" style="font-weight:800;color:var(--pink-dk)">AUDIO ${i + 1}</span><span class="em">${t.emoji}</span><span class="tt">${esc(t.title)}</span>${done.includes(t.id) ? `<span class="badge">✓</span>` : ""}</a>`).join("")}</div>
+    <div class="grid">${TIPS.map((t, i) => `<a class="tile" href="#/tips/${t.id}" style="--tile:${t.color}"><span class="small" style="font-weight:800;color:#a3105f">AUDIO ${i + 1}</span><span class="em">${t.emoji}</span><span class="tt">${esc(t.title)}</span>${done.includes(t.id) ? `<span class="badge">✓</span>` : ""}</a>`).join("")}</div>
   </div>`;
 }
 

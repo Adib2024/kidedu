@@ -179,12 +179,25 @@ const shapes = blend(
   [1, () => { const s = pick(SHAPES.filter((x) => x.sides >= 3 && x.sides <= 6)); return input(`Berapakah bilangan sisi bagi ${s.ms.toLowerCase()}?`, s.sides, { visual: shapeSvg(s.id) }); }],
   [1, () => match("Padankan objek dengan bentuknya.", sample(SOLID.filter((x, i, a) => a.findIndex((y) => y[2] === x[2]) === i), 4).map(([o, e, s]) => [`${e} ${o}`, s]))],
 );
+const MEASURE_MORE = [
+  ["Manakah yang lebih <b>berat</b>?", "Tembikai", ["Epal"], "🍉"], ["Manakah yang lebih <b>ringan</b>?", "Bulu ayam", ["Batu"], "🪶"],
+  ["Manakah yang lebih <b>tinggi</b>?", "Zirafah", ["Kucing"], "🦒"], ["Manakah yang lebih <b>pendek</b>?", "Pensel", ["Penyapu"], "✏️"],
+  ["Manakah yang boleh <b>mengisi lebih banyak air</b>?", "Baldi", ["Cawan"], "🪣"], ["Manakah yang lebih <b>panjang</b>?", "Ular", ["Cacing"], "🐍"],
+  ["Alat untuk mengukur panjang ialah…", "pembaris", ["jam", "cawan", "penimbang"], "📏"], ["Alat untuk menimbang berat ialah…", "penimbang", ["pembaris", "jam", "gelas"], "⚖️"],
+  ["Alat untuk menyukat air ialah…", "bikar atau cawan penyukat", ["pembaris", "penimbang", "jam"], "🥛"],
+  ["Panjang buku boleh diukur menggunakan…", "klip kertas", ["air", "pasir", "angin"], "📎"],
+  ["Pinggan yang lebih besar boleh memuatkan ___ nasi.", "lebih banyak", ["lebih sedikit", "tiada", "sama sahaja"], "🍽️"],
+];
+const MEASURE_TF = [["Gajah lebih berat daripada tikus.", true], ["Semut lebih panjang daripada ular.", false], ["Kita menggunakan pembaris untuk mengukur panjang.", true],
+  ["Kilogram ialah unit untuk panjang.", false], ["Liter ialah unit untuk isi padu air.", true], ["Botol besar boleh memuatkan lebih banyak air daripada cawan.", true]];
 const measure = blend(
   [2, () => { const pairs = [["Pensel", "Pembaris"], ["Semut", "Kucing"], ["Kereta", "Basikal"], ["Pokok", "Bunga"]], [a, b] = pick(pairs); const longer = ["Pembaris", "Kucing", "Kereta", "Pokok"].includes(b) ? b : a; return mcq(`Manakah yang lebih <b>panjang/besar</b>: ${a} atau ${b}?`, longer, [a, b], { n: 2 }); }],
   [2, () => { const items = [["Gajah", "🐘"], ["Kucing", "🐱"], ["Tikus", "🐭"]]; return order("Susun dari <b>paling ringan</b> hingga <b>paling berat</b>.", ["🐭 Tikus", "🐱 Kucing", "🐘 Gajah"]); }],
   [1, () => mcq("Unit yang sesuai untuk mengukur panjang meja ialah…", "sentimeter (cm)", ["kilogram (kg)", "liter (l)", "jam"])],
   [1, () => mcq("Unit yang sesuai untuk menyukat air dalam botol ialah…", "liter (l)", ["meter (m)", "kilogram (kg)", "sentimeter (cm)"])],
   [1, () => mcq("Unit yang sesuai untuk menimbang beras ialah…", "kilogram (kg)", ["liter (l)", "meter (m)", "minit"])],
+  [3, () => { const [q, a, ds, e] = pick(MEASURE_MORE); return mcq(q, a, ds, { visual: `<span class="qbig">${e}</span>` }); }],
+  [1, () => { const [s, ok] = pick(MEASURE_TF); return tf(s, ok); }],
 );
 function convert(level) {
   const C = [["m", "cm", 100], ["km", "m", 1000], ["kg", "g", 1000], ["l", "ml", 1000], ["jam", "minit", 60], ["minit", "saat", 60]];
@@ -199,6 +212,8 @@ function fractions(level) {
   const gens = [
     [3, () => { const d = pick(ds), n = rnd(1, d - 1); const v = pick([fractionBar, fractionPie])(n, d); return mcq("Pecahan manakah yang menunjukkan bahagian berlorek?", fracTxt(n, d), [fracTxt(d - n, d), fracTxt(n, d + 1), fracTxt(n + 1, d), fracTxt(d, n)].filter((x) => x !== fracTxt(n, d)), { visual: v }); }],
     [1, () => { const d = pick(ds); return mcq(`${fracTxt(1, d)} dibaca sebagai…`, `satu per${perkataan(d)}`, [`satu per${perkataan(d + 1)}`, `${perkataan(d)} persatu`, `satu ${perkataan(d)}`]); }],
+    [1, () => { const n = 2 * rnd(1, 10); return input(`Separuh daripada ${n} ialah…`, n / 2, { explain: `${n} ÷ 2 = ${n / 2}` }); }],
+    [1, () => { const d = pick(ds); return mcq(`Sebiji pizza dipotong kepada ${d} bahagian sama besar. Satu bahagian ialah…`, fracTxt(1, d), [fracTxt(d, 1), fracTxt(1, d + 1), fracTxt(2, d + 2)], { visual: fractionPie(1, d) }); }],
   ];
   if (level >= 2) gens.push(
     [2, () => { const [a, b] = pick([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4], [2, 5]]), k = rnd(2, 4); return mcq(`Pecahan manakah yang <b>setara</b> dengan ${fracTxt(a, b)}?`, fracTxt(a * k, b * k), [fracTxt(a + k, b + k), fracTxt(a * k, b), fracTxt(a, b * k), fracTxt(a * k + 1, b * k)]); }],
@@ -206,7 +221,7 @@ function fractions(level) {
     [1, () => { const d = pick([2, 4, 8]), [a, b] = [rnd(1, d - 1), rnd(1, d - 1)]; if (a === b) return tf(`${fracTxt(a, d)} sama dengan ${fracTxt(b, d)}`, true); return mcq(`Manakah lebih besar: ${fracTxt(a, d)} atau ${fracTxt(b, d)}?`, fracTxt(Math.max(a, b), d), [fracTxt(a, d), fracTxt(b, d)], { n: 2 }); }],
   );
   if (level >= 3) gens.push(
-    [2, () => { const d = pick([3, 4, 5, 6]), w = rnd(1, 4), n = rnd(1, d - 1); return mcq(`Tukarkan ${fracTxt(w * d + n, d)} kepada nombor bercampur.`, `${w} ${fracTxt(n, d)}`, [`${w + 1} ${fracTxt(n, d)}`, `${w} ${fracTxt(d - n, d)}`, `${n} ${fracTxt(w, d)}`]); }],
+    [2, () => { const d = pick([3, 4, 5, 6]), w = rnd(1, 4), n = rnd(1, d - 1); const [a, b] = simp(n, d); const mixed = (x, y, z) => `${x} ${fracTxt(...simp(y, z))}`; return mcq(`Tukarkan ${fracTxt(w * d + n, d)} kepada nombor bercampur (bentuk termudah).`, `${w} ${fracTxt(a, b)}`, [mixed(w + 1, n, d), mixed(w, d - n, d), `${n} ${fracTxt(w, d)}`, `${w} ${fracTxt(n, d)}`].filter((x) => x !== `${w} ${fracTxt(a, b)}`), { explain: `${w * d + n} ÷ ${d} = ${w} baki ${n} → ${w} ${fracTxt(n, d)}${a !== n ? ` = ${w} ${fracTxt(a, b)}` : ""}` }); }],
     [2, () => { const [a, b] = pick([[1, 2], [1, 4], [3, 4], [1, 3], [2, 3], [1, 5], [3, 5]]), m = b * rnd(2, 6); return input(`${fracTxt(a, b)} daripada ${m} = ?`, (a * m) / b, { explain: `${m} ÷ ${b} × ${a}` }); }],
   );
   return blend(...gens);

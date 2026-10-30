@@ -345,11 +345,11 @@ function colourActivity(el, p, query) {
     el.innerHTML = `<div class="wrap page" style="max-width:760px">
       <div class="pagehead"><a class="back" href="#/pensel" aria-label="Kembali">←</a><h1 style="font-size:1.3rem">${p.emoji} ${esc(p.title)}</h1></div>
       <div class="row" style="margin-bottom:10px">
-        <select class="input" data-pic style="width:auto;flex:1">${PICTURES.map((x) => `<option value="${x.id}" ${x.id === pic.id ? "selected" : ""}>${x.emoji} ${x.name} ${starStr(store.starsOf(aid(p.id, x.id)))}</option>`).join("")}</select>
+        <select class="input" data-pic style="width:auto;flex:1" aria-label="Pilih gambar">${PICTURES.map((x) => `<option value="${x.id}" ${x.id === pic.id ? "selected" : ""}>${x.emoji} ${x.name} ${starStr(store.starsOf(aid(p.id, x.id)))}</option>`).join("")}</select>
         <div class="chips"><button class="chip ${mode === "nombor" ? "on" : ""}" data-mode="nombor">🔢 Ikut nombor</button><button class="chip ${mode === "bebas" ? "on" : ""}" data-mode="bebas">🎨 Bebas</button></div>
       </div>
       <div class="toolbar">
-        ${pal.map((c, i) => `<button class="color-dot ${i === 0 ? "on" : ""}" data-c="${c.hex}" style="background:${c.hex};${c.n ? "display:grid;place-items:center;font-weight:900;color:" + (c.hex === "#ffffff" || c.hex === "#facc15" ? "#333" : "#fff") : ""}" title="${esc(c.name)}" aria-label="${esc(c.name)}">${c.n || ""}</button>`).join("")}
+        ${pal.map((c, i) => `<button class="color-dot ${i === 0 ? "on" : ""}" data-c="${c.hex}" style="background:${c.hex};${c.n ? "display:grid;place-items:center;font-weight:900;color:" + inkOn(c.hex) : ""}" title="${esc(c.name)}" aria-label="${esc(c.name)}">${c.n || ""}</button>`).join("")}
         <button class="tool" data-undo title="Buat asal">↩️</button><button class="tool" data-reset title="Mula semula">🗑️</button>
       </div>
       <p class="small muted center" style="margin:6px 0">${mode === "nombor" ? "Pilih warna bernombor, kemudian tekan bahagian gambar yang mempunyai nombor sama." : "Pilih warna dan tekan mana-mana bahagian gambar untuk mewarna."}</p>
@@ -403,6 +403,8 @@ function colourActivity(el, p, query) {
 }
 
 // ---------------------------------------------------------------- shapes task
+/** Readable number colour on a paint swatch (dark on light colours, white on dark ones). */
+const inkOn = (hex) => { const n = parseInt(hex.slice(1), 16), f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; const L = 0.2126 * f(n >> 16) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255); return L > 0.18 ? "#1f1530" : "#fff"; };
 const COLOR_TASK = [["Merah", "#ef4444"], ["Biru", "#3b82f6"], ["Kuning", "#facc15"], ["Hijau", "#22c55e"]];
 function shapeActivity(el, p) {
   const render = () => {
@@ -414,7 +416,7 @@ function shapeActivity(el, p) {
     el.innerHTML = `<div class="wrap page" style="max-width:720px">
       <div class="pagehead"><a class="back" href="#/pensel" aria-label="Kembali">←</a><h1 style="font-size:1.3rem">${p.emoji} ${esc(p.title)}</h1></div>
       <div class="card soft" style="margin-bottom:10px">
-        ${targets.map((t) => `<div style="font-weight:800;font-size:1.1rem">🎯 Warnakan semua <u>${t.shape.ms}</u> dengan warna <span style="color:${t.col[1]}">${t.col[0]}</span></div>`).join("")}
+        ${targets.map((t) => `<div style="font-weight:800;font-size:1.1rem">🎯 Warnakan semua <u>${t.shape.ms}</u> dengan warna <span class="color-word"><i style="background:${t.col[1]}"></i>${t.col[0]}</span></div>`).join("")}
         <div class="small muted">Bentuk lain biarkan putih.</div>
       </div>
       <div class="toolbar">${COLOR_TASK.map((c, i) => `<button class="color-dot ${i === 0 ? "on" : ""}" data-c="${c[1]}" style="background:${c[1]}" aria-label="${c[0]}"></button>`).join("")}<button class="color-dot" data-c="#ffffff" style="background:#fff" aria-label="Pemadam (putih)"></button><span class="small muted">⬜ = padam</span></div>

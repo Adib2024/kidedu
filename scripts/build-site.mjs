@@ -1,7 +1,7 @@
 // Assemble the deployable static site in ./_site and write config.js from environment variables.
 //   SUPABASE_URL=https://xxxx.supabase.co SUPABASE_PUBLISHABLE_KEY=sb_publishable_... node scripts/build-site.mjs
 // Without them the site deploys in Demo mode. Refuses privileged keys (they would be public).
-import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { vendorFonts, useLocalFonts, addToShell } from "./fonts.mjs";
 
@@ -44,6 +44,9 @@ if (process.env.SKIP_FONTS !== "1") {
     console.warn(`::warning::Fonts not self-hosted (${e.message}); falling back to Google Fonts.`);
   }
 }
+// Fetch every module in parallel instead of discovering imports level by level (one round trip each).
+const modules = (dir) => readdirSync(join(OUT, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? modules(join(dir, e.name)) : e.name.endsWith(".js") ? [join(dir, e.name).split("\\").join("/")] : []));
+html = html.replace('<script type="module" src="js/main.js"></script>', modules("js").filter((f) => f !== "js/main.js").sort().map((f) => `<link rel="modulepreload" href="${f}">`).join("\n") + '\n<script type="module" src="js/main.js"></script>');
 writeFileSync(join(OUT, "index.html"), html);
 // SPA fallback: every route is a #hash, so 404.html only needs to bounce to the app.
 writeFileSync(join(OUT, "404.html"), html);

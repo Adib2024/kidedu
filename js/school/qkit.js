@@ -96,18 +96,30 @@ export const correctOf = (q) => norm(q, q.answer);
 export const isCorrect = (q, given) => norm(q, given) === correctOf(q);
 
 /** Plain-text label of a question (for logs, review lists and TTS). */
-export const plain = (html) => String(html ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+export const plain = (html) => String(html ?? "")
+  .replace(/<sup>(.*?)<\/sup>\s*<sub>(.*?)<\/sub>/g, " $1/$2 ")         // fraction markup → 1/2
+  .replace(/<br\s*\/?>|<\/?(div|p|li|ul|ol|h\d)\b[^>]*>/gi, " ")     // block breaks → space
+  .replace(/<[^>]+>/g, "")                                              // inline tags (b, i, span) vanish
+  .replace(/&nbsp;/g, " ").replace(/\s+/g, " ").replace(/\s+([.,!;:])(?=\s|$)/g, "$1").replace(/(\p{L})\s+\?(?=\s|$)/gu, "$1?").trim();
 
-/** n distinct questions from a generator (distinct by prompt + answer). */
-export function makeSet(gen, n = 10, tries = 60) {
-  const out = [], seen = new Set();
+/** Identity of a question (same prompt, audio, picture and answer = same question). */
+export const qKey = (q) => plain(q.prompt) + "|" + (q.listen || "") + "|" + (q.visual || "").length + "|" + q.answer;
+
+/**
+ * n distinct questions from a generator. `avoid` (keys of recently seen questions) is honoured as far as
+ * the topic allows, so small banks rotate through everything before repeating.
+ */
+export function makeSet(gen, n = 10, tries = 60, { avoid } = {}) {
+  const out = [], seen = new Set(), spare = [];
   for (let k = 0; out.length < n && k < n * tries; k++) {
     const q = gen();
-    const key = plain(q.prompt) + "|" + (q.listen || "") + "|" + (q.visual || "").length + "|" + q.answer;
+    const key = qKey(q);
     if (seen.has(key)) continue;
     seen.add(key);
+    if (avoid?.has(key)) { spare.push(q); continue; }
     out.push(q);
   }
+  while (out.length < n && spare.length) out.push(spare.shift()); // the topic has run out of new questions
   while (out.length < n) out.push(gen()); // tiny topics: allow repeats rather than fail
   // avoid the same type three times in a row where possible
   for (let i = 2; i < out.length; i++) {

@@ -193,7 +193,7 @@ export function worksheetView(el, { id }) {
     "mewarna-nombor": () => `<select class="input" data-o="pic" style="width:auto">${PICTURES.map((p) => `<option value="${p.id}">${p.emoji} ${p.name}</option>`).join("")}</select>`,
     "tracing-words": () => `<select class="input" data-o="set" style="width:auto"><option value="bm">Perkataan BM</option><option value="en">English words</option><option value="sendiri">Perkataan sendiri</option></select>
       <input class="input" data-o="custom" placeholder="cth: Aisyah, ibu, ayah" style="width:auto;flex:1;min-width:180px" maxlength="80">`,
-    "meet-letter": () => `<select class="input" data-o="letter" style="width:auto">${ABC.map((a) => `<option>${a[0]}</option>`).join("")}</select>`,
+    "meet-letter": () => `<select class="input" data-o="letter" style="width:auto" aria-label="Pilih huruf">${ABC.map((a) => `<option>${a[0]}</option>`).join("")}</select>`,
     "latihan-matematik": () => `<select class="input" data-o="op" style="width:auto"><option value="tambah">Tambah</option><option value="tolak">Tolak</option><option value="darab">Darab</option></select>`,
   };
   el.innerHTML = `<div class="wrap page">

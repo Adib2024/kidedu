@@ -159,3 +159,17 @@ test("parent school report: progress, accuracy, weekly time, weak chapters, revi
   assert.equal(schoolReport({ child: { name: "Bayi", age: 5 }, starsOf: () => 0, attempts: [], now }), null);
   assert.match(schoolReportHtml(null, "Bayi"), /Darjah/);
 });
+
+test("rotation: a round avoids recently seen questions while the topic still has new ones", () => {
+  const bank = Array.from({ length: 25 }, (_, i) => K.mcq(`Soalan ${i}?`, "a", ["b", "c"]));
+  const gen = () => bank[Math.floor(Math.random() * bank.length)];
+  const r1 = K.makeSet(gen, 10);
+  const seen = new Set(r1.map(K.qKey));
+  const r2 = K.makeSet(gen, 10, 60, { avoid: seen });
+  assert.equal(r2.filter((q) => seen.has(K.qKey(q))).length, 0, "no repeats while unseen ones remain");
+  const seen2 = new Set([...seen, ...r2.map(K.qKey)]);
+  const r3 = K.makeSet(gen, 10, 60, { avoid: seen2 });
+  assert.equal(r3.length, 10);
+  assert.equal(new Set(r3.map(K.qKey)).size, 10, "still distinct inside the round");
+  assert.equal(r3.filter((q) => !seen2.has(K.qKey(q))).length, 5, "the last 5 unseen come first, then the oldest repeats");
+});

@@ -65,7 +65,7 @@ export function ibuView(el, { id }) {
       const top = Qz.types[ranked[0][0]];
       if (save) { store.setKv(key(g.id), { date: todayKey(), result: ranked[0][0], scores: sc }, { immediate: true }); confetti(30, ["💖", "✨", "🌸"]); }
       el.innerHTML = frame(`<div class="card pad-lg">
-        <div class="center"><div style="font-size:4rem">${top.emoji}</div><p class="muted">${esc(Qz.resultLabel)}</p><h2 style="color:var(--pink)">${esc(top.name)}</h2></div>
+        <div class="center"><div style="font-size:4rem">${top.emoji}</div><p class="muted">${esc(Qz.resultLabel)}</p><h2 style="color:var(--pink-dk)">${esc(top.name)}</h2></div>
         <p>${esc(top.desc)}</p>
         <h3>💡 Tips untuk anda</h3><ul>${top.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
         <h3>Pecahan keputusan</h3>
