@@ -4,19 +4,64 @@
 import { esc, sfx, speak, stopSpeak, shuffle, pick, canSpeak } from "../util.js";
 import { mascot } from "../mascot.js";
 import { autoSpeakOn } from "../engine.js";
-import { norm, correctOf, isCorrect, plain, silent } from "./qkit.js";
+import { norm, correctOf, isCorrect, plain, silent, difficulty } from "./qkit.js";
 
 const PRAISE = { ms: ["Hebat!", "Betul!", "Bagus!", "Pandai!", "Syabas!", "Terbaik!"], en: ["Great!", "Correct!", "Well done!", "Super!", "Awesome!"] };
 const OOPS = { ms: ["Hampir!", "Tak apa!", "Cuba lagi nanti!"], en: ["Almost!", "Nice try!", "Keep going!"] };
 const HINTS_PER_ROUND = 2;
 
+/** Worked solution ("Langkah demi langkah") of a question, or "" — used after a wrong answer and in review lists. */
+export function stepsHtml(q, open = false) {
+  if (!q.steps?.length) return "";
+  return `<details class="q2-steps"${open ? " open" : ""}><summary>🪜 Langkah demi langkah</summary>${q.work || ""}<ol>${q.steps.map((t) => `<li>${esc(t)}</li>`).join("")}</ol></details>`;
+}
+
+export const LEVELS = [["🌱", "Mudah"], ["🌿", "Sederhana"], ["🌳", "Mencabar"]];
 /**
- * opts: { questions, mode, subject:{boss,bossName,accent,lang}, timeSec, onFinish(result), onExit() }
- * result: { score, total, answers:[{q,a,c}], durationMs, wrong:[question], maxCombo, lives, timedOut, bossDefeated }
+ * Adaptive difficulty for Latihan: the pool is split into three bands by difficulty(); every next question
+ * comes from the child's current band — two right in a row moves up, a wrong answer moves down.
+ */
+export function makeLadder(pool, level = 1) {
+  const sorted = pool.map((q) => [difficulty(q), q]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const third = Math.ceil(sorted.length / 3);
+  const bands = [sorted.slice(0, third), sorted.slice(third, 2 * third), sorted.slice(2 * third)].map((b) => shuffle(b));
+  let streak = 0, last = null;
+  return {
+    get level() { return level; },
+    /** Next question from the current band (or the nearest band that still has one), avoiding a third same type in a row. */
+    take() {
+      for (const d of [0, -1, 1, -2, 2]) {
+        const b = bands[level + d];
+        if (!b?.length) continue;
+        const k = b.findIndex((q) => q.type !== last);
+        const q = b.splice(k >= 0 ? k : b.length - 1, 1)[0];
+        last = q.type;
+        return q;
+      }
+      return null;
+    },
+    /** Record an answer; returns +1 / −1 when the level changes, else 0. */
+    result(ok) {
+      if (ok) { if (++streak >= 2 && level < 2) { level++; streak = 0; return 1; } return 0; }
+      streak = 0;
+      if (level > 0) { level--; return -1; }
+      return 0;
+    },
+  };
+}
+
+/**
+ * opts: { questions, pool?, count?, mode, subject:{boss,bossName,accent,lang}, timeSec, onFinish(result), onExit() }
+ * result: { score, total, answers:[{q,a,c}], durationMs, wrong:[question], asked:[question], level?, maxCombo, lives, timedOut, bossDefeated }
+ * `pool` (Latihan only): more questions than needed — `count` of them are chosen as the child plays (see makeLadder).
  */
 export function playRound(el, opts) {
   // listening questions need speech synthesis; without it they are asked in written form
-  const qs = canSpeak() ? opts.questions : opts.questions.map(silent), mode = opts.mode || "latihan", subj = opts.subject || {};
+  const mode = opts.mode || "latihan", subj = opts.subject || {};
+  const prep = (q) => (canSpeak() ? q : silent(q));
+  const count = opts.count || opts.questions?.length || 10;
+  const ladder = mode === "latihan" && opts.pool?.length > count ? makeLadder(opts.pool.map(prep)) : null;
+  const qs = ladder ? Array.from({ length: count }, (_, i) => (i === 0 ? ladder.take() : null)) : opts.questions.map(prep);
   const lang = subj.lang || "ms";
   // __playoraTimeScale: lets automated tests shorten the time challenge; never set by the app itself
   const scale = Number(globalThis.__playoraTimeScale) || 1;
@@ -43,6 +88,7 @@ export function playRound(el, opts) {
           <div class="boss-info"><b>${esc(subj.bossName || "Bos")}</b><div class="hp" aria-label="Nyawa bos"><i style="width:100%"></i></div></div>
           <div class="hearts" aria-label="Nyawa kamu: 3">${"<span>❤️</span>".repeat(3)}</div>
         </div>` : ""}
+      ${ladder ? `<div class="lvl" data-level aria-live="polite"></div>` : ""}
       <div class="combo" data-combo hidden></div>
       <div class="qstage" data-stage></div>
       <div class="play-buddy" aria-hidden="true">${mascot("happy", 64)}</div>
@@ -146,7 +192,8 @@ export function playRound(el, opts) {
       card.classList.add("bad");
       fb.innerHTML = `<span class="fb-no">✘ ${esc(pick(OOPS[q.lang === "en" ? "en" : "ms"]))}</span>
         <div class="q2-correct">Jawapan: <b>${esc(q.type === "match" ? "padankan semua pasangan" : q.answer)}</b></div>
-        ${q.explain ? `<div class="q2-explain">💡 ${esc(q.explain)}</div>` : ""}`;
+        ${q.explain ? `<div class="q2-explain">💡 ${esc(q.explain)}</div>` : ""}
+        ${mode === "latihan" ? stepsHtml(q, true) : ""}`;
       sfx("wrong");
       buddy("oops");
       wrong.push(q);
@@ -154,6 +201,11 @@ export function playRound(el, opts) {
     }
     if (state.done) return; // a lost last life ends the round inside loseLife()
     const last = state.i >= qs.length - 1;
+    if (ladder) {
+      const move = ladder.result(ok);
+      if (!last) qs[state.i + 1] = ladder.take() || qs[state.i];
+      showLevel(move);
+    }
     if (mode === "latihan" && !ok) {
       const go = document.createElement("button");
       go.className = "btn q2-next"; go.textContent = last ? "Lihat keputusan ➜" : "Teruskan ➜";
@@ -171,6 +223,14 @@ export function playRound(el, opts) {
     if (state.i >= qs.length) finish();
     else show();
   }
+  function showLevel(move = 0) {
+    const box = el.querySelector("[data-level]");
+    if (!box) return;
+    const [e, name] = LEVELS[ladder.level];
+    box.innerHTML = `<span class="lvl-dots" aria-hidden="true">${LEVELS.map((_, k) => `<i class="${k <= ladder.level ? "on" : ""}"></i>`).join("")}</span>${e} Tahap: <b>${name}</b>${move > 0 ? ` <span class="lvl-move up">⬆ Lebih mencabar!</span>` : move < 0 ? ` <span class="lvl-move down">Kita cuba yang lebih mudah</span>` : ""}`;
+    box.dataset.lv = String(ladder.level);
+  }
+  if (ladder) showLevel();
   function showCombo() {
     const c = el.querySelector("[data-combo]");
     if (state.combo >= 3) {
@@ -225,6 +285,7 @@ export function playRound(el, opts) {
     stopSpeak();
     opts.onFinish?.({
       score: state.score, total: qs.length, answers: answers.slice(0, qs.length), durationMs: Date.now() - t0, wrong, maxCombo: state.maxCombo,
+      asked: qs.filter(Boolean), level: ladder ? ladder.level : undefined,
       lives: state.lives, timedOut, lostAllLives, bossDefeated: mode === "bos" && !lostAllLives && state.score >= 7, timeLeft: state.timeLeft,
     });
   }

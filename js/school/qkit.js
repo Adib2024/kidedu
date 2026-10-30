@@ -3,7 +3,9 @@
 //
 // { type: "mcq"|"tf"|"input"|"order"|"match"|"fill",
 //   prompt, visual?, choices?, answer, tiles?, joiner?, pairs?, unit?, decimal?, explain?, say?, lang,
-//   listen?, alt? }
+//   listen?, alt?, steps?, work? }
+// `steps` is a worked solution (plain text lines) and `work` its column layout (trusted HTML from steps.js),
+// shown after a wrong answer in Latihan and in the review list.
 // `listen` is text the device reads aloud (the child answers from hearing it); `alt` is the prompt used
 // where audio is unavailable (printed sheets, devices without speech synthesis).
 // `visual` is trusted HTML/SVG produced by our own builders — never user text.
@@ -71,7 +73,7 @@ export function fill(sentence, answer, distractors, o = {}) {
 
 function pickO(o) {
   const out = {};
-  for (const k of ["visual", "explain", "say", "unit", "listen", "alt"]) if (o[k] != null) out[k] = o[k];
+  for (const k of ["visual", "explain", "steps", "work", "say", "unit", "listen", "alt"]) if (o[k] != null) out[k] = o[k];
   return out;
 }
 
@@ -129,6 +131,50 @@ export function makeSet(gen, n = 10, tries = 60, { avoid } = {}) {
     }
   }
   return out;
+}
+
+const STOP = new Set(["the", "and", "was", "were", "are", "his", "her", "she", "they", "what", "who", "how", "did", "does", "yang", "dan", "itu", "ini", "apakah", "siapakah", "dengan", "untuk", "dia", "mereka", "kepada", "pada"]);
+/**
+ * The sentence of a reading passage that answers a question (for "where to find it" explanations):
+ * the one containing the answer, else the one sharing most words with the question and answer.
+ */
+export function evidence(text, question, answer) {
+  const t = String(text).replace(/<[^>]+>/g, " ").replace(/\b(Dr|Mr|Mrs|Ms|St|En|Pn)\./g, "$1\u2024"); // titles are not sentence ends
+  const sents = (t.match(/[^.!?]+[.!?]+["']?/g) || [t]).map((x) => x.trim().replace(/\u2024/g, "."));
+  const low = (x) => String(x).toLowerCase();
+  const hit = sents.find((x) => low(x).includes(low(answer)));
+  if (hit) return hit;
+  const quoted = /['"‘“](\p{L}+)['"’”]/u.exec(question)?.[1]; // "The word 'pupus' means…"
+  const inText = quoted && sents.find((x) => low(x).includes(low(quoted)));
+  if (inText) return inText;
+  // otherwise the sentence sharing most words with the answer (counted triple), then with the question
+  const words = (x) => (low(x).match(/\p{L}{3,}/gu) || []).filter((w) => !STOP.has(w));
+  const aw = new Set(words(answer)), qw = new Set(words(question));
+  let best = null, score = 0;
+  for (const x of sents) {
+    const ws = words(x), n = ws.filter((w) => aw.has(w) || aw.has(w.replace(/s$/, ""))).length * 3 + ws.filter((w) => qw.has(w)).length;
+    if (n > score) { best = x; score = n; }
+  }
+  return best;
+}
+
+/**
+ * Rough difficulty score of a question (higher = harder), used by Latihan to adapt to the child:
+ * answer format, size of the numbers, decimals/fractions, length of reading, audio and worked steps.
+ */
+export function difficulty(q) {
+  const TYPE = { tf: 1, mcq: 2, fill: 2, order: 3, match: 3, input: 4 };
+  const text = plain(q.prompt);
+  const nums = (text.replace(/(\d) (?=\d{3}\b)/g, "$1").match(/\d+(?:\.\d+)?/g) || []).map(Number);
+  const big = nums.length ? Math.max(...nums) : 0;
+  let d = TYPE[q.type] ?? 2;
+  if (big > 0) d += Math.log10(big + 1) * 0.8;
+  if (/\d\.\d/.test(text) || q.decimal) d += 1;
+  if (/\d\/\d|<sup>/.test(q.prompt) || /\d\/\d/.test(q.answer)) d += 0.7;
+  if (/class="passage"/.test(q.visual || "")) d += 1 + plain(q.visual).length / 300;
+  if (q.listen) d += 0.4;
+  if (q.steps) d += Math.min(1.5, q.steps.length / 3);
+  return d + Math.min(1.5, text.length / 90);
 }
 
 /** Weighted choice between generator functions: pick from [[weight, fn], …]. */

@@ -2,14 +2,15 @@
 // Banks of facts turned into questions; emoji pictures keep it visual for younger pupils.
 import { mcq, tf, input, order, match, blend, pick, sample, rnd } from "./qkit.js";
 import { SAINS_EXTRA } from "./bank-sains-extra.js";
+import { SAINS_FIX } from "./bank-sains-why.js";
 
 const pic = (e) => `<span class="qbig">${e}</span>`;
 /** Multiple choice from [prompt, answer, distractors, emoji?] rows. */
 const ask = (rows) => () => { const [p, a, ds, e] = pick(rows); return mcq(p, a, ds, e ? { visual: pic(e) } : {}); };
 /** True/false from [statement, isTrue] rows. */
-const tfq = (rows) => () => { const [s, ok] = pick(rows); return tf(s, ok); };
+const tfq = (rows) => () => { const [s, ok] = pick(rows); return tf(s, ok, { explain: ok ? `Betul! ${s}` : SAINS_FIX[s] }); };
 /** Sort items into groups: rows [emoji, name, group]; prompt(name) → question. */
-const sortInto = (rows, prompt, groups) => () => { const [e, n, g] = pick(rows); return mcq(prompt(n), g, groups.filter((x) => x !== g), { visual: pic(e), n: groups.length }); };
+const sortInto = (rows, prompt, groups, why = {}) => () => { const [e, n, g] = pick(rows); return mcq(prompt(n), g, groups.filter((x) => x !== g), { visual: pic(e), n: groups.length, explain: why[g] && `${n}: ${why[g]}` }); };
 /** Match pairs (distinct right-hand sides). */
 const pairs = (rows, prompt, n = 4) => () => match(prompt, sample(rows.filter((x, i, a) => a.findIndex((y) => y[1] === x[1]) === i), n));
 
@@ -18,7 +19,7 @@ const DERIA = [["mata", "melihat", "👁️"], ["telinga", "mendengar", "👂"],
 const DERIA_OBJ = [["🌸", "bau bunga", "hidung"], ["🔔", "bunyi loceng", "telinga"], ["🍋", "rasa masam limau", "lidah"], ["🧊", "sejuknya ais", "kulit"], ["🌈", "warna pelangi", "mata"],
   ["🎵", "lagu di radio", "telinga"], ["🍬", "rasa manis gula-gula", "lidah"], ["🔥", "panasnya api", "kulit"], ["🍞", "bau roti bakar", "hidung"], ["⭐", "bintang di langit", "mata"], ["🐶", "salakan anjing", "telinga"], ["🧸", "lembutnya anak patung", "kulit"]];
 const deria = blend(
-  [3, () => { const [e, thing, organ] = pick(DERIA_OBJ); return mcq(`Deria apakah yang digunakan untuk mengesan <b>${thing}</b>?`, organ, DERIA.map((d) => d[0]), { visual: pic(e) }); }],
+  [3, () => { const [e, thing, organ] = pick(DERIA_OBJ); return mcq(`Deria apakah yang digunakan untuk mengesan <b>${thing}</b>?`, organ, DERIA.map((d) => d[0]), { visual: pic(e), explain: `Kita ${DERIA.find((d) => d[0] === organ)[1]} dengan ${organ}.` }); }],
   [2, () => { const [o, f, e] = pick(DERIA); return mcq(`Kita menggunakan <b>${o}</b> untuk…`, f, DERIA.map((d) => d[1]), { visual: pic(e) }); }],
   [1, pairs(DERIA.map(([o, f]) => [o, f]), "Padankan organ deria dengan fungsinya.")],
   [1, tfq([["Kita mendengar dengan menggunakan hidung.", false], ["Lidah membantu kita merasa makanan.", true], ["Kita ada lima deria.", true], ["Kulit dapat merasa panas dan sejuk.", true], ["Mata digunakan untuk menghidu.", false]])],
@@ -27,7 +28,7 @@ const LITUP = [["🐱", "Kucing", "bulu"], ["🐔", "Ayam", "bulu pelepah"], ["�
 const GERAK = [["🐦", "Burung", "terbang"], ["🐟", "Ikan", "berenang"], ["🐍", "Ular", "menjalar"], ["🐸", "Katak", "melompat"], ["🐎", "Kuda", "berlari"], ["🦘", "Kanggaru", "melompat"], ["🦋", "Rama-rama", "terbang"], ["🐬", "Ikan lumba-lumba", "berenang"]];
 const haiwan1 = blend(
   [2, () => { const [e, n, c] = pick(LITUP); return mcq(`Badan ${n.toLowerCase()} dilitupi oleh…`, c, ["bulu", "bulu pelepah", "sisik", "cangkerang keras", "kulit lembap"], { visual: pic(e) }); }],
-  [2, () => { const [e, n, g] = pick(GERAK); return mcq(`Bagaimanakah ${n.toLowerCase()} bergerak?`, g, ["terbang", "berenang", "menjalar", "melompat", "berlari"], { visual: pic(e) }); }],
+  [2, () => { const [e, n, g] = pick(GERAK); return mcq(`Bagaimanakah ${n.toLowerCase()} bergerak?`, g, ["terbang", "berenang", "menjalar", "melompat", "berlari"], { visual: pic(e), explain: `${n} bergerak dengan ${g}.` }); }],
   [1, pairs(GERAK.map(([e, n, g]) => [`${e} ${n}`, g]), "Padankan haiwan dengan cara ia bergerak.")],
   [1, tfq([["Ikan bernafas menggunakan insang.", true], ["Semua haiwan boleh terbang.", false], ["Kura-kura mempunyai cangkerang yang keras.", true], ["Ayam mempunyai empat kaki.", false]])],
 );
@@ -35,14 +36,14 @@ const BHG = [["akar", "menyerap air dan garam mineral dari tanah"], ["batang", "
 const MAKAN_BHG = [["🥕", "Lobak merah", "akar"], ["🥬", "Bayam", "daun"], ["🎋", "Tebu", "batang"], ["🥦", "Brokoli", "bunga"], ["🍎", "Epal", "buah"], ["🌽", "Jagung", "biji"], ["🥜", "Kacang tanah", "biji"], ["🥒", "Timun", "buah"]];
 const tumbuhan1 = blend(
   [2, () => { const [p, f] = pick(BHG); return mcq(`Bahagian tumbuhan yang berfungsi <b>${f}</b> ialah…`, p, BHG.map((x) => x[0])); }],
-  [2, () => { const [e, n, p] = pick(MAKAN_BHG); return mcq(`Bahagian tumbuhan manakah yang kita makan pada <b>${n.toLowerCase()}</b>?`, p, ["akar", "batang", "daun", "bunga", "buah", "biji"], { visual: pic(e) }); }],
-  [1, () => order("Susun bahagian pokok dari <b>bawah</b> ke <b>atas</b>.", ["akar", "batang", "daun"])],
+  [2, () => { const [e, n, p] = pick(MAKAN_BHG); return mcq(`Bahagian tumbuhan manakah yang kita makan pada <b>${n.toLowerCase()}</b>?`, p, ["akar", "batang", "daun", "bunga", "buah", "biji"], { visual: pic(e), explain: `Bahagian ${n.toLowerCase()} yang kita makan ialah ${p}nya.` }); }],
+  [1, () => order("Susun bahagian pokok dari <b>bawah</b> ke <b>atas</b>.", ["akar", "batang", "daun"], { explain: "Akar di dalam tanah, batang menyokong, daun di atas untuk mendapat cahaya." })],
   [1, pairs(BHG, "Padankan bahagian tumbuhan dengan fungsinya.", 3)],
 );
 const MAGNET = [["📎", "Klip kertas besi", "Ditarik"], ["🔩", "Skru besi", "Ditarik"], ["🔑", "Kunci besi", "Ditarik"], ["📌", "Paku tekan besi", "Ditarik"], ["✂️", "Bilah gunting besi", "Ditarik"],
   ["🧽", "Span", "Tidak ditarik"], ["🪵", "Kayu", "Tidak ditarik"], ["📄", "Kertas", "Tidak ditarik"], ["🥛", "Gelas kaca", "Tidak ditarik"], ["🎈", "Belon getah", "Tidak ditarik"], ["🧸", "Anak patung kain", "Tidak ditarik"], ["🥄", "Sudu plastik", "Tidak ditarik"]];
 const magnet = blend(
-  [3, sortInto(MAGNET, (n) => `Adakah <b>${n.toLowerCase()}</b> ditarik oleh magnet?`, ["Ditarik", "Tidak ditarik"])],
+  [3, sortInto(MAGNET, (n) => `Adakah <b>${n.toLowerCase()}</b> ditarik oleh magnet?`, ["Ditarik", "Tidak ditarik"], { Ditarik: "diperbuat daripada besi — magnet menarik besi.", "Tidak ditarik": "bukan bahan magnet. Magnet hanya menarik besi, keluli, nikel dan kobalt." })],
   [2, ask([["Dua kutub magnet yang <b>sama</b> akan…", "menolak", ["menarik", "melekat", "tidak berubah"]], ["Dua kutub magnet yang <b>berlainan</b> akan…", "menarik", ["menolak", "berpusing", "pecah"]],
     ["Magnet berbentuk huruf U dipanggil magnet…", "ladam", ["bar", "cincin", "butang"], "🧲"], ["Magnet menarik objek yang diperbuat daripada…", "besi", ["kayu", "plastik", "kertas"]],
     ["Kutub magnet ialah kutub utara dan kutub…", "selatan", ["timur", "barat", "tengah"]], ["Bahagian magnet yang paling kuat tarikannya ialah…", "kutub", ["tengah", "tepi", "permukaan"]]])],
@@ -51,7 +52,7 @@ const magnet = blend(
 const APUNG = [["🪵", "Kayu", "Terapung"], ["🍂", "Daun kering", "Terapung"], ["🏐", "Bola plastik", "Terapung"], ["🦆", "Itik getah mainan", "Terapung"], ["🧴", "Botol plastik kosong", "Terapung"], ["🍾", "Gabus botol", "Terapung"],
   ["🪨", "Batu", "Tenggelam"], ["🔩", "Skru besi", "Tenggelam"], ["🪙", "Duit syiling", "Tenggelam"], ["🔑", "Kunci", "Tenggelam"], ["🥄", "Sudu besi", "Tenggelam"], ["🔵", "Guli kaca", "Tenggelam"]];
 const bahan1 = blend(
-  [3, sortInto(APUNG, (n) => `Apakah yang berlaku kepada <b>${n.toLowerCase()}</b> apabila dimasukkan ke dalam air?`, ["Terapung", "Tenggelam"])],
+  [3, sortInto(APUNG, (n) => `Apakah yang berlaku kepada <b>${n.toLowerCase()}</b> apabila dimasukkan ke dalam air?`, ["Terapung", "Tenggelam"], { Terapung: "ringan atau berisi udara, jadi ia terapung.", Tenggelam: "lebih tumpat (berat bagi saiznya) daripada air, jadi ia tenggelam." })],
   [1, ask([["Pelampung keselamatan dibuat daripada bahan yang…", "terapung", ["tenggelam", "berat", "menyerap air"], "🛟"], ["Bot boleh terapung kerana bentuknya yang…", "lebar dan berongga", ["kecil dan padat", "tajam", "bulat dan berat"], "⛵"]])],
   [1, tfq([["Batu akan tenggelam di dalam air.", true], ["Kayu akan tenggelam di dalam air.", false], ["Daun kering terapung di atas air.", true]])],
 );
@@ -72,9 +73,9 @@ const gigi = blend([3, ask(GIGI)], [1, tfq([["Gigi susu akan diganti dengan gigi
 const BIAK = [["🐔", "Ayam", "Bertelur"], ["🐢", "Penyu", "Bertelur"], ["🐸", "Katak", "Bertelur"], ["🐊", "Buaya", "Bertelur"], ["🦆", "Itik", "Bertelur"], ["🐠", "Ikan emas", "Bertelur"],
   ["🐱", "Kucing", "Beranak"], ["🐄", "Lembu", "Beranak"], ["🐘", "Gajah", "Beranak"], ["🐋", "Ikan paus", "Beranak"], ["🦇", "Kelawar", "Beranak"], ["🐰", "Arnab", "Beranak"], ["🐐", "Kambing", "Beranak"]];
 const pembiakan = blend(
-  [3, sortInto(BIAK, (n) => `Bagaimanakah <b>${n.toLowerCase()}</b> membiak?`, ["Bertelur", "Beranak"])],
-  [1, () => order("Susun kitar hidup katak.", ["telur", "berudu", "katak muda", "katak dewasa"])],
-  [1, () => order("Susun kitar hidup rama-rama.", ["telur", "larva (ulat)", "pupa", "rama-rama"])],
+  [3, sortInto(BIAK, (n) => `Bagaimanakah <b>${n.toLowerCase()}</b> membiak?`, ["Bertelur", "Beranak"], { Bertelur: "membiak dengan bertelur.", Beranak: "membiak dengan beranak — anaknya lahir hidup." })],
+  [1, () => order("Susun kitar hidup katak.", ["telur", "berudu", "katak muda", "katak dewasa"], { explain: "Telur menetas menjadi berudu (berekor, hidup dalam air), kemudian tumbuh kaki menjadi katak muda, lalu katak dewasa." })],
+  [1, () => order("Susun kitar hidup rama-rama.", ["telur", "larva (ulat)", "pupa", "rama-rama"], { explain: "Telur → ulat yang banyak makan → pupa (kepompong) → rama-rama dewasa." })],
 );
 const PERLU = [["Tumbuhan memerlukan air, udara dan cahaya matahari untuk hidup.", true], ["Tumbuhan boleh hidup dengan baik di dalam almari gelap.", false], ["Daun tumbuhan akan menjadi kuning jika tidak mendapat cahaya.", true],
   ["Tumbuhan tidak memerlukan air.", false], ["Pokok yang tidak disiram akan layu.", true], ["Tumbuhan tumbuh ke arah cahaya.", true]];
@@ -84,7 +85,7 @@ const keperluanTumbuhan = blend([2, tfq(PERLU)], [2, ask([["Apakah yang berlaku 
 const SUMBER = [["☀️", "Matahari", "Ya"], ["💡", "Lampu", "Ya"], ["🕯️", "Lilin", "Ya"], ["🔥", "Api", "Ya"], ["🔦", "Lampu suluh", "Ya"], ["🌙", "Bulan", "Tidak"], ["🪞", "Cermin", "Tidak"], ["🪨", "Batu", "Tidak"], ["📖", "Buku", "Tidak"]];
 const LUT = [["🪟", "Kaca jernih", "lut sinar"], ["🧊", "Ketulan ais jernih", "lut sinar"], ["🪵", "Kayu", "legap"], ["📚", "Buku", "legap"], ["🧱", "Batu bata", "legap"], ["🧻", "Kertas tisu", "lut cahaya"], ["🌫️", "Kaca kabur", "lut cahaya"]];
 const cahaya1 = blend(
-  [2, sortInto(SUMBER, (n) => `Adakah <b>${n.toLowerCase()}</b> satu sumber cahaya?`, ["Ya", "Tidak"])],
+  [2, sortInto(SUMBER, (n) => `Adakah <b>${n.toLowerCase()}</b> satu sumber cahaya?`, ["Ya", "Tidak"], { Ya: "mengeluarkan cahayanya sendiri, jadi ia sumber cahaya.", Tidak: "tidak mengeluarkan cahaya sendiri, jadi ia bukan sumber cahaya." })],
   [2, () => { const [e, n, t] = pick(LUT); return mcq(`${n} ialah objek…`, t, ["lut sinar", "lut cahaya", "legap"], { visual: pic(e), n: 3 }); }],
   [2, ask([["Bayang-bayang terbentuk apabila cahaya dihalang oleh objek…", "legap", ["lut sinar", "berkilat", "berwarna"], "👤"], ["Bayang-bayang menjadi lebih besar apabila objek digerakkan…", "lebih dekat dengan sumber cahaya", ["lebih jauh dari sumber cahaya", "ke dalam air", "ke dalam gelap"], "🔦"],
     ["Bulan kelihatan bercahaya kerana ia…", "memantulkan cahaya Matahari", ["mengeluarkan cahayanya sendiri", "terbakar", "dekat dengan Bumi"], "🌕"]])],
@@ -92,14 +93,14 @@ const cahaya1 = blend(
 const SERAP = [["🧽", "Span", "Menyerap"], ["☁️", "Kapas", "Menyerap"], ["🧻", "Kertas tisu", "Menyerap"], ["🧣", "Kain tuala", "Menyerap"], ["📰", "Surat khabar", "Menyerap"],
   ["🛍️", "Beg plastik", "Tidak menyerap"], ["🥛", "Gelas kaca", "Tidak menyerap"], ["🎈", "Belon getah", "Tidak menyerap"], ["🥫", "Tin aluminium", "Tidak menyerap"], ["☂️", "Kain payung", "Tidak menyerap"]];
 const serapAir = blend(
-  [3, sortInto(SERAP, (n) => `Adakah <b>${n.toLowerCase()}</b> menyerap air?`, ["Menyerap", "Tidak menyerap"])],
+  [3, sortInto(SERAP, (n) => `Adakah <b>${n.toLowerCase()}</b> menyerap air?`, ["Menyerap", "Tidak menyerap"], { Menyerap: "bahan yang berliang (seperti kain, kertas, span) menyerap air.", "Tidak menyerap": "bahan kalis air (seperti plastik, kaca, logam) tidak menyerap air." })],
   [1, ask([["Baju hujan dibuat daripada bahan yang…", "kalis air", ["menyerap air", "mudah koyak", "lut sinar"], "🧥"], ["Lampin bayi dibuat daripada bahan yang…", "menyerap air", ["kalis air", "keras", "berkilat"], "👶"],
     ["Bahan yang paling sesuai untuk mengelap air yang tumpah ialah…", "span", ["plastik", "kaca", "kertas aluminium"], "💧"]])],
 );
 const HIDUP = [["🐱", "Kucing", "Benda hidup"], ["🌳", "Pokok", "Benda hidup"], ["🐟", "Ikan", "Benda hidup"], ["🍄", "Cendawan", "Benda hidup"], ["🐜", "Semut", "Benda hidup"], ["👧", "Manusia", "Benda hidup"],
   ["🪨", "Batu", "Benda bukan hidup"], ["🪑", "Kerusi", "Benda bukan hidup"], ["🚗", "Kereta", "Benda bukan hidup"], ["⚽", "Bola", "Benda bukan hidup"], ["🤖", "Robot mainan", "Benda bukan hidup"], ["☁️", "Awan", "Benda bukan hidup"]];
 const pengelasan = blend(
-  [3, sortInto(HIDUP, (n) => `${n} ialah…`, ["Benda hidup", "Benda bukan hidup"])],
+  [3, sortInto(HIDUP, (n) => `${n} ialah…`, ["Benda hidup", "Benda bukan hidup"], { "Benda hidup": "bernafas, makan, membesar dan membiak — benda hidup.", "Benda bukan hidup": "tidak bernafas, makan, membesar atau membiak — benda bukan hidup." })],
   [2, ask([["Antara berikut, yang manakah ciri benda hidup?", "membesar", ["berkilat", "berwarna", "keras"]], ["Benda hidup memerlukan ___ untuk terus hidup.", "makanan dan air", ["bateri", "elektrik", "minyak petrol"]],
     ["Antara berikut, yang manakah BUKAN ciri benda hidup?", "dibuat oleh manusia", ["bernafas", "membiak", "bergerak"]], ["Anak kucing akan ___ menjadi kucing dewasa.", "membesar", ["berkarat", "mencair", "pecah"], "🐈"]])],
 );
@@ -122,14 +123,14 @@ const kelasMakanan = blend(
 const DIET = [["🐄", "Lembu", "herbivor"], ["🐐", "Kambing", "herbivor"], ["🐰", "Arnab", "herbivor"], ["🦒", "Zirafah", "herbivor"], ["🐘", "Gajah", "herbivor"], ["🐅", "Harimau", "karnivor"], ["🦁", "Singa", "karnivor"],
   ["🦅", "Helang", "karnivor"], ["🐊", "Buaya", "karnivor"], ["🐍", "Ular", "karnivor"], ["🐔", "Ayam", "omnivor"], ["🐻", "Beruang", "omnivor"], ["🐀", "Tikus", "omnivor"], ["🐒", "Monyet", "omnivor"]];
 const makananHaiwan = blend(
-  [3, sortInto(DIET, (n) => `${n} ialah haiwan…`, ["herbivor", "karnivor", "omnivor"])],
+  [3, sortInto(DIET, (n) => `${n} ialah haiwan…`, ["herbivor", "karnivor", "omnivor"], { herbivor: "makan tumbuhan sahaja — herbivor.", karnivor: "makan daging (haiwan lain) — karnivor.", omnivor: "makan tumbuhan dan daging — omnivor." })],
   [1, ask([["Haiwan yang makan <b>tumbuhan sahaja</b> dipanggil…", "herbivor", ["karnivor", "omnivor", "pemangsa"]], ["Haiwan yang makan <b>daging sahaja</b> dipanggil…", "karnivor", ["herbivor", "omnivor", "pengeluar"]],
     ["Haiwan yang makan <b>tumbuhan dan daging</b> dipanggil…", "omnivor", ["herbivor", "karnivor", "pengeluar"]], ["Karnivor mempunyai gigi taring yang…", "tajam untuk mengoyak daging", ["leper untuk mengisar rumput", "tumpul", "lembut"], "🦷"]])],
 );
 const ASID = [["🍋", "Jus limau", "asid"], ["🍶", "Cuka", "asid"], ["🍊", "Jus oren", "asid"], ["🧼", "Air sabun", "alkali"], ["🪥", "Ubat gigi", "alkali"], ["🧺", "Larutan serbuk pencuci", "alkali"],
   ["💧", "Air suling", "neutral"], ["🧂", "Larutan garam", "neutral"], ["🍬", "Larutan gula", "neutral"]];
 const asidAlkali = blend(
-  [3, sortInto(ASID, (n) => `${n} bersifat…`, ["asid", "alkali", "neutral"])],
+  [3, sortInto(ASID, (n) => `${n} bersifat…`, ["asid", "alkali", "neutral"], { asid: "rasa masam dan menukar kertas litmus biru kepada merah — asid.", alkali: "rasa pahit, licin dan menukar kertas litmus merah kepada biru — alkali.", neutral: "tidak menukar warna kertas litmus — neutral." })],
   [2, ask([["Bahan <b>asid</b> menukarkan kertas litmus biru kepada…", "merah", ["biru", "hijau", "kuning"], "🧪"], ["Bahan <b>alkali</b> menukarkan kertas litmus merah kepada…", "biru", ["merah", "ungu", "hitam"], "🧪"],
     ["Bahan neutral ___ warna kertas litmus.", "tidak mengubah", ["mengubah", "membakar", "memadam"], "🧪"], ["Bahan asid biasanya berasa…", "masam", ["manis", "pahit", "masin"], "🍋"],
     ["Bahan alkali biasanya berasa pahit dan terasa…", "licin", ["kasar", "panas", "melekit"], "🧼"]])],
@@ -152,25 +153,25 @@ const NAFAS = [["Organ utama pernafasan manusia ialah…", "peparu", ["jantung",
   ["Semasa menghembus nafas, kita mengeluarkan gas…", "karbon dioksida", ["oksigen", "hidrogen", "helium"]], ["Udara masuk ke dalam badan melalui…", "hidung", ["telinga", "mata", "kulit"], "👃"],
   ["Kadar pernafasan kita ___ selepas bersenam.", "bertambah", ["berkurang", "berhenti", "tidak berubah"], "🏃"], ["Kulit menyingkirkan bahan kumuh dalam bentuk…", "peluh", ["air kencing", "karbon dioksida", "air liur"], "💦"],
   ["Ginjal menyingkirkan bahan kumuh dalam bentuk…", "air kencing", ["peluh", "air mata", "karbon dioksida"]], ["Peparu menyingkirkan karbon dioksida dan…", "wap air", ["peluh", "air kencing", "darah"]]];
-const nafas = blend([3, ask(NAFAS)], [1, () => order("Susun laluan udara semasa menarik nafas.", ["hidung", "trakea", "peparu"])], [1, pairs([["kulit", "peluh"], ["ginjal", "air kencing"], ["peparu", "karbon dioksida"]], "Padankan organ perkumuhan dengan bahan kumuhnya.", 3)]);
+const nafas = blend([3, ask(NAFAS)], [1, () => order("Susun laluan udara semasa menarik nafas.", ["hidung", "trakea", "peparu"], { explain: "Udara masuk melalui hidung, turun melalui trakea (salur udara) ke peparu." })], [1, pairs([["kulit", "peluh"], ["ginjal", "air kencing"], ["peparu", "karbon dioksida"]], "Padankan organ perkumuhan dengan bahan kumuhnya.", 3)]);
 const LINDUNG_H = [["🐢", "Kura-kura", "menyorok di dalam cangkerang keras"], ["🦔", "Landak", "menegakkan duri yang tajam"], ["🦑", "Sotong", "memancutkan dakwat hitam"], ["🦎", "Sesumpah", "menukar warna kulit"],
   ["🐡", "Ikan buntal", "mengembungkan badan"], ["🐛", "Ulat bulu", "mempunyai bulu yang menyebabkan gatal"], ["🐝", "Lebah", "menyengat"], ["🐻", "Beruang kutub", "mempunyai bulu tebal untuk cuaca sejuk"]];
 const perlindunganHaiwan = blend(
-  [3, () => { const [e, n, c] = pick(LINDUNG_H); return mcq(`Bagaimanakah <b>${n.toLowerCase()}</b> melindungi dirinya?`, c, LINDUNG_H.map((x) => x[2]), { visual: pic(e) }); }],
+  [3, () => { const [e, n, c] = pick(LINDUNG_H); return mcq(`Bagaimanakah <b>${n.toLowerCase()}</b> melindungi dirinya?`, c, LINDUNG_H.map((x) => x[2]), { visual: pic(e), explain: `${n} melindungi dirinya dengan ${c}.` }); }],
   [1, pairs(LINDUNG_H.map(([e, n, c]) => [`${e} ${n}`, c]), "Padankan haiwan dengan cara ia melindungi diri.", 3)],
   [1, ask([["Mengapakah haiwan perlu melindungi diri?", "untuk mengelakkan diri daripada musuh", ["untuk mencari pasangan sahaja", "untuk tidur", "untuk bermain"]], ["Burung berhijrah ke tempat lain semasa musim…", "sejuk", ["panas", "buah", "hujan rintik"], "🕊️"]])],
 );
 const LINDUNG_T = [["🌵", "Kaktus", "daun berbentuk duri"], ["🌹", "Pokok mawar", "batang berduri"], ["🍈", "Durian", "kulit buah berduri tajam"], ["🌿", "Semalu", "daun menguncup apabila disentuh"], ["🍃", "Keladi", "menyebabkan kegatalan"], ["🌳", "Pokok getah", "mengeluarkan susu getah"]];
 const SEBAR = [["🌾", "Lalang", "angin"], ["☁️", "Kekabu", "angin"], ["🍁", "Angsana", "angin"], ["🥥", "Kelapa", "air"], ["🌴", "Nipah", "air"], ["🔴", "Rambutan", "haiwan"], ["🍈", "Jambu batu", "haiwan"], ["🫛", "Kacang bendi", "letupan"], ["🌳", "Getah", "letupan"]];
 const tumbuhan4 = blend(
-  [2, () => { const [e, n, c] = pick(LINDUNG_T); return mcq(`Bagaimanakah <b>${n.toLowerCase()}</b> melindungi dirinya?`, c, LINDUNG_T.map((x) => x[2]), { visual: pic(e) }); }],
+  [2, () => { const [e, n, c] = pick(LINDUNG_T); return mcq(`Bagaimanakah <b>${n.toLowerCase()}</b> melindungi dirinya?`, c, LINDUNG_T.map((x) => x[2]), { visual: pic(e), explain: `${n} melindungi dirinya dengan ${c}.` }); }],
   [3, () => { const [e, n, c] = pick(SEBAR); return mcq(`Biji benih <b>${n.toLowerCase()}</b> disebarkan oleh…`, c, ["angin", "air", "haiwan", "letupan"], { visual: pic(e) }); }],
   [1, ask([["Mengapakah biji benih perlu disebarkan?", "supaya anak pokok tidak bersaing untuk mendapatkan keperluan", ["supaya pokok cepat mati", "supaya buah manis", "supaya daun gugur"]], ["Biji benih yang disebarkan oleh angin biasanya…", "ringan dan bersayap", ["berat dan keras", "berduri", "berisi air"]]])],
 );
 const BAHAN4 = [["🔩", "Paku besi", "konduktor elektrik"], ["🪙", "Duit syiling", "konduktor elektrik"], ["🥄", "Sudu keluli", "konduktor elektrik"], ["🔌", "Wayar kuprum", "konduktor elektrik"],
   ["🪵", "Pembaris kayu", "penebat elektrik"], ["🧤", "Sarung tangan getah", "penebat elektrik"], ["🥤", "Straw plastik", "penebat elektrik"], ["🥛", "Gelas kaca", "penebat elektrik"]];
 const sifatBahan = blend(
-  [3, sortInto(BAHAN4, (n) => `${n} ialah…`, ["konduktor elektrik", "penebat elektrik"])],
+  [3, sortInto(BAHAN4, (n) => `${n} ialah…`, ["konduktor elektrik", "penebat elektrik"], { "konduktor elektrik": "membenarkan arus elektrik mengalir (kebanyakan logam) — konduktor.", "penebat elektrik": "tidak membenarkan arus elektrik mengalir (plastik, getah, kayu kering) — penebat." })],
   [2, ask([["Pemegang periuk dibuat daripada kayu atau plastik kerana bahan itu…", "penebat haba", ["konduktor haba", "lut sinar", "kalis air"], "🍳"], ["Periuk dibuat daripada logam kerana logam ialah…", "konduktor haba yang baik", ["penebat haba", "bahan lut sinar", "bahan menyerap air"], "🍲"],
     ["Tingkap dibuat daripada kaca kerana kaca…", "lut sinar", ["legap", "menyerap air", "lembut"], "🪟"], ["Kasut but hujan dibuat daripada getah kerana getah…", "kalis air", ["menyerap air", "lut sinar", "keras"], "🥾"],
     ["Wayar elektrik dibalut dengan plastik untuk…", "mengelakkan kejutan elektrik", ["menjadikannya cantik", "menambah berat", "menyerap air"], "🔌"]])],
@@ -180,7 +181,7 @@ const SURIA = [["Planet yang paling hampir dengan Matahari ialah…", "Utarid", 
   ["Planet yang paling jauh dari Matahari ialah…", "Neptun", PLANET], ["Planet yang dikenali sebagai planet merah ialah…", "Marikh", PLANET], ["Planet yang terkenal dengan gelangnya yang cantik ialah…", "Zuhal", PLANET],
   ["Bumi ialah planet yang ke-___ dari Matahari.", "3", ["1", "2", "4"]], ["Bilangan planet dalam Sistem Suria ialah…", "8", ["7", "9", "10"]], ["Matahari ialah sebuah…", "bintang", ["planet", "bulan", "komet"], "☀️"],
   ["Satelit semula jadi Bumi ialah…", "Bulan", ["Matahari", "Marikh", "Zuhal"], "🌕"]];
-const sistemSuria = blend([4, ask(SURIA)], [1, () => { const i = rnd(0, 4); return order("Susun planet mengikut kedudukan dari Matahari.", PLANET.slice(i, i + 4)); }]);
+const sistemSuria = blend([4, ask(SURIA)], [1, () => { const i = rnd(0, 4); return order("Susun planet mengikut kedudukan dari Matahari.", PLANET.slice(i, i + 4), { explain: `Dari Matahari: ${PLANET.join(", ")}.` }); }]);
 const KUKUH = [["Objek lebih stabil jika tapaknya…", "lebar", ["sempit", "tinggi", "bulat"]], ["Objek lebih stabil jika ketinggiannya…", "rendah", ["tinggi", "senget", "berat di atas"]],
   ["Bentuk yang menjadikan struktur jambatan lebih kuat ialah…", "segi tiga", ["bulatan", "segi empat tepat", "bintang"], "🌉"], ["Lampu meja mempunyai tapak yang berat supaya…", "lebih stabil", ["lebih cantik", "mudah jatuh", "lebih terang"], "💡"],
   ["Kerusi yang mempunyai kaki yang lebih banyak adalah lebih…", "stabil", ["ringan", "lemah", "tinggi"], "🪑"], ["Bas dua tingkat membawa penumpang yang lebih ramai di tingkat bawah supaya…", "lebih stabil", ["lebih laju", "lebih senyap", "lebih ringan"], "🚌"]];
@@ -189,9 +190,9 @@ const kekuatan = blend([3, ask(KUKUH)], [1, tfq([["Menara yang tinggi dengan tap
 // ================================================================ TAHUN 5
 const RANTAI = [["padi", "tikus", "ular", "helang"], ["rumput", "belalang", "katak", "ular"], ["daun", "ulat", "burung", "kucing"], ["rumput", "rusa", "harimau"], ["alga", "ikan kecil", "ikan besar", "manusia"], ["rumput", "kambing", "harimau"]];
 const rantaiMakanan = blend(
-  [2, () => order("Susun rantai makanan ini dengan betul.", pick(RANTAI))],
-  [2, () => { const r = pick(RANTAI); return mcq(`Dalam rantai makanan: ${r.join(" → ")}, siapakah <b>pengeluar</b>?`, r[0], r.slice(1)); }],
-  [1, () => { const r = pick(RANTAI.filter((x) => x.length >= 4)); return mcq(`Dalam rantai makanan: ${r.join(" → ")}, apakah yang berlaku kepada bilangan <b>${r[1]}</b> jika semua <b>${r[2]}</b> mati?`, "bertambah", ["berkurang", "tidak berubah", "semuanya mati"]); }],
+  [2, () => (() => { const r = pick(RANTAI); return order("Susun rantai makanan ini dengan betul.", r, { explain: `Mula dengan pengeluar (tumbuhan, ${r[0]}), kemudian siapa yang memakannya: ${r.join(" → ")}.` }); })()],
+  [2, () => { const r = pick(RANTAI); return mcq(`Dalam rantai makanan: ${r.join(" → ")}, siapakah <b>pengeluar</b>?`, r[0], r.slice(1), { explain: `Pengeluar ialah tumbuhan hijau yang membuat makanan sendiri — ${r[0]}, di permulaan rantai.` }); }],
+  [1, () => { const r = pick(RANTAI.filter((x) => x.length >= 4)); return mcq(`Dalam rantai makanan: ${r.join(" → ")}, apakah yang berlaku kepada bilangan <b>${r[1]}</b> jika semua <b>${r[2]}</b> mati?`, "bertambah", ["berkurang", "tidak berubah", "semuanya mati"], { explain: `${r[2]} memakan ${r[1]}. Jika ${r[2]} mati, tiada lagi yang memakan ${r[1]} — jadi bilangannya bertambah.` }); }],
   [1, ask([["Tumbuhan hijau dikenali sebagai pengeluar kerana…", "boleh membuat makanan sendiri", ["boleh bergerak", "makan haiwan", "hidup di dalam air"], "🌿"], ["Beberapa rantai makanan yang berhubung membentuk…", "siratan makanan", ["rantai panjang", "kitar air", "piramid nombor"], "🕸️"]])],
 );
 const ELEK = [["Sumber tenaga elektrik bagi lampu suluh ialah…", "sel kering", ["suis", "mentol", "wayar"], "🔦"], ["Komponen yang digunakan untuk menghidupkan dan mematikan litar ialah…", "suis", ["mentol", "sel kering", "wayar"]],
@@ -216,7 +217,7 @@ const BULAN = [["Bumi berputar pada paksinya dan menyebabkan berlakunya…", "si
   ["Bumi mengambil masa lebih kurang ___ untuk beredar mengelilingi Matahari.", "365¼ hari", ["24 jam", "29½ hari", "7 hari"], "☀️"], ["Matahari terbit di sebelah…", "timur", ["barat", "utara", "selatan"], "🌅"],
   ["Matahari terbenam di sebelah…", "barat", ["timur", "utara", "selatan"], "🌇"], ["Bayang-bayang kita paling pendek pada waktu…", "tengah hari", ["pagi", "petang", "malam"], "👤"],
   ["Fasa bulan berlaku kerana…", "Bulan beredar mengelilingi Bumi", ["Bulan berubah saiz", "awan menutup Bulan", "Matahari berputar"], "🌓"], ["Bulan mengambil masa lebih kurang ___ untuk melengkapkan satu kitaran fasa.", "29½ hari", ["7 hari", "365 hari", "24 jam"], "🌕"]];
-const bumiBulan = blend([4, ask(BULAN)], [1, () => order("Susun fasa bulan bermula dengan anak bulan.", ["anak bulan", "sabit", "separa", "purnama"])]);
+const bumiBulan = blend([4, ask(BULAN)], [1, () => order("Susun fasa bulan bermula dengan anak bulan.", ["anak bulan", "sabit", "separa", "purnama"], { explain: "Bahagian bulan yang bercahaya bertambah: anak bulan → sabit → separa → purnama (penuh)." })]);
 const CAHAYA5 = [["Cahaya bergerak dalam garis…", "lurus", ["bengkok", "bulat", "zig-zag"], "🔦"], ["Kita dapat melihat imej di dalam cermin kerana cahaya…", "dipantulkan", ["diserap", "dibiaskan sahaja", "dihentikan"], "🪞"],
   ["Straw kelihatan bengkok di dalam gelas berisi air kerana cahaya…", "dibiaskan", ["dipantulkan", "diserap", "bergerak lurus"], "🥤"], ["Alat yang menggunakan dua cermin untuk melihat dari atas halangan ialah…", "periskop", ["teleskop", "mikroskop", "kanta pembesar"], "🔭"],
   ["Pelangi terbentuk apabila cahaya matahari melalui…", "titisan air", ["awan gelap", "pokok", "batu"], "🌈"], ["Cermin pandang belakang kereta menggunakan konsep…", "pantulan cahaya", ["pembiasan cahaya", "penyerapan cahaya", "penyejatan"], "🚗"],
@@ -315,14 +316,23 @@ export const SAINS = {
   ],
 };
 
+/** A fact sentence from a "… ialah…" style question: the prompt with the answer filled in. */
+function factOf(q) {
+  if (q.explain || !["mcq", "fill"].includes(q.type)) return q;
+  const p = q.prompt.replace(/<[^>]+>/g, "").trim();
+  if (/…$/.test(p)) return { ...q, explain: `${p.replace(/…$/, "")}${/[\s(]$/.test(p.slice(0, -1)) ? "" : " "}${q.answer}.`.replace(/\s+/g, " ").replace(/ ([.,])/g, "$1") };
+  if (/___/.test(p)) return { ...q, explain: p.replace("___", q.answer) };
+  return q;
+}
 // more questions per chapter (bank-sains-extra.js), mixed in with the chapter's own generator
 for (const y of Object.keys(SAINS)) {
   SAINS[y] = SAINS[y].map(([id, title, emoji, gen]) => {
     const x = SAINS_EXTRA[id];
-    if (!x) return [id, title, emoji, gen];
+    if (!x) return [id, title, emoji, () => factOf(gen())];
     const parts = [[3, gen]];
     if (x.ask?.length) parts.push([2, ask(x.ask)]);
     if (x.tf?.length) parts.push([1, tfq(x.tf)]);
-    return [id, title, emoji, blend(...parts)];
+    const all = blend(...parts);
+    return [id, title, emoji, () => factOf(all())];
   });
 }

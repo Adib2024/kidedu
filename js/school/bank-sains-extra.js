@@ -67,7 +67,7 @@ export const SAINS_EXTRA = {
   },
   "apung-tenggelam": {
     ask: [
-      ["Ais terapung di atas air kerana ais lebih ___ daripada air.", "kurang tumpat", ["berat", "panas", "keras"], "🧊"],
+      ["Ais terapung di atas air kerana ais ___ daripada air.", "kurang tumpat", ["lebih berat", "lebih panas", "lebih keras"], "🧊"],
       ["Kapal besi boleh terapung kerana bentuknya…", "berongga dan lebar", ["kecil dan padat", "bulat dan pejal", "tajam di semua sisi"], "🚢"],
       ["Jaket keselamatan membantu kita…", "terapung di dalam air", ["tenggelam cepat", "berenang lebih laju di darat", "bernafas dalam air"], "🦺"],
       ["Plastisin berbentuk bola akan tenggelam, tetapi jika dibentuk seperti bot ia akan…", "terapung", ["meletup", "cair", "tenggelam lebih cepat"], "🛶"],

@@ -14,7 +14,7 @@ Web app statik (PWA) tanpa build step: HTML + CSS + JavaScript ES modules. Boleh
 | 🔤 English | 46 | vocabulary, tenses, plurals, prepositions, comparatives, 🎧 listen & choose / spell / sentences, levelled reading passages |
 | 🔬 Sains | 36 | pancaindera, haiwan, tumbuhan, magnet, gigi, kelas makanan, asid & alkali, sistem suria, litar elektrik, keadaan jirim, mikroorganisma, daya, kelajuan, pemuliharaan |
 
-Setiap bab ada 3 peringkat (Latihan dengan bantuan, ⏱️ Cabaran Masa, ⚔️ Lawan Bos), 6 jenis soalan (aneka pilihan, betul/salah, taip jawapan, isi tempat kosong, susun, padankan) + soalan dengar (suara peranti; versi bertulis untuk cetakan / peranti tanpa suara), Ulang Kaji Pintar (Leitner), Cabaran Harian dan lembaran latihan boleh cetak dengan skema. **Kedai Pipi** — tukar bintang dengan aksesori Pipi Panda (kosmetik sahaja). **Laporan Sekolah** untuk ibu bapa: bab dikuasai, ketepatan, masa belajar, bab yang perlu bantuan.
+Setiap bab ada 3 peringkat (Latihan dengan bantuan, ⏱️ Cabaran Masa, ⚔️ Lawan Bos), 6 jenis soalan (aneka pilihan, betul/salah, taip jawapan, isi tempat kosong, susun, padankan) + soalan dengar (suara peranti; versi bertulis untuk cetakan / peranti tanpa suara), Ulang Kaji Pintar (Leitner), Cabaran Harian dan lembaran latihan boleh cetak dengan skema. **Belajar daripada kesilapan:** setiap jawapan salah diberi sebab (peraturan tatabahasa, maksud perkataan, ayat bukti dalam petikan, fakta Sains yang betul) dan Matematik menunjukkan **langkah demi langkah** (bentuk lazim dengan bawa/pinjam, bahagi panjang, pecahan, peratus, purata…). **Latihan menyesuaikan tahap** (🌱 Mudah · 🌿 Sederhana · 🌳 Mencabar): 2 betul berturut-turut → lebih mencabar, salah → lebih mudah. **Kedai Pipi** — tukar bintang dengan aksesori Pipi Panda (kosmetik sahaja). **Laporan Sekolah** untuk ibu bapa: bab dikuasai, ketepatan, masa belajar, bab yang perlu bantuan.
 
 Topik baharu: tambah penjana dalam `js/school/gen-*.js`, kemudian `node scripts/gen-school-seed.mjs <YYYYMMDDhhmmss_nama>.sql` untuk migrasi katalog baharu (jangan ubah migrasi yang sudah dijalankan).
 
@@ -125,7 +125,7 @@ js/engine.js             — enjin kuiz, keputusan, memory, objek tersembunyi
 js/data/*                — kosa kata, penjana soalan, games, peta, buku, gambar, tips
 js/pages/*               — setiap seksyen
 js/progression.js        — XP/tahap, misi, matlamat mingguan, titik lemah, cadangan (fungsi tulen)
-js/school/*              — Sekolah: kurikulum, penjana soalan (gen-math/bm/en/sains), pemain pusingan, ulang kaji, laporan
+js/school/*              — Sekolah: kurikulum, penjana soalan (gen-math/bm/en/sains), langkah penyelesaian (steps.js), pemain pusingan + tahap menyesuaikan, ulang kaji, laporan
 js/shop.js               — Kedai Pipi (aksesori maskot dibeli dengan bintang)
 js/voice.js, js/voicekey.js — suara semula jadi: main klip MP3, sandaran suara peranti
 scripts/gen-audio.mjs, scripts/tts-texts.mjs — senarai ayat & penjana klip Google TTS

@@ -7,7 +7,7 @@ import { mascot } from "../mascot.js";
 import {
   SUBJECTS, YEARS, STAGES, topics, topicById, subjectById, roundFor, activityId, familyId, REVIEW_ID, DAILY_FAMILY, timeLimit, gradeOf, gradeLabel,
 } from "../school/curriculum.js";
-import { playRound } from "../school/play.js";
+import { playRound, stepsHtml, LEVELS } from "../school/play.js";
 import { loadReview, addMistakes, applyReview, dueItems, buildReviewRound } from "../school/review.js";
 import { makeSet, plain, correctOf, silent, qKey } from "../school/qkit.js";
 
@@ -17,15 +17,24 @@ const SEEN_MAX = 60;
 const seenKey = (t) => `ppl_seen:${store.activeChild?.id || "-"}:${t.subject}-t${t.year}:${t.id}`;
 const hashKey = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193); return (h >>> 0).toString(36); };
 const shortKey = (q) => hashKey(qKey(q));
-function freshRound(t) {
-  let seen = [];
-  try { seen = JSON.parse(localStorage.getItem(seenKey(t)) || "[]"); } catch {}
-  const recent = new Set(seen);
-  const qs = roundFor(t, undefined, { avoid: { has: (key) => recent.has(hashKey(key)) } });
+const readSeen = (t) => { try { return JSON.parse(localStorage.getItem(seenKey(t)) || "[]"); } catch { return []; } };
+/** n questions for a topic, preferring ones this child has not seen recently. */
+function freshPool(t, n) {
+  const recent = new Set(readSeen(t));
+  return roundFor(t, n, { avoid: { has: (key) => recent.has(hashKey(key)) } });
+}
+/** Remember the questions that were actually asked, so the next rounds rotate to others. */
+function markSeen(t, qs) {
   const keys = qs.map(shortKey);
-  try { localStorage.setItem(seenKey(t), JSON.stringify([...seen.filter((k) => !keys.includes(k)), ...keys].slice(-SEEN_MAX))); } catch {}
+  try { localStorage.setItem(seenKey(t), JSON.stringify([...readSeen(t).filter((k) => !keys.includes(k)), ...keys].slice(-SEEN_MAX))); } catch {}
+}
+function freshRound(t) {
+  const qs = freshPool(t);
+  markSeen(t, qs);
   return qs;
 }
+/** Latihan adapts to the child: a pool three times the round size, sorted into easy / medium / hard. */
+const ADAPTIVE_POOL = 30;
 
 // ------------------------------------------------------------ progress helpers
 const stageStars = (s, y, t, st) => store.starsOf(activityId(s, y, t, st));
@@ -157,16 +166,16 @@ export function schoolPlay(el, { subject, year, topic, stage }) {
     ctl?.stop?.();
     view.innerHTML = `<h1 class="sr-only">${esc(subj.title)} Tahun ${y}: ${esc(t.title)} — ${esc(st.title)}</h1><div data-play></div>`;
     ctl = playRound(view.querySelector("[data-play]"), {
-      questions: freshRound(t), mode: stage, subject: subj, timeSec: timeLimit(y),
+      ...(stage === "latihan" ? { pool: freshPool(t, ADAPTIVE_POOL), count: 10 } : { questions: freshRound(t) }), mode: stage, subject: subj, timeSec: timeLimit(y),
       onExit: () => (location.hash = chapterHref(subject, y, t.id).slice(1)),
-      onFinish: (r) => finishRound(view, r, {
+      onFinish: (r) => { if (stage === "latihan") markSeen(t, r.asked); finishRound(view, r, {
         id, subj, title: `${t.title} · ${st.title}`, mode: stage,
         actions: (stars) => [
           { label: "🔁 Main lagi", cls: "sun", onClick: start },
           ...(stage === "latihan" && stars > 0 ? [{ label: `${subj.boss} Lawan Bos`, cls: "grape", onClick: () => (location.hash = `/sekolah/main/${subject}/${y}/${t.id}/bos`) }] : []),
           { label: "📋 Bab", cls: "ghost", onClick: () => (location.hash = chapterHref(subject, y, t.id).slice(1)) },
         ],
-      }),
+      }); },
     });
   };
   start();
@@ -187,9 +196,10 @@ async function finishRound(view, r, { id, subj, title, mode, actions, onSaved })
   if (mode === "bos") extra.push(r.bossDefeated ? `<div class="res-banner win">🏆 Kamu kalahkan ${esc(subj.bossName)}! ${subj.boss}💥</div>` : r.lostAllLives ? `<div class="res-banner lose">💔 Nyawa habis — ${esc(subj.bossName)} masih kuat. Cuba lagi!</div>` : `<div class="res-banner">${subj.boss} ${esc(subj.bossName)} terselamat… jawab 7 betul untuk menang!</div>`);
   if (mode === "masa") extra.push(r.timedOut ? `<div class="res-banner lose">⏰ Masa tamat!</div>` : `<div class="res-banner win">⚡ Siap dengan baki ${r.timeLeft} saat!</div>`);
   if (r.maxCombo >= 3) extra.push(`<p class="res-combo">🔥 Combo terbaik: <b>${r.maxCombo}</b></p>`);
+  if (r.level != null) extra.push(`<p class="res-level">${LEVELS[r.level][0]} Tahap akhir: <b>${LEVELS[r.level][1]}</b>${r.level === 2 ? " — hebat, kamu sedia lawan bos!" : r.level === 0 ? " — teruskan berlatih, kamu semakin baik!" : ""}</p>`);
   if (r.wrong.length) {
     extra.push(`<details class="res-review" ${r.wrong.length <= 3 ? "open" : ""}><summary>Semak ${r.wrong.length} soalan yang salah</summary><ul>${r.wrong.slice(0, 8).map((q) =>
-      `<li><span>${esc(plain(silent(q).prompt).slice(0, 90))}</span><b>✔ ${esc(q.type === "match" ? "padankan semua pasangan" : q.answer)}</b></li>`).join("")}</ul>
+      `<li><span>${esc(plain(silent(q).prompt).slice(0, 90))}</span><b>✔ ${esc(q.type === "match" ? "padankan semua pasangan" : q.answer)}</b>${q.explain ? `<small class="rv-why">💡 ${esc(q.explain)}</small>` : ""}${stepsHtml(q)}</li>`).join("")}</ul>
       <p class="small muted">🔁 Soalan ini disimpan dalam <a href="#/sekolah/ulang-kaji">Ulang Kaji Pintar</a>.</p></details>`);
   }
   showResult(view, { score: r.score, total: r.total, earned: shownStars, newSticker: res.newSticker, saveFailed: res.saveFailed, xpGained: res.xpGained, totalXp: res.totalXp,

@@ -1,5 +1,5 @@
 // English Year 1–6 (aligned with the KSSR CEFR-based syllabus): vocabulary, grammar, sentences, reading.
-import { mcq, tfEn, order, match, fill, blend, pick, sample } from "./qkit.js";
+import { mcq, tfEn, order, match, fill, blend, pick, sample, evidence } from "./qkit.js";
 
 const E = (o = {}) => ({ lang: "en", ...o });
 /** Correct third-person and -ing forms, so distractors never teach a misspelling. */
@@ -160,7 +160,7 @@ const READING = [
   [1, "Mia's class has a new pet. It is a small green turtle. The pupils call it Speedy. Every day, one pupil feeds Speedy and cleans its tank. Today, it is Mia's turn.",
     [["What is the class pet?", "a turtle", ["a fish", "a rabbit", "a hamster"]], ["What colour is the pet?", "green", ["brown", "yellow", "grey"]], ["What is the pet's name?", "Speedy", ["Mia", "Shelly", "Tiny"]], ["Whose turn is it today?", "Mia's", ["the teacher's", "Speedy's", "nobody's"]]]],
   [2, "Kumar wanted to buy a birthday present for his mother. He saved some of his pocket money every day for two months. Finally, he bought her a beautiful scarf. His mother hugged him and said it was the best present ever.",
-    [["Why did Kumar save money?", "to buy a present for his mother", ["to buy a new bicycle", "to go on holiday", "to buy a toy"]], ["How long did he save?", "two months", ["two weeks", "two years", "two days"]], ["What did he buy?", "a scarf", ["a bag", "a watch", "flowers"]], ["How did his mother feel?", "very happy", ["angry", "worried", "bored"]]]],
+    [["Why did Kumar save money?", "to buy a present for his mother", ["to buy a new bicycle", "to go on holiday", "to buy a toy"]], ["How long did he save?", "two months", ["two weeks", "two years", "two days"]], ["What did he buy?", "a scarf", ["a bag", "a watch", "flowers"]], ["How did his mother feel?", "very happy", ["angry", "worried", "bored"], "His mother hugged him and said it was the best present ever — so she felt very happy."]]],
   [2, "On Sunday, there was a gotong-royong at Taman Bunga. The residents cleaned the drains and cut the grass. The children picked up rubbish around the playground. After that, everyone enjoyed nasi lemak together.",
     [["When was the gotong-royong?", "on Sunday", ["on Saturday", "on Monday", "on Friday"]], ["What did the children do?", "picked up rubbish", ["cut the grass", "cleaned the drains", "cooked food"]], ["Where did the children work?", "around the playground", ["in the school", "at the market", "near the river"]], ["What did everyone eat after that?", "nasi lemak", ["roti canai", "satay", "mee goreng"]]]],
   [3, "The Malayan tiger is our national animal, but fewer than two hundred are left in the wild. Forests are being cleared for farms and roads, so tigers lose their homes. Some people also hunt them illegally. Rangers patrol the forests to protect these beautiful animals.",
@@ -173,23 +173,38 @@ const READING = [
 const picWord = (group) => () => {
   const pool = group ? VOCAB[group] : ALL_WORDS;
   const [e, w] = pick(pool);
-  if (Math.random() < 0.4) return mcq(`Which picture shows <b>${w}</b>?`, e, pool.map((x) => x[0]), E()); // word → picture
-  return mcq("What is this?", w, pool.map((x) => x[1]), E({ visual: `<span class="qbig">${e}</span>`, say: "What is this?" }));
+  if (Math.random() < 0.4) return mcq(`Which picture shows <b>${w}</b>?`, e, pool.map((x) => x[0]), E({ explain: `${e} is a ${w}.`.replace(/ a ([aeiou])/, " an $1") })); // word → picture
+  return mcq("What is this?", w, pool.map((x) => x[1]), E({ visual: `<span class="qbig">${e}</span>`, say: "What is this?", explain: `${e} is a ${w}.`.replace(/ a ([aeiou])/, " an $1") }));
 };
-const firstLetter = () => { const [e, w] = pick(ALL_WORDS.filter(([, w]) => w.length <= 8)); return mcq(`Which letter does it start with? ${"_" + w.slice(1)}`, w[0], "abcdefghijklmnoprstw".split(""), E({ visual: `<span class="qbig">${e}</span>` })); };
+const firstLetter = () => { const [e, w] = pick(ALL_WORDS.filter(([, w]) => w.length <= 8)); return mcq(`Which letter does it start with? ${"_" + w.slice(1)}`, w[0], "abcdefghijklmnoprstw".split(""), E({ visual: `<span class="qbig">${e}</span>`, explain: `${w} starts with the letter "${w[0]}".` })); };
 const THING_COLOUR = [["🍌", "a banana", "yellow"], ["🍅", "a tomato", "red"], ["🥒", "a cucumber", "green"], ["🫐", "a blueberry", "blue"], ["🐘", "an elephant", "grey"], ["🍆", "an eggplant", "purple"],
   ["🥕", "a carrot", "orange"], ["🐼", "a panda", "black and white"], ["🥛", "milk", "white"], ["🍫", "chocolate", "brown"], ["🍋", "a lemon", "yellow"], ["🍓", "a strawberry", "red"]];
 const MIX = [["red", "yellow", "orange"], ["blue", "yellow", "green"], ["red", "blue", "purple"], ["red", "white", "pink"], ["black", "white", "grey"]];
 const COLOUR_NAMES = [...COLOURS.map((x) => x[1]), "grey", "pink", "black and white"];
-const colours = blend([2, () => { const [e, c] = pick(COLOURS); return mcq("What colour is this?", c, COLOURS.map((x) => x[1]), E({ visual: `<span class="qbig">${e}</span>` })); }], [1, () => match("Match the colour to its name.", sample(COLOURS, 4), E())],
-  [2, () => { const [e, t, c] = pick(THING_COLOUR); return mcq(`What colour is ${t}?`, c, COLOUR_NAMES, E({ visual: `<span class="qbig">${e}</span>` })); }],
-  [1, () => { const [a, b, c] = pick(MIX); return mcq(`${a} + ${b} = ?`, c, COLOUR_NAMES.filter((x) => x !== a && x !== b), E({ say: `What colour do we get when we mix ${a} and ${b}?` })); }]);
-const numbers = blend([1, () => { const n = Math.floor(Math.random() * 19) + 1; return mcq(`What comes after <b>${NUMBERS[n]}</b>?`, NUMBERS[n + 1], [NUMBERS[n - 1], NUMBERS[(n + 2) % 21], NUMBERS[(n + 10) % 21]], E()); }],
-  [2, () => { const n = pick([3, 7, 11, 12, 13, 15, 18, 20, 8, 9, 4, 5, 6, 14, 16, 17, 19]); return mcq(`How do you spell ${n}?`, NUMBERS[n], [NUMBERS[n + 1] || "twenty-one", NUMBERS[n - 1], NUMBERS[n].replace("e", "a"), NUMBERS[(n + 5) % 21]], E()); }],
+const colours = blend([2, () => { const [e, c] = pick(COLOURS); return mcq("What colour is this?", c, COLOURS.map((x) => x[1]), E({ visual: `<span class="qbig">${e}</span>`, explain: `${e} is ${c}.` })); }], [1, () => match("Match the colour to its name.", sample(COLOURS, 4), E())],
+  [2, () => { const [e, t, c] = pick(THING_COLOUR); return mcq(`What colour is ${t}?`, c, COLOUR_NAMES, E({ visual: `<span class="qbig">${e}</span>`, explain: `${t[0].toUpperCase() + t.slice(1)} is ${c}.` })); }],
+  [1, () => { const [a, b, c] = pick(MIX); return mcq(`${a} + ${b} = ?`, c, COLOUR_NAMES.filter((x) => x !== a && x !== b), E({ say: `What colour do we get when we mix ${a} and ${b}?`, explain: `Mix ${a} and ${b} and you get ${c}.` })); }]);
+const numbers = blend([1, () => { const n = Math.floor(Math.random() * 19) + 1; return mcq(`What comes after <b>${NUMBERS[n]}</b>?`, NUMBERS[n + 1], [NUMBERS[n - 1], NUMBERS[(n + 2) % 21], NUMBERS[(n + 10) % 21]], E({ explain: `${n} (${NUMBERS[n]}) → ${n + 1} (${NUMBERS[n + 1]})` })); }],
+  [2, () => { const n = pick([3, 7, 11, 12, 13, 15, 18, 20, 8, 9, 4, 5, 6, 14, 16, 17, 19]); return mcq(`How do you spell ${n}?`, NUMBERS[n], [NUMBERS[n + 1] || "twenty-one", NUMBERS[n - 1], NUMBERS[n].replace("e", "a"), NUMBERS[(n + 5) % 21]], E({ explain: `${n} = ${NUMBERS[n]}` })); }],
   [1, () => match("Match the number to the word.", sample([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 4).map((n) => [String(n), NUMBERS[n]]), E())]);
 const article = () => { const an = Math.random() < 0.5; const w = an ? pick(AN_WORDS) : pick(A_WORDS); return fill(`I have ___ ${w}.`, an ? "an" : "a", ["a", "an", "the"].filter((x) => x !== (an ? "an" : "a")), E({ explain: an || w === "uniform" ? (w === "uniform" ? "'uniform' starts with a 'you' sound → a." : `Use 'an' before a vowel sound: an ${w}.`) : `Use 'a' before a consonant sound: a ${w}.` })); };
+function pluralRule(s, p) {
+  if (!p.endsWith("s")) return p === s ? `${s} → ${p}: the same word for one and many.` : `${s} → ${p} is irregular — remember it.`;
+  if (/ies$/.test(p)) return `Consonant + y → change y to i and add -es: ${p}.`;
+  if (/ves$/.test(p)) return `Many words ending in -f/-fe → -ves: ${p}.`;
+  if (/(s|sh|ch|x)es$/.test(p)) return `Words ending in s, sh, ch or x → add -es: ${p}.`;
+  if (/[aeiou]ys$/.test(p)) return `Vowel + y → just add -s: ${p}.`;
+  return /^(men|women|children|feet|teeth|mice|geese|people|oxen)$/.test(p) ? `${s} → ${p} is irregular — remember it.` : `Most words → add -s: ${p}.`;
+}
+function pastRule(v, p) {
+  if (!p.endsWith("ed")) return `${v} → ${p} is irregular — remember it.`;
+  if (p.endsWith("ied")) return `Consonant + y → change y to i and add -ed: ${p}.`;
+  if (v.endsWith("e")) return `Ends with e → just add -d: ${p}.`;
+  if (p.length === v.length + 3) return `Short word ending consonant-vowel-consonant → double the last letter: ${p}.`;
+  return `Regular verb → add -ed: ${p}.`;
+}
 const plurals = (irregular) => blend(
-  [3, () => { const pool = irregular ? [...PLURAL_IRR, ...PLURAL_REG.slice(0, 4)] : PLURAL_REG.concat([["cat", "cats"], ["pen", "pens"], ["apple", "apples"]]); const [s, p] = pick(pool); return mcq(`The plural of "${s}" is…`, p, [`${s}s`, `${s}es`, `${s}ies`, p.replace(/e?s$/, "")].filter((x) => x !== p), E()); }],
+  [3, () => { const pool = irregular ? [...PLURAL_IRR, ...PLURAL_REG.slice(0, 4)] : PLURAL_REG.concat([["cat", "cats"], ["pen", "pens"], ["apple", "apples"]]); const [s, p] = pick(pool); return mcq(`The plural of "${s}" is…`, p, [`${s}s`, `${s}es`, `${s}ies`, p.replace(/e?s$/, "")].filter((x) => x !== p), E({ explain: pluralRule(s, p) })); }],
   [1, () => match("Match the singular to the plural.", sample(irregular ? PLURAL_IRR : PLURAL_REG, 4), E())],
 );
 const PRON = [["Siti is my sister. ___ is nine years old.", "She", ["He", "It", "They"]], ["Ali and Abu are friends. ___ play together.", "They", ["He", "She", "We"]], ["My father is a doctor. ___ works at a hospital.", "He", ["She", "It", "They"]],
@@ -206,7 +221,9 @@ const PRON = [["Siti is my sister. ___ is nine years old.", "She", ["He", "It", 
   ["Our teacher is funny. We like ___ very much.", "him", ["he", "his", "she"]],
   ["The children lost ___ ball.", "their", ["they", "them", "theirs"]],
   ["Can you help ___? I am lost.", "me", ["I", "my", "mine"]]];
-const pronouns = () => { const [s, a, ds] = pick(PRON); return fill(s, a, ds, E()); };
+const PRON_WHY = { She: "She — for one girl or woman.", He: "He — for one boy or man.", It: "It — for one thing or animal.", They: "They — for more than one person or thing.", We: "We — me and other people.", I: "I — myself.", You: "You — the person I am talking to.",
+  Her: "Her — a girl or woman (after the verb, or showing she owns it).", Him: "Him — a boy or man (after the verb).", Them: "Them — more than one (after the verb).", His: "His — belongs to a boy or man.", Their: "Their — belongs to them.", Our: "Our — belongs to us.", My: "My — belongs to me.", Its: "Its — belongs to a thing or animal.", Me: "Me — myself (after the verb or after words like with, to, for).", Mine: "Mine — belongs to me (used alone, without a noun)." };
+const pronouns = () => { const [s, a, ds] = pick(PRON); return fill(s, a, ds, E({ explain: PRON_WHY[a[0].toUpperCase() + a.slice(1)] })); };
 const BE = [["I ___ a pupil.", "am"], ["She ___ my teacher.", "is"], ["They ___ in the canteen.", "are"], ["The cats ___ hungry.", "are"], ["My brother ___ tall.", "is"], ["We ___ happy today.", "are"],
   ["You ___ my best friend.", "are"], ["It ___ a sunny day.", "is"], ["I ___ eight years old.", "am"], ["The apples ___ red.", "are"], ["Ali ___ in Year 2.", "is"], ["My parents ___ at home.", "are"],
   ["The sky ___ blue.", "is"],
@@ -219,7 +236,7 @@ const BE = [["I ___ a pupil.", "am"], ["She ___ my teacher.", "is"], ["They ___ 
   ["These books ___ new.", "are"],
   ["The shop ___ closed.", "is"],
   ["You ___ very kind.", "are"]];
-const toBe = () => { const [s, a] = pick(BE); return fill(s, a, ["am", "is", "are"].filter((x) => x !== a), E({ n: 3 })); };
+const toBe = () => { const [s, a] = pick(BE); return fill(s, a, ["am", "is", "are"].filter((x) => x !== a), E({ n: 3, explain: "I → am · he, she, it, one person or thing → is · you, we, they, many → are" })); };
 const HAVE = [["I ___ two pencils.", "have"], ["Ali ___ a red bicycle.", "has"], ["We ___ English on Monday.", "have"], ["The rabbit ___ long ears.", "has"], ["They ___ a big garden.", "have"],
   ["My sister ___ long hair.", "has"], ["You ___ a nice smile.", "have"], ["The car ___ four wheels.", "has"], ["Cats ___ sharp claws.", "have"], ["Mr Tan ___ three children.", "has"], ["I ___ a cold today.", "have"], ["The school ___ a big field.", "has"],
   ["She ___ a pet rabbit.", "has"],
@@ -232,7 +249,7 @@ const HAVE = [["I ___ two pencils.", "have"], ["Ali ___ a red bicycle.", "has"],
   ["The house ___ two doors.", "has"],
   ["You ___ a beautiful voice.", "have"],
   ["My uncle ___ a farm.", "has"]];
-const haveHas = () => { const [s, a] = pick(HAVE); return fill(s, a, ["have", "has", "having", "is", "are"].filter((x) => x !== a), E()); };
+const haveHas = () => { const [s, a] = pick(HAVE); return fill(s, a, ["have", "has", "having", "is", "are"].filter((x) => x !== a), E({ explain: "he, she, it, one person or animal → has · I, you, we, they, many → have" })); };
 const SIMPLE = [["She ___ to school every day.", "walks", ["walk", "walking", "walked"]], ["My mother ___ breakfast every morning.", "cooks", ["cook", "cooking", "cooked"]], ["They ___ football after school.", "play", ["plays", "playing", "is play"]],
   ["The baby ___ a lot.", "cries", ["cry", "crys", "crying"]], ["Ravi ___ his homework at night.", "does", ["do", "doing", "dos"]], ["I ___ milk every day.", "drink", ["drinks", "drinking", "drank"]],
   ["The sun ___ in the east.", "rises", ["rise", "rising", "rised"]], ["My father ___ to work by train.", "goes", ["go", "gos", "going"]], ["We ___ our teeth twice a day.", "brush", ["brushes", "brushing", "brushs"]],
@@ -247,7 +264,7 @@ const SIMPLE = [["She ___ to school every day.", "walks", ["walk", "walking", "w
   ["My brothers ___ their room on Sundays.", "clean", ["cleans", "cleaning", "cleaned"]],
   ["A cow ___ grass.", "eats", ["eat", "eating", "ate"]],
   ["He ___ his bicycle to school.", "rides", ["ride", "riding", "rode"]]];
-const presentSimple = () => { const [s, a, ds] = pick(SIMPLE); return fill(s, a, ds, E()); };
+const presentSimple = () => { const [s, a, ds] = pick(SIMPLE); return fill(s, a, ds, E({ explain: /s$/.test(a) ? `Habits and facts use present simple. One person or thing (he, she, it) → add -s/-es: ${a}.` : `Habits and facts use present simple. I, you, we, they or many → no -s: ${a}.` })); };
 const CONT = [["Look! The children ___ in the rain.", "are playing", "play"], ["Listen! Siti ___ a song.", "is singing", "sing"], ["I ___ my homework now.", "am doing", "do"], ["The dog ___ under the table.", "is sleeping", "sleep"],
   ["Mother ___ dinner in the kitchen.", "is cooking", "cook"], ["We ___ for the bus now.", "are waiting", "wait"], ["Be quiet! The baby ___.", "is sleeping", "sleep"], ["Ali and Abu ___ football now.", "are playing", "play"],
   ["I ___ a letter to my grandmother.", "am writing", "write"], ["Look! The birds ___ in the sky.", "are flying", "fly"], ["My father ___ the car at the moment.", "is washing", "wash"], ["The pupils ___ to the teacher.", "are listening", "listen"],
@@ -261,7 +278,7 @@ const CONT = [["Look! The children ___ in the rain.", "are playing", "play"], ["
   ["The boys ___ in the pool now.", "are swimming", "swim"],
   ["It ___ heavily outside.", "is raining", "rain"],
   ["You ___ too fast! Slow down.", "are walking", "walk"]];
-const presentCont = () => { const [s, a, base] = pick(CONT); const be = a.split(" ")[0]; const ing = a.split(" ")[1]; return fill(s, a, [`${be === "is" ? "are" : "is"} ${ing}`, base, third(base), `${be} ${base}`].filter((x) => x !== a), E()); };
+const presentCont = () => { const [s, a, base] = pick(CONT); const be = a.split(" ")[0]; const ing = a.split(" ")[1]; return fill(s, a, [`${be === "is" ? "are" : "is"} ${ing}`, base, third(base), `${be} ${base}`].filter((x) => x !== a), E({ explain: `Happening now (look, listen, now) → am/is/are + verb-ing: ${a}.` })); };
 const CAN = [["A fish ___ swim.", "can"], ["A cat ___ fly.", "can't"], ["Birds ___ fly.", "can"], ["An elephant ___ climb a tree.", "can't"], ["A monkey ___ climb trees.", "can"], ["A snake ___ walk.", "can't"],
   ["A penguin ___ fly.", "can't"], ["A kangaroo ___ jump high.", "can"], ["A baby ___ drive a car.", "can't"], ["A frog ___ jump.", "can"], ["A dog ___ bark.", "can"], ["A turtle ___ run fast.", "can't"],
   ["A bird ___ fly.", "can"],
@@ -274,16 +291,19 @@ const CAN = [["A fish ___ swim.", "can"], ["A cat ___ fly.", "can't"], ["Birds _
   ["A chair ___ walk.", "can't"],
   ["An owl ___ see at night.", "can"],
   ["A rabbit ___ hop.", "can"]];
-const canCant = () => { const [s, a] = pick(CAN); return fill(s, a, ["can", "can't", "is", "are"].filter((x) => x !== a), E()); };
-const preps = () => { const [s, a] = pick(PREP); return fill(s, a, ["in", "on", "under", "between", "next to", "above"].filter((x) => x !== a), E()); };
+const canCant = () => { const [s, a] = pick(CAN); return fill(s, a, ["can", "can't", "is", "are"].filter((x) => x !== a), E({ explain: a === "can" ? "can = able to do it." : "can't = not able to do it." })); };
+const PREP_WHY = { in: "in — inside something.", on: "on — on top of or touching a surface.", under: "under — below something.", between: "between — in the middle of two things.", "next to": "next to — beside.", above: "above — higher than something.", behind: "behind — at the back.", "in front of": "in front of — at the front." };
+const preps = () => { const [s, a] = pick(PREP); return fill(s, a, ["in", "on", "under", "between", "next to", "above"].filter((x) => x !== a), E({ explain: PREP_WHY[a] })); };
 const timePreps = () => { const [s, a] = pick(TIME_PREP); return fill(s, a, ["in", "on", "at"].filter((x) => x !== a), E({ n: 3, explain: "in + months/years/parts of the day · on + days/dates · at + clock times/night" })); };
+const CONJ_WHY = { and: "and — joins two similar ideas.", but: "but — joins two different or opposite ideas.", because: "because — gives a reason.", or: "or — gives a choice.", so: "so — shows the result." };
 // "and" can grammatically replace "so"/"but" (and vice versa), so it is never offered as the wrong choice there
 const CONJ_CLASH = { so: ["and"], but: ["and"], and: ["but", "so"] };
-const conj = () => { const [s, a] = pick(CONJ); return fill(s, a, ["and", "but", "because", "or", "so"].filter((x) => x !== a && !(CONJ_CLASH[a] || []).includes(x)), E({ n: 3 })); };
-const qwords = () => { const [s, a] = pick(QWORD); return fill(s, a, ["What", "Where", "Who", "When", "How", "Why"].filter((x) => x !== a), E()); };
+const conj = () => { const [s, a] = pick(CONJ); return fill(s, a, ["and", "but", "because", "or", "so"].filter((x) => x !== a && !(CONJ_CLASH[a] || []).includes(x)), E({ n: 3, explain: CONJ_WHY[a] })); };
+const QWORD_WHY = { What: "What — asks about a thing.", Where: "Where — asks about a place.", Who: "Who — asks about a person.", When: "When — asks about time.", How: "How — asks about the way, or how many / how much / how old.", Why: "Why — asks for a reason (answer: Because…)." };
+const qwords = () => { const [s, a] = pick(QWORD); return fill(s, a, ["What", "Where", "Who", "When", "How", "Why"].filter((x) => x !== a), E({ explain: QWORD_WHY[a] })); };
 const pastSimple = (irr) => blend(
-  [3, () => { const [v, p] = pick(irr ? PAST_IRR : PAST_REG); return mcq(`The past tense of "${v}" is…`, p, irr ? [`${v}ed`, third(v), ing(v)] : [third(v), ing(v), v], E()); }],
-  [2, () => { const [v, p] = pick(irr ? PAST_IRR.slice(0, 12) : PAST_REG); return fill(`Yesterday, I ___ ${{ go: "to the market", eat: "nasi lemak", see: "a rainbow", buy: "a new book", run: "in the park", swim: "in the pool", write: "a letter", take: "a photo", make: "a kite", come: "home early", have: "a cold", sleep: "early", play: "badminton", walk: "to school", jump: "over the drain", cook: "fried rice", clean: "my room", watch: "a movie", dance: "at the concert", study: "for the test", cry: "at the sad movie", stop: "at the red light" }[v] || "it"}.`, p, [v, third(v), ing(v)], E()); }],
+  [3, () => { const [v, p] = pick(irr ? PAST_IRR : PAST_REG); return mcq(`The past tense of "${v}" is…`, p, irr ? [`${v}ed`, third(v), ing(v)] : [third(v), ing(v), v], E({ explain: pastRule(v, p) })); }],
+  [2, () => { const [v, p] = pick(irr ? PAST_IRR.slice(0, 12) : PAST_REG); return fill(`Yesterday, I ___ ${{ go: "to the market", eat: "nasi lemak", see: "a rainbow", buy: "a new book", run: "in the park", swim: "in the pool", write: "a letter", take: "a photo", make: "a kite", come: "home early", have: "a cold", sleep: "early", play: "badminton", walk: "to school", jump: "over the drain", cook: "fried rice", clean: "my room", watch: "a movie", dance: "at the concert", study: "for the test", cry: "at the sad movie", stop: "at the red light" }[v] || "it"}.`, p, [v, third(v), ing(v)], E({ explain: `"Yesterday" → past tense. ${pastRule(v, p)}` })); }],
   [1, () => match("Match the verb to its past tense.", sample(irr ? PAST_IRR : PAST_REG, 4), E())],
 );
 const CMP_CTX = {
@@ -295,26 +315,26 @@ const CMP_CTX = {
   long: ["A snake is ___ than a worm.", "The Rajang River is the ___ river in Malaysia."],
 };
 const comparatives = (superl) => blend(
-  [3, () => { const [a, c, sp] = pick(COMPARE); const right = superl ? sp : c; return fill(`${CMP_CTX[a][superl ? 1 : 0]} (${a})`, right, [c, sp, a, `more ${a}`, `${a}er`, `most ${a}`].filter((x) => x !== right), E()); }],
-  [1, () => { const [a, c, sp] = pick(COMPARE); return order("Put in order: adjective → comparative → superlative", [a, c, sp], E({ joiner: " → " })); }],
+  [3, () => { const [a, c, sp] = pick(COMPARE); const right = superl ? sp : c; return fill(`${CMP_CTX[a][superl ? 1 : 0]} (${a})`, right, [c, sp, a, `more ${a}`, `${a}er`, `most ${a}`].filter((x) => x !== right), E({ explain: superl ? `"the … in/of" compares with ALL → superlative: ${a} → ${sp}.` : `"than" compares TWO things → comparative: ${a} → ${c}.` })); }],
+  [1, () => { const [a, c, sp] = pick(COMPARE); return order("Put in order: adjective → comparative → superlative", [a, c, sp], E({ joiner: " → ", explain: `${a} → ${c} (two things) → ${sp} (the most of all).` })); }],
 );
-const opposites = blend([3, () => { const [a, b] = pick(OPP); return mcq(`The opposite of "${a}" is…`, b, OPP.map((x) => x[1]), E()); }], [1, () => match("Match the opposites.", sample(OPP, 4), E())]);
-const synonyms = blend([3, () => { const [a, b] = pick(SYN); return mcq(`Which word means the same as "${a}"?`, b, SYN.map((x) => x[1]).concat(OPP.filter((x) => x[0] === a).map((x) => x[1])), E()); }], [1, () => match("Match the words with the same meaning.", sample(SYN, 4), E())]);
-const sentenceOrder = (long) => () => { const w = pick(long ? SENTENCES : SENTENCES.filter((s) => s.length <= 5)); return order("Arrange the words to make a sentence.", w, E()); };
-const spelling = () => { const [r, w] = pick(SPELL); return mcq("Choose the correct spelling.", r, [w, r.replace(/(.)\1/, "$1"), r + "e"].filter((x) => x !== r), E()); };
-const reading = (...levels) => () => { const [, text, qs] = pick(READING.filter((r) => levels.includes(r[0]))); const [q, a, ds] = pick(qs); return mcq(q, a, ds, E({ visual: `<div class="passage" lang="en">${text}</div>` })); };
+const opposites = blend([3, () => { const [a, b] = pick(OPP); return mcq(`The opposite of "${a}" is…`, b, OPP.map((x) => x[1]), E({ explain: `${a} ↔ ${b}` })); }], [1, () => match("Match the opposites.", sample(OPP, 4), E())]);
+const synonyms = blend([3, () => { const [a, b] = pick(SYN); return mcq(`Which word means the same as "${a}"?`, b, SYN.map((x) => x[1]).concat(OPP.filter((x) => x[0] === a).map((x) => x[1])), E({ explain: `${a} = ${b} (same meaning)` })); }], [1, () => match("Match the words with the same meaning.", sample(SYN, 4), E())]);
+const sentenceOrder = (long) => () => { const w = pick(long ? SENTENCES : SENTENCES.filter((s) => s.length <= 5)); return order("Arrange the words to make a sentence.", w, E({ explain: `Start with the capital letter "${w[0]}": who or what → action → the rest.` })); };
+const spelling = () => { const [r, w] = pick(SPELL); return mcq("Choose the correct spelling.", r, [w, r.replace(/(.)\1/, "$1"), r + "e"].filter((x) => x !== r), E({ explain: `Correct spelling: ${r} — not ${w}.` })); };
+const reading = (...levels) => () => { const [, text, qs] = pick(READING.filter((r) => levels.includes(r[0]))); const [q, a, ds, why] = pick(qs); const line = /\bNOT\b/.test(q) ? null : evidence(text, q, a); return mcq(q, a, ds, E({ visual: `<div class="passage" lang="en">${text}</div>`, explain: why || line ? why || `Look in the text: "${line}"` : "Read the text again and check each answer — only one is not in the text." })); };
 
 // ---------------------------------------------------------------- listening (read aloud by the device)
 const listenPic = (...groups) => () => {
   const pool = groups.flatMap((g) => (g === "colours" ? COLOURS : VOCAB[g]));
   const [e, w] = pick(pool);
-  return mcq("🎧 Listen and choose the picture.", e, pool.map((x) => x[0]), E({ listen: w, alt: `Which picture is <b>${w}</b>?` }));
+  return mcq("🎧 Listen and choose the picture.", e, pool.map((x) => x[0]), E({ listen: w, alt: `Which picture is <b>${w}</b>?`, explain: `You heard "${w}" — ${e}.` }));
 };
-const listenNumber = () => { const n = Math.floor(Math.random() * 21); return mcq("🎧 Listen and choose the number.", String(n), [n + 1, n - 1, n + 10, n - 10, 20 - n, (n * 2) % 21].filter((x) => x >= 0 && x <= 30).map(String), E({ listen: NUMBERS[n], alt: `Which number is <b>${NUMBERS[n]}</b>?` })); };
+const listenNumber = () => { const n = Math.floor(Math.random() * 21); return mcq("🎧 Listen and choose the number.", String(n), [n + 1, n - 1, n + 10, n - 10, 20 - n, (n * 2) % 21].filter((x) => x >= 0 && x <= 30).map(String), E({ listen: NUMBERS[n], alt: `Which number is <b>${NUMBERS[n]}</b>?`, explain: `You heard "${NUMBERS[n]}" = ${n}.` })); };
 const LSPELL = [["apple", ["aple", "appel"]], ["school", ["scool", "skool"]], ["happy", ["hapy", "happi"]], ["water", ["watter", "woter"]], ["green", ["grean", "gren"]], ["house", ["hause", "hous"]],
   ["chair", ["chare", "cheir"]], ["teacher", ["teecher", "techer"]], ["friend", ["frend", "freind"]], ["yellow", ["yelow", "yello"]], ["rabbit", ["rabit", "rabbet"]], ["banana", ["bananna", "banan"]],
   ["mouth", ["mouf", "mauth"]], ["purple", ["purpel", "perple"]], ["monkey", ["monky", "mongkey"]], ["window", ["windo", "windaw"]]];
-const listenSpell = () => { const [w, bad] = pick(LSPELL); return mcq("🎧 Listen and choose the correct spelling.", w, bad, E({ listen: w, alt: "Choose the correct spelling.", n: 3 })); };
+const listenSpell = () => { const [w, bad] = pick(LSPELL); return mcq("🎧 Listen and choose the correct spelling.", w, bad, E({ listen: w, alt: "Choose the correct spelling.", n: 3, explain: `You heard "${w}": ${w.split("").join("-")}.` })); };
 const LSENT = [["The cat is under the table.", ["The cat is on the table.", "The hat is under the table.", "The cat is under the chair."]],
   ["Ali has two red balls.", ["Ali has three red balls.", "Ali has two blue balls.", "Ali had two red bells."]],
   ["She is reading a book in the library.", ["She is reading a book in the kitchen.", "She is cooking in the library.", "He is reading a book in the library."]],
@@ -327,7 +347,7 @@ const LSENT = [["The cat is under the table.", ["The cat is on the table.", "The
   ["The baby is sleeping in the room.", ["The baby is crying in the room.", "The baby is sleeping in the car.", "The lady is sleeping in the room."]],
   ["Siti wears a blue dress.", ["Siti wears a red dress.", "Siti wears a blue hat.", "Siti washes a blue dress."]],
   ["The shop opens on Monday.", ["The shop closes on Monday.", "The shop opens on Sunday.", "The shop opens in May."]]];
-const listenSentence = () => { const [s0, ds] = pick(LSENT); return mcq("🎧 Listen. Which sentence did you hear?", s0, ds, E({ listen: s0, alt: `Find the same sentence: <b>${s0}</b>` })); };
+const listenSentence = () => { const [s0, ds] = pick(LSENT); return mcq("🎧 Listen. Which sentence did you hear?", s0, ds, E({ listen: s0, alt: `Find the same sentence: <b>${s0}</b>`, explain: `You heard: "${s0}" Listen for every word.` })); };
 const FUT = [["Tomorrow, we ___ visit our grandmother.", "will"], ["Look at the clouds! It is ___ to rain.", "going"], ["I ___ help you with your homework later.", "will"], ["Next year, my sister ___ be ten years old.", "will"],
   ["We are ___ to have a picnic on Sunday.", "going"], ["I think it ___ be sunny tomorrow.", "will"], ["Ali is ___ to visit Sabah next month.", "going"], ["The shop ___ open at nine tomorrow.", "will"],
   ["She is ___ to bake a cake tonight.", "going"], ["Don't worry, I ___ call you later.", "will"], ["They are ___ to watch the match.", "going"], ["Our teacher ___ give us a test next week.", "will"],
@@ -339,7 +359,7 @@ const FUT = [["Tomorrow, we ___ visit our grandmother.", "will"], ["Look at the 
   ["They are ___ to paint the house tomorrow.", "going"],
   ["Maybe we ___ win the match.", "will"],
   ["Siti is ___ to sing at the concert tonight.", "going"]];
-const future = () => { const [s, a] = pick(FUT); return fill(s, a, ["will", "going", "did", "was", "went"].filter((x) => x !== a), E()); };
+const future = () => { const [s, a] = pick(FUT); return fill(s, a, ["will", "going", "did", "was", "went"].filter((x) => x !== a), E({ explain: a === "going" ? "am/is/are + going to + verb — a plan, or something we can see will happen." : "will + verb — the future, a promise or a guess." })); };
 const ADV = [["quick", "quickly", "Please finish your work ___."], ["slow", "slowly", "The old man walked ___ across the road."], ["careful", "carefully", "Walk ___ on the wet floor."],
   ["happy", "happily", "The children sang ___."], ["loud", "loudly", "Do not talk ___ in the library."], ["easy", "easily", "She solved the puzzle ___."], ["neat", "neatly", "Write your name ___."],
   ["quiet", "quietly", "The cat walked ___ into the room."], ["bad", "badly", "He played ___ in the match."], ["polite", "politely", "Ask your teacher ___."], ["safe", "safely", "Cross the road ___."], ["brave", "bravely", "The firefighter fought the fire ___."],
@@ -351,7 +371,7 @@ const ADV = [["quick", "quickly", "Please finish your work ___."], ["slow", "slo
   ["loud", "loudly", "The lion roared ___."],
   ["gentle", "gently", "Hold the kitten ___."],
   ["fast", "fast", "The cheetah runs very ___."]];
-const adverbs = () => { const [a, adv, sen] = pick(ADV); return fill(`${sen} (${a})`, adv, [a, `${a}er`, `more ${a}`].filter((x) => x !== adv), E()); };
+const adverbs = () => { const [a, adv, sen] = pick(ADV); return fill(`${sen} (${a})`, adv, [a, `${a}er`, `more ${a}`].filter((x) => x !== adv), E({ explain: `An adverb tells HOW something is done: ${a} → ${adv}.` })); };
 const MUCH = [["How ___ apples do you have?", "many"], ["How ___ water do you drink?", "much"], ["We have too ___ homework today.", "much"], ["There are ___ books on the shelf.", "many"], ["Can I have ___ biscuits, please?", "some"],
   ["How ___ money do you have?", "much"], ["How ___ pupils are in your class?", "many"], ["Is there ___ milk in the fridge?", "any"], ["How ___ rice is left in the pot?", "much"], ["I bought ___ oranges at the market.", "some"],
   ["Are there ___ eggs left?", "any"], ["How ___ rice do you need?", "much"],
@@ -363,15 +383,15 @@ const MUCH = [["How ___ apples do you have?", "many"], ["How ___ water do you dr
   ["How ___ brothers do you have?", "many"],
   ["Don't drink too ___ cold water.", "much"],
   ["How ___ chairs are in the hall?", "many"]];
-const muchMany = () => { const [s, a] = pick(MUCH); return fill(s, a, ["much", "many", "some", "any"].filter((x) => x !== a), E({ n: 4 })); };
+const muchMany = () => { const [s, a] = pick(MUCH); return fill(s, a, ["much", "many", "some", "any"].filter((x) => x !== a), E({ n: 4, explain: { many: "many — things we can count (apples, pupils, cars).", much: "much — things we cannot count (water, rice, money, time).", some: "some — in positive sentences and polite requests.", any: "any — in questions and negative sentences." }[a] })); };
 const PERFECT_MORE = [["We ___ finished our project.", "have", ["has", "are", "did"]], ["Ali ___ visited Langkawi twice.", "has", ["have", "is", "was"]], ["They have ___ the room.", "cleaned", ["clean", "cleaning", "cleans"]],
   ["I have never ___ a dinosaur.", "seen", ["saw", "see", "seeing"]], ["My parents ___ bought a new car.", "have", ["has", "is", "was"]], ["She has ___ a letter to her friend.", "written", ["wrote", "write", "writing"]],
   ["Have you ___ your lunch?", "eaten", ["ate", "eat", "eating"]], ["The train has just ___.", "arrived", ["arrive", "arriving", "arrives"]], ["He has ___ his keys.", "lost", ["lose", "losing", "loses"]],
   ["We have ___ here for three years.", "lived", ["live", "living", "lives"]]];
 const presentPerfect = blend(
-  [3, () => { const [v, p] = pick(PARTICIPLE); return fill(`I have already ___ ${{ eat: "my lunch", go: "there before", see: "that movie", write: "the letter", do: "my homework", take: "my medicine", give: "her the book", drink: "my milk", swim: "in that river", finish: "my work", visit: "Penang", read: "this book" }[v]}.`, p, PAST_IRR.find((x) => x[0] === v)?.[1] && PAST_IRR.find((x) => x[0] === v)[1] !== p ? [PAST_IRR.find((x) => x[0] === v)[1], v, ing(v)] : [ing(v), third(v), "has"], E()); }],
-  [1, () => fill("She ___ lived here since 2020.", "has", ["have", "is", "was"], E())],
-  [2, () => { const [t, a, ds] = pick(PERFECT_MORE); return fill(t, a, ds, E()); }],
+  [3, () => { const [v, p] = pick(PARTICIPLE); return fill(`I have already ___ ${{ eat: "my lunch", go: "there before", see: "that movie", write: "the letter", do: "my homework", take: "my medicine", give: "her the book", drink: "my milk", swim: "in that river", finish: "my work", visit: "Penang", read: "this book" }[v]}.`, p, PAST_IRR.find((x) => x[0] === v)?.[1] && PAST_IRR.find((x) => x[0] === v)[1] !== p ? [PAST_IRR.find((x) => x[0] === v)[1], v, ing(v)] : [ing(v), third(v), "has"], E({ explain: `have/has + past participle: ${v} → ${p}.` })); }],
+  [1, () => fill("She ___ lived here since 2020.", "has", ["have", "is", "was"], E({ explain: "he, she, it → has · I, you, we, they → have" }))],
+  [2, () => { const [t, a, ds] = pick(PERFECT_MORE); return fill(t, a, ds, E({ explain: /^ha(s|ve)$/.test(a) ? "he, she, it, one person → has · I, you, we, they → have" : "Present perfect: have/has + past participle (eaten, seen, written, cleaned)." })); }],
 );
 const COND = [["If it rains, we ___ stay at home.", "will", ["would", "did", "are"]], ["If you heat ice, it ___.", "melts", ["melt", "melted", "will melted"]], ["If I study hard, I ___ pass the exam.", "will", ["would", "was", "did"]],
   ["If you don't water the plants, they ___ die.", "will", ["did", "was", "are"]], ["If you mix red and yellow, you ___ orange.", "get", ["got", "gets", "getting"]], ["If she ___ early, she will catch the bus.", "leaves", ["leave", "left", "will leave"]],
@@ -383,7 +403,7 @@ const COND = [["If it rains, we ___ stay at home.", "will", ["would", "did", "ar
   ["If you heat water to 100 °C, it ___.", "boils", ["boil", "boiled", "will boiled"]],
   ["If it ___ tomorrow, we will not go out.", "rains", ["rain", "rained", "will rain"]],
   ["If you touch fire, you ___ get burnt.", "will", ["did", "was", "are"]]];
-const conditionals = () => { const [s, a, ds] = pick(COND); return fill(s, a, ds, E()); };
+const conditionals = () => { const [s, a, ds] = pick(COND); return fill(s, a, ds, E({ explain: /^will/.test(a) ? "If + present tense, … will + verb (something that will happen)." : /^If [^,]*___/.test(s) ? "After \"if\", use the present tense (not will)." : "A fact that is always true: if + present, present." })); };
 const PUNC = [["My name is Aina.", ["my name is aina.", "My name is aina", "my Name is Aina."]], ["Where do you live?", ["Where do you live.", "where do you live?", "Where do you live!"]], ["It's Ali's bag.", ["Its Alis bag.", "It's Alis' bag.", "Its' Ali's bag."]],
   ["We visited Kuala Lumpur in May.", ["we visited kuala lumpur in may.", "We visited kuala lumpur in May.", "We visited Kuala Lumpur in may"]], ["What a beautiful day!", ["What a beautiful day?", "what a beautiful day!", "What a beautiful day"]],
   ["I bought eggs, milk and bread.", ["I bought eggs milk and bread.", "I bought, eggs, milk, and, bread.", "i bought eggs, milk and bread."]], ["Mrs Tan said, \"Sit down, please.\"", ["Mrs Tan said \"sit down please\"", "mrs Tan said, \"Sit down, please.\"", "Mrs Tan said, Sit down please."]],
@@ -397,14 +417,14 @@ const PUNC = [["My name is Aina.", ["my name is aina.", "My name is aina", "my N
   ["We're going to the zoo on Sunday.", ["Were going to the zoo on Sunday.", "We're going to the zoo on sunday.", "we're going to the zoo on Sunday."]],
   ["Can I borrow your pencil, please?", ["Can I borrow your pencil, please.", "can I borrow your pencil, please?", "Can i borrow your pencil, please?"]],
   ["Puan Lim teaches us English.", ["puan lim teaches us English.", "Puan Lim teaches us english.", "Puan lim teaches us English."]]];
-const punctuation = () => { const [r, ws] = pick(PUNC); return mcq("Which sentence is written correctly?", r, ws, E()); };
+const punctuation = () => { const [r, ws] = pick(PUNC); return mcq("Which sentence is written correctly?", r, ws, E({ explain: "Check: a capital letter at the start and for names, places, days and months; the right mark at the end (. ? !); commas in lists; ' to show who owns something." })); };
 const PASS = [["Ali wrote the letter.", "The letter was written by Ali.", "written", "wrote"], ["The cat ate the fish.", "The fish was eaten by the cat.", "eaten", "ate"], ["Siti cleaned the room.", "The room was cleaned by Siti.", "cleaned", "clean"],
   ["The boys painted the wall.", "The wall was painted by the boys.", "painted", "paint"], ["My mother baked the cake.", "The cake was baked by my mother.", "baked", "bake"], ["Mr Lim drove the bus.", "The bus was driven by Mr Lim.", "driven", "drove"],
   ["The dog chased the ball.", "The ball was chased by the dog.", "chased", "chase"], ["Ravi broke the window.", "The window was broken by Ravi.", "broken", "broke"], ["The pupils planted the trees.", "The trees were planted by the pupils.", "planted", "plant"],
   ["The teacher marked our books.", "Our books were marked by the teacher.", "marked", "mark"]];
 const passive = () => { const [act, pas, pp, wrong] = pick(PASS); const [subj, rest] = pas.split(/ (?:was|were) /); const be = /\bwere\b/.test(pas) ? "were" : "was"; return pick([
-  () => mcq(`Choose the passive sentence: "${act}"`, pas, [pas.replace(pp, wrong), act.replace(/\.$/, "") + " by them.", pas.replace(be, be === "was" ? "were" : "was")].filter((x) => x !== pas), E()),
-  () => fill(`${subj} ___ ${rest}`, be, ["was", "were", "is", "be"].filter((x) => x !== be), E()),
+  () => mcq(`Choose the passive sentence: "${act}"`, pas, [pas.replace(pp, wrong), act.replace(/\.$/, "") + " by them.", pas.replace(be, be === "was" ? "were" : "was")].filter((x) => x !== pas), E({ explain: `Passive: the object comes first + was/were + past participle (${pp}) + by + the doer.` })),
+  () => fill(`${subj} ___ ${rest}`, be, ["was", "were", "is", "be"].filter((x) => x !== be), E({ explain: `${subj} is ${be === "was" ? "one thing → was" : "more than one → were"} (past).` })),
 ])(); };
 
 // ---------------------------------------------------------------- curriculum

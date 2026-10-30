@@ -1,5 +1,5 @@
 // Bahasa Melayu Tahun 1–6 (topik selaras KSSR): tatabahasa, kosa kata, peribahasa & pemahaman.
-import { mcq, tf, order, match, fill, blend, pick, sample, shuffle } from "./qkit.js";
+import { mcq, tf, order, match, fill, blend, pick, sample, shuffle, evidence } from "./qkit.js";
 import { SIMPULAN } from "../data/games.js";
 
 // ---------------------------------------------------------------- banks
@@ -35,6 +35,9 @@ export const PENJODOH = [
   ["tali", "seutas", "Abang memerlukan ___ tali."], ["jam tangan", "seutas", "Ayah menghadiahkan ___ jam tangan."], ["pisau", "sebilah", "Ibu memotong sayur dengan ___ pisau."],
   ["kasut", "sepasang", "Ibu membeli ___ kasut sekolah untuk saya."], ["beras", "sebutir", "Tiada ___ beras pun yang tumpah."],
 ];
+const PENJODOH_WHY = { seekor: "seekor — untuk haiwan.", sebuah: "sebuah — untuk benda besar (kereta, rumah) dan buku.", sebatang: "sebatang — untuk benda panjang (pensel, pokok, sungai).", sehelai: "sehelai — untuk benda nipis (kertas, baju, daun).",
+  sebiji: "sebiji — untuk benda kecil atau bulat (bola, telur, cawan, buah).", seorang: "seorang — untuk manusia.", sekuntum: "sekuntum — untuk bunga.", sepucuk: "sepucuk — untuk surat.", sekaki: "sekaki — untuk payung.",
+  seutas: "seutas — untuk benda panjang yang lembut (tali, rantai, jam tangan).", sebilah: "sebilah — untuk benda tajam (pisau, parang).", sepasang: "sepasang — untuk benda yang berpasangan (kasut, stokin).", sebutir: "sebutir — untuk benda sangat kecil (beras, pasir)." };
 const PENJODOH_ALL = ["seekor", "sebuah", "sebatang", "sehelai", "sebiji", "seorang", "sekuntum", "sepucuk", "sekaki", "seutas", "sebilah", "sepasang", "sebutir"];
 // [word, opposite]
 export const ANTONIM = [["besar", "kecil"], ["tinggi", "rendah"], ["panjang", "pendek"], ["rajin", "malas"], ["gembira", "sedih"], ["panas", "sejuk"],
@@ -57,6 +60,8 @@ const KATA_TANYA = [["Siapa", "orang", "___ nama guru kelas kamu?"], ["Apa", "be
   ["Berapa", "bilangan", "___ harga sebiji tembikai?"],
   ["Siapa", "orang", "___ yang membersihkan kelas pagi tadi?"],
   ["Di mana", "tempat", "___ letaknya Menara Kuala Lumpur?"]];
+const TANYA_WHY = { Siapa: "Siapa — untuk bertanya tentang orang.", Apa: "Apa — untuk bertanya tentang benda atau perkara.", Bila: "Bila — untuk bertanya tentang masa.", "Di mana": "Di mana — untuk bertanya tentang tempat.",
+  Mengapa: "Mengapa — untuk bertanya tentang sebab.", Bagaimana: "Bagaimana — untuk bertanya tentang cara atau keadaan.", Berapa: "Berapa — untuk bertanya tentang bilangan atau harga." };
 // [sentence with ___, answer, distractors]
 const SENDI = [["Ali pergi ___ kedai.", "ke", ["di", "dari", "pada"]], ["Buku itu ada ___ atas meja.", "di", ["ke", "dari", "kepada"]], ["Ayah baru pulang ___ pejabat.", "dari", ["ke", "di", "daripada"]],
   ["Hadiah itu ___ ibu saya.", "daripada", ["dari", "di", "ke"]], ["Siti memberi bunga ___ guru.", "kepada", ["ke", "di", "pada"]], ["Kami bercuti ___ hari Sabtu.", "pada", ["di", "ke", "kepada"]],
@@ -87,6 +92,8 @@ const HUBUNG = [["Saya suka membaca ___ melukis.", "dan", ["tetapi", "kerana", "
   ["Siti gembira ___ mendapat hadiah.", "kerana", ["tetapi", "atau", "supaya"]],
   ["Kami bermain bola ___ hari sudah petang.", "apabila", ["tetapi", "atau", "supaya"]],
   ["Cikgu memberitahu ___ lawatan itu dibatalkan.", "bahawa", ["supaya", "atau", "sambil"]]];
+const HUBUNG_WHY = { dan: "dan — menggabungkan dua perkara yang sama jenis.", tetapi: "tetapi — menunjukkan dua perkara yang bertentangan.", kerana: "kerana — memberi sebab.", atau: "atau — memberi pilihan.",
+  sambil: "sambil — dua perbuatan pada masa yang sama.", supaya: "supaya — menunjukkan tujuan.", apabila: "apabila — menunjukkan masa sesuatu berlaku.", bahawa: "bahawa — memulakan isi kata atau berita." };
 const HUBUNG_ASAS = HUBUNG.filter(([, a]) => ["dan", "tetapi", "kerana", "atau"].includes(a));
 // [word, syllables]
 const SUKU = [["buku", "bu-ku"], ["meja", "me-ja"], ["kereta", "ke-re-ta"], ["sekolah", "se-ko-lah"], ["bola", "bo-la"], ["rumah", "ru-mah"], ["pantai", "pan-tai"],
@@ -199,25 +206,25 @@ const PETIKAN = [
 
 // ---------------------------------------------------------------- generators
 const kataNamaPic = () => { const [e, w] = pick(EMOJI_WORD);
-  if (Math.random() < 0.4) return mcq(`Pilih gambar <b>${w}</b>.`, e, EMOJI_WORD.map((x) => x[0])); // perkataan → gambar
-  return mcq("Apakah nama gambar ini?", w, EMOJI_WORD.map((x) => x[1]), { visual: `<span class="qbig">${e}</span>`, say: "Apakah nama gambar ini?" }); };
+  if (Math.random() < 0.4) return mcq(`Pilih gambar <b>${w}</b>.`, e, EMOJI_WORD.map((x) => x[0]), { explain: `${e} ialah ${w}.` }); // perkataan → gambar
+  return mcq("Apakah nama gambar ini?", w, EMOJI_WORD.map((x) => x[1]), { visual: `<span class="qbig">${e}</span>`, say: "Apakah nama gambar ini?", explain: `${e} ialah ${w}. Sebut: ${SUKU.find((x) => x[0] === w)?.[1] || w}.` }); };
 const sukuKata = blend(
   [2, () => { const [w, s] = pick(SUKU); return mcq(`Berapakah suku kata dalam perkataan <b>${w}</b>?`, String(s.split("-").length), ["1", "2", "3", "4", "5"], { explain: `${w} → ${s}` }); }],
-  [2, () => { const [w, s] = pick(SUKU); return order(`Susun suku kata untuk membina perkataan <b>${w}</b>.`, s.split("-"), { joiner: "" }); }],
-  [1, () => { const [w, s] = pick(SUKU); const wrong = s.split("-"); return mcq(`Cara yang betul untuk membahagikan suku kata <b>${w}</b> ialah…`, s, [wrong.join("").replace(/(.)(.)/, "$1-$2"), w.slice(0, 3) + "-" + w.slice(3), w.slice(0, 1) + "-" + w.slice(1)].filter((x) => x !== s)); }],
+  [2, () => { const [w, s] = pick(SUKU); return order(`Susun suku kata untuk membina perkataan <b>${w}</b>.`, s.split("-"), { joiner: "", explain: `Sebut perlahan-lahan: ${s}.` }); }],
+  [1, () => { const [w, s] = pick(SUKU); const wrong = s.split("-"); return mcq(`Cara yang betul untuk membahagikan suku kata <b>${w}</b> ialah…`, s, [wrong.join("").replace(/(.)(.)/, "$1-$2"), w.slice(0, 3) + "-" + w.slice(3), w.slice(0, 1) + "-" + w.slice(1)].filter((x) => x !== s), { explain: `Tepuk tangan setiap kali sebut: ${s} (${s.split("-").length} suku kata).` }); }],
 );
 const hurufBesar = blend(
-  [2, () => { const [low, up] = pick(KHAS); return mcq(`Pilih ejaan yang betul.`, up, [low, up.toUpperCase(), low.replace(/^./, (c) => c.toUpperCase())].filter((x) => x !== up)); }],
+  [2, () => { const [low, up] = pick(KHAS); return mcq(`Pilih ejaan yang betul.`, up, [low, up.toUpperCase(), low.replace(/^./, (c) => c.toUpperCase())].filter((x) => x !== up), { explain: /^(hari|bulan|negeri)/.test(up) ? `Nama hari, bulan dan negeri yang khusus dieja dengan huruf besar: ${up}.` : `Nama khas (orang atau tempat) — setiap perkataan bermula dengan huruf besar: ${up}.` }); }],
   [1, () => { const [, up] = pick(KHAS.filter(([, u]) => /^[A-Z]/.test(u))); return tf(`"${up}" ialah kata nama khas.`, true, { explain: "Kata nama khas ialah nama tempat, orang, hari atau bulan yang khusus — dimulakan dengan huruf besar." }); }],
   [1, () => { const w = pick(["kucing", "meja", "sekolah", "sungai", "kereta"]); return tf(`"${w}" ialah kata nama khas.`, false, { explain: `"${w}" ialah kata nama am.` }); }],
 );
 const penjodoh = (all = false) => blend(
-  [3, () => { const pool = all ? PENJODOH : PENJODOH.filter(([, p]) => ["seekor", "sebuah", "sebiji", "seorang", "sebatang", "sehelai"].includes(p)); const [, p, sen] = pick(pool); const first = sen.startsWith("___"); return fill(sen, first ? cap(p) : p, first ? PENJODOH_ALL.map(cap) : PENJODOH_ALL); }],
+  [3, () => { const pool = all ? PENJODOH : PENJODOH.filter(([, p]) => ["seekor", "sebuah", "sebiji", "seorang", "sebatang", "sehelai"].includes(p)); const [, p, sen] = pick(pool); const first = sen.startsWith("___"); return fill(sen, first ? cap(p) : p, first ? PENJODOH_ALL.map(cap) : PENJODOH_ALL, { explain: PENJODOH_WHY[p] }); }],
   [1, () => { const set = sample(PENJODOH.filter((x, i, a) => a.findIndex((y) => y[1] === x[1]) === i), 4); return match("Padankan penjodoh bilangan dengan kata nama.", set.map(([n, p]) => [p, n])); }],
 );
 const imbuhanMen = blend(
   [3, () => { const [b, f] = pick(MEN); return mcq(`Kata dasar <b>${b}</b> + awalan <b>meN-</b> menjadi…`, f, WRONG_MEN(b), { explain: imbuhanRule(b) }); }],
-  [2, () => { const [b, f] = pick(MEN); return fill(`Setiap hari, Ali ___ di dalam kelas.`.replace("Ali ___ di dalam kelas", `Ali ___ ${objFor(b)}`), f, [b, `di${b}`, `ber${b}`]); }],
+  [2, () => { const [b, f] = pick(MEN); return fill(`Setiap hari, Ali ___ di dalam kelas.`.replace("Ali ___ di dalam kelas", `Ali ___ ${objFor(b)}`), f, [b, `di${b}`, `ber${b}`], { explain: `Pelaku (Ali) membuat perbuatan → kata kerja aktif meN-: ${b} → ${f}. ${imbuhanRule(b)}` }); }],
 );
 function objFor(b) { return { baca: "buku cerita", beli: "roti", buang: "sampah", pukul: "gendang", potong: "kek", pakai: "kasut", tulis: "surat", tolong: "ibu", tanam: "pokok", tendang: "bola", dengar: "radio", cuci: "pinggan", jahit: "baju", sapu: "lantai", siram: "pokok", kira: "duit", kayuh: "basikal", ambil: "buku", angkat: "kotak", ikat: "tali kasut", ajar: "adik membaca", gosok: "gigi", gunting: "kertas", hantar: "surat", lukis: "gambar", lompat: "tali", masak: "nasi", nyanyi: "lagu", rasa: "kuih", warna: "gambar", isi: "botol air", ukur: "meja", jawab: "soalan", cari: "kunci" }[b] || "kerja rumah"; }
 function imbuhanRule(b) {
@@ -230,74 +237,75 @@ function imbuhanRule(b) {
   return `Kata bermula dengan ${c} → me-.`;
 }
 const imbuhanLain = blend(
-  [2, () => { const [b, f] = pick(BER); return mcq(`Kata dasar <b>${b}</b> + awalan <b>ber-</b> menjadi…`, f, [`ber${b}`, `be${b}`, `bel${b}`, `mem${b}`].filter((x) => x !== f)); }],
-  [2, () => { const b = pick(PASIF_OK); return fill(`${cap(objFor(b).split(" ")[0])} itu ___ oleh Ali.`, `di${b}`, [MEN.find((x) => x[0] === b)[1], `ber${b}`, `ter${b}`]); }],
-  [1, () => { const [b, f] = pick([["jatuh", "terjatuh"], ["tidur", "tertidur"], ["buka", "terbuka"], ["tutup", "tertutup"], ["lupa", "terlupa"]]); return fill(`Pintu itu ___ kerana angin kencang.`.replace("Pintu itu", { jatuh: "Adik", tidur: "Ayah", buka: "Tingkap itu", tutup: "Pintu itu", lupa: "Saya" }[b]).replace("kerana angin kencang", { jatuh: "dari basikal", tidur: "di sofa", buka: "dengan sendiri", tutup: "kerana angin kencang", lupa: "membawa buku" }[b]), f, [`me${b}`, `di${b}`, `ber${b}`]); }],
-  [1, () => { const [b, f] = pick([["main", "pemain"], ["tulis", "penulis"], ["lari", "pelari"], ["ajar", "pengajar"], ["baca", "pembaca"], ["sapu", "penyapu"]]); return mcq(`Awalan peN- + <b>${b}</b> menjadi…`, f, [`pe${b}`, `pem${b}`, `pen${b}`, `peng${b}`].filter((x) => x !== f)); }],
+  [2, () => { const [b, f] = pick(BER); return mcq(`Kata dasar <b>${b}</b> + awalan <b>ber-</b> menjadi…`, f, [`ber${b}`, `be${b}`, `bel${b}`, `mem${b}`].filter((x) => x !== f), { explain: b === "ajar" ? "Pengecualian: ber- + ajar menjadi belajar." : b === "kerja" ? "ber- menjadi be- bagi kata yang suku kata pertamanya berakhir dengan -er: bekerja." : b === "renang" ? "ber- menjadi be- bagi kata yang bermula dengan r: berenang." : `ber- + ${b} = ${f}.` }); }],
+  [2, () => { const b = pick(PASIF_OK); return fill(`${cap(objFor(b).split(" ")[0])} itu ___ oleh Ali.`, `di${b}`, [MEN.find((x) => x[0] === b)[1], `ber${b}`, `ter${b}`], { explain: `"oleh Ali" — benda itu yang menerima perbuatan, jadi guna ayat pasif di-: di${b}.` }); }],
+  [1, () => { const [b, f] = pick([["jatuh", "terjatuh"], ["tidur", "tertidur"], ["buka", "terbuka"], ["tutup", "tertutup"], ["lupa", "terlupa"]]); const why = `ter- bermaksud berlaku dengan tidak sengaja atau dengan sendiri: ${f}.`; return fill(`Pintu itu ___ kerana angin kencang.`.replace("Pintu itu", { jatuh: "Adik", tidur: "Ayah", buka: "Tingkap itu", tutup: "Pintu itu", lupa: "Saya" }[b]).replace("kerana angin kencang", { jatuh: "dari basikal", tidur: "di sofa", buka: "dengan sendiri", tutup: "kerana angin kencang", lupa: "membawa buku" }[b]), f, [`me${b}`, `di${b}`, `ber${b}`], { explain: why }); }],
+  [1, () => { const [b, f] = pick([["main", "pemain"], ["tulis", "penulis"], ["lari", "pelari"], ["ajar", "pengajar"], ["baca", "pembaca"], ["sapu", "penyapu"]]); return mcq(`Awalan peN- + <b>${b}</b> menjadi…`, f, [`pe${b}`, `pem${b}`, `pen${b}`, `peng${b}`].filter((x) => x !== f), { explain: `peN- berubah seperti meN-: ${imbuhanRule(b).replace(/me(ng|ny|n|m)?-/, (m) => m.replace("me", "pe"))} ${f} = orang yang ${b === "lari" ? "berlari" : b === "main" ? "bermain" : `meN-${b}`}.`.replace(`meN-${b}`, MEN.find((x) => x[0] === b)?.[1] || b) }); }],
 );
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 const PASIF_OK = ["baca", "tulis", "beli", "potong", "siram", "tendang", "cuci", "jahit", "sapu", "ambil", "angkat", "hantar", "jawab", "cari", "masak", "lukis", "kira", "gunting", "isi", "pukul", "kayuh", "pakai", "tanam", "buang", "ukur"];
 const apitan = blend(
-  [2, () => { const [b, f] = pick([["baik", "kebaikan"], ["sihat", "kesihatan"], ["bersih", "kebersihan"], ["cantik", "kecantikan"], ["selamat", "keselamatan"], ["gembira", "kegembiraan"], ["sedih", "kesedihan"], ["indah", "keindahan"], ["sejuk", "kesejukan"], ["sakit", "kesakitan"]]); return mcq(`Apitan <b>ke-…-an</b> + ${b} menjadi…`, f, [`ke${b}`, `${b}an`, `pe${b}an`, `per${b}an`].filter((x) => x !== f)); }],
-  [2, () => { const [b, f] = pick([["ajar", "pengajaran"], ["didik", "pendidikan"], ["tulis", "penulisan"], ["baca", "pembacaan"], ["jual", "penjualan"], ["kira", "pengiraan"], ["pandu", "pemanduan"], ["lukis", "pelukisan"], ["dengar", "pendengaran"], ["tanam", "penanaman"]]); return mcq(`Apitan <b>peN-…-an</b> + ${b} menjadi…`, f, [`pe${b}an`, `per${b}an`, `ke${b}an`, `${b}an`].filter((x) => x !== f)); }],
-  [1, () => { const [b, f, s] = pick([["besar", "membesarkan", "Ibu ___ anak-anaknya dengan penuh kasih sayang."], ["hantar", "menghantarkan", "Ayah ___ adik ke sekolah."], ["bersih", "membersihkan", "Kami ___ kelas setiap petang."], ["naik", "menaikkan", "Pengawas ___ bendera pada pagi Isnin."]]); return fill(s, f, [`mem${b}`.replace("memb", "memb"), `di${b}kan`, `${b}kan`].filter((x) => x !== f)); }],
+  [2, () => { const [b, f] = pick([["baik", "kebaikan"], ["sihat", "kesihatan"], ["bersih", "kebersihan"], ["cantik", "kecantikan"], ["selamat", "keselamatan"], ["gembira", "kegembiraan"], ["sedih", "kesedihan"], ["indah", "keindahan"], ["sejuk", "kesejukan"], ["sakit", "kesakitan"]]); return mcq(`Apitan <b>ke-…-an</b> + ${b} menjadi…`, f, [`ke${b}`, `${b}an`, `pe${b}an`, `per${b}an`].filter((x) => x !== f), { explain: `Apitan mengapit kata dasar di depan DAN di belakang: ke + ${b} + an = ${f}.` }); }],
+  [2, () => { const [b, f] = pick([["ajar", "pengajaran"], ["didik", "pendidikan"], ["tulis", "penulisan"], ["baca", "pembacaan"], ["jual", "penjualan"], ["kira", "pengiraan"], ["pandu", "pemanduan"], ["lukis", "pelukisan"], ["dengar", "pendengaran"], ["tanam", "penanaman"]]); return mcq(`Apitan <b>peN-…-an</b> + ${b} menjadi…`, f, [`pe${b}an`, `per${b}an`, `ke${b}an`, `${b}an`].filter((x) => x !== f), { explain: `peN- berubah ikut huruf pertama (seperti meN-), kemudian tambah -an: ${f}.` }); }],
+  [1, () => { const [b, f, s] = pick([["besar", "membesarkan", "Ibu ___ anak-anaknya dengan penuh kasih sayang."], ["hantar", "menghantarkan", "Ayah ___ adik ke sekolah."], ["bersih", "membersihkan", "Kami ___ kelas setiap petang."], ["naik", "menaikkan", "Pengawas ___ bendera pada pagi Isnin."]]); return fill(s, f, [`mem${b}`.replace("memb", "memb"), `di${b}kan`, `${b}kan`].filter((x) => x !== f), { explain: `Pelaku membuat sesuatu kepada objek → apitan meN-…-kan: ${f}.` }); }],
 );
 const antonim = blend(
-  [3, () => { const [a, b] = pick(ANTONIM); return mcq(`Antonim (lawan kata) bagi <b>${a}</b> ialah…`, b, ANTONIM.map((x) => x[1]).concat(ANTONIM.map((x) => x[0])).filter((x) => x !== a)); }],
+  [3, () => { const [a, b] = pick(ANTONIM); return mcq(`Antonim (lawan kata) bagi <b>${a}</b> ialah…`, b, ANTONIM.map((x) => x[1]).concat(ANTONIM.map((x) => x[0])).filter((x) => x !== a), { explain: `Antonim = maksud berlawanan: ${a} ↔ ${b}.` }); }],
   [1, () => match("Padankan perkataan dengan antonimnya.", sample(ANTONIM, 4))],
 );
 const sinonim = blend(
-  [3, () => { const [a, b] = pick(SINONIM); return mcq(`Sinonim (seerti) bagi <b>${a}</b> ialah…`, b, SINONIM.map((x) => x[1]).filter((x) => x !== b).concat(ANTONIM.filter((x) => x[0] === a).map((x) => x[1]))); }],
+  [3, () => { const [a, b] = pick(SINONIM); return mcq(`Sinonim (seerti) bagi <b>${a}</b> ialah…`, b, SINONIM.map((x) => x[1]).filter((x) => x !== b).concat(ANTONIM.filter((x) => x[0] === a).map((x) => x[1])), { explain: `Sinonim = maksud sama: ${a} = ${b}.` }); }],
   [1, () => match("Padankan perkataan dengan sinonimnya.", sample(SINONIM, 4))],
 );
 const kataTanya = blend(
-  [3, () => { const [w, , s] = pick(KATA_TANYA); return fill(s, w, KATA_TANYA.map((x) => x[0])); }],
+  [3, () => { const [w, , s] = pick(KATA_TANYA); return fill(s, w, KATA_TANYA.map((x) => x[0]), { explain: TANYA_WHY[w] }); }],
   [1, () => match("Padankan kata tanya dengan kegunaannya.", sample(KATA_TANYA.filter((x, i, a) => a.findIndex((y) => y[0] === x[0]) === i), 4).map(([w, use]) => [w, use]))],
 );
 const kataSendi = () => { const [s, a, ds] = pick(SENDI); return fill(s, a, ds, { explain: { di: "di — tempat", ke: "ke — arah tempat", dari: "dari — tempat / masa asal", daripada: "daripada — orang, punca bahan atau perbandingan", kepada: "kepada — orang / pihak yang menerima", pada: "pada — masa atau orang", untuk: "untuk — tujuan / bahagian" }[a] }); };
-const kataHubung = (adv) => () => { const pool = adv ? HUBUNG : HUBUNG_ASAS; const [s, a, ds] = pick(pool); return fill(s, a, ds); };
+const kataHubung = (adv) => () => { const pool = adv ? HUBUNG : HUBUNG_ASAS; const [s, a, ds] = pick(pool); return fill(s, a, ds, { explain: HUBUNG_WHY[a] }); };
 const susunAyat = (long) => () => {
   const [s, v, o, k] = pick(AYAT);
   const words = long ? [s, v, ...o.split(" "), ...k.split(" ")] : [s, v, ...o.split(" ")];
-  return order("Susun perkataan menjadi ayat yang betul.", words.map((w, i) => (i === 0 ? w : w)), { joiner: " " });
+  return order("Susun perkataan menjadi ayat yang betul.", words, { joiner: " ", explain: `Siapa (${s}) → buat apa (${v}) → apa (${o})${long ? ` → di mana/bila (${k})` : ""}.` });
 };
 const tandaBaca = blend(
   [2, () => { const [s, t] = pick([["Siapakah nama kamu", "?"], ["Saya suka makan nasi lemak", "."], ["Wah, cantiknya bunga itu", "!"], ["Di manakah rumah kamu", "?"], ["Adik sedang tidur", "."], ["Aduh, sakitnya", "!"],
     ["Bilakah kamu pulang", "?"], ["Ibu memasak di dapur", "."], ["Syabas, kamu menang", "!"], ["Berapakah harga buku ini", "?"], ["Kami pergi ke taman", "."], ["Hore, esok cuti", "!"],
     ["Mengapakah kamu ketawa", "?"], ["Ayah membaca surat khabar", "."], ["Tolong, ada api", "!"], ["Bagaimanakah cara membuat wau", "?"], ["Kucing itu tidur di atas sofa", "."], ["Wah, besarnya rumah itu", "!"],
-    ["Siapakah guru kelas kamu", "?"], ["Hari ini hari Isnin", "."]]); return mcq(`Tanda baca yang sesuai: "${s}☐"`, t, [".", "?", "!", ","], { n: 4 }); }],
+    ["Siapakah guru kelas kamu", "?"], ["Hari ini hari Isnin", "."]]); return mcq(`Tanda baca yang sesuai: "${s}☐"`, t, [".", "?", "!", ","], { n: 4, explain: { "?": "Ayat yang bertanya diakhiri tanda soal (?).", ".": "Ayat penyata biasa diakhiri noktah (.).", "!": "Ayat yang menunjukkan perasaan kuat (wah, aduh, hore) diakhiri tanda seru (!)." }[t] }); }],
   [1, () => tf(`"saya pergi ke sekolah." — ayat ini betul.`, false, { explain: "Ayat mesti bermula dengan huruf besar: Saya pergi ke sekolah." })],
 );
-const ejaan = () => { const [r, w] = pick(EJAAN); return mcq("Pilih ejaan yang <b>betul</b>.", r, [w, r.replace(/a/, "e"), r + "h"].filter((x) => x !== r)); };
+const ejaan = () => { const [r, w] = pick(EJAAN); return mcq("Pilih ejaan yang <b>betul</b>.", r, [w, r.replace(/a/, "e"), r + "h"].filter((x) => x !== r), { explain: `Ejaan baku: ${r} (bukan ${w}).` }); };
 const kataGanda = blend(
-  [2, () => { const [b, g] = pick(GANDA_BERENTAK); return mcq(`Kata ganda berentak bagi <b>${b}</b> ialah…`, g, [`${b}-${b}`, `${b}-${b.slice(0, -1)}an`, `${b}-berai`].filter((x) => x !== g).concat(GANDA_BERENTAK.map((x) => x[1]))); }],
+  [2, () => { const [b, g] = pick(GANDA_BERENTAK); return mcq(`Kata ganda berentak bagi <b>${b}</b> ialah…`, g, [`${b}-${b}`, `${b}-${b.slice(0, -1)}an`, `${b}-berai`].filter((x) => x !== g).concat(GANDA_BERENTAK.map((x) => x[1])), { explain: `Kata ganda berentak: bahagian kedua berbunyi seakan-akan — ${g}.` }); }],
   [1, () => match("Padankan kata dasar dengan kata ganda berentak.", sample(GANDA_BERENTAK, 4))],
-  [1, () => { const w = pick(["rumah", "buku", "pokok", "kereta", "murid"]); return mcq(`Kata ganda penuh bagi <b>${w}</b> ialah…`, `${w}-${w}`, [`${w}${w}`, `${w}-${w.slice(0, 2)}`, `ber${w}`]); }],
+  [1, () => { const w = pick(["rumah", "buku", "pokok", "kereta", "murid"]); return mcq(`Kata ganda penuh bagi <b>${w}</b> ialah…`, `${w}-${w}`, [`${w}${w}`, `${w}-${w.slice(0, 2)}`, `ber${w}`], { explain: `Kata ganda penuh: ulang seluruh kata dengan tanda sempang (-): ${w}-${w}.` }); }],
 );
 const kataMajmuk = blend(
-  [2, () => { const [a, b] = pick(MAJMUK); return mcq(`Kata majmuk: <b>${a} ___</b>`, b, MAJMUK.map((x) => x[1])); }],
-  [1, () => { const [a, b] = pick(MAJMUK); return mcq("Pilih ejaan kata majmuk yang betul.", `${a} ${b}`, [`${a}${b}`, `${a}-${b}`]); }],
+  [2, () => { const [a, b] = pick(MAJMUK); return mcq(`Kata majmuk: <b>${a} ___</b>`, b, MAJMUK.map((x) => x[1]), { explain: `${a} ${b} — dua perkataan yang membawa satu maksud.` }); }],
+  [1, () => { const [a, b] = pick(MAJMUK); return mcq("Pilih ejaan kata majmuk yang betul.", `${a} ${b}`, [`${a}${b}`, `${a}-${b}`], { explain: "Kata majmuk dieja terpisah, tanpa sempang." }); }],
 );
 const simpulan = blend(
-  [3, () => { const [s, m] = pick(SIMPULAN); return mcq(`Apakah maksud simpulan bahasa <b>"${s}"</b>?`, m, SIMPULAN.map((x) => x[1])); }],
+  [3, () => { const [s, m] = pick(SIMPULAN); return mcq(`Apakah maksud simpulan bahasa <b>"${s}"</b>?`, m, SIMPULAN.map((x) => x[1]), { explain: `"${s}" bermaksud ${m.toLowerCase()}.` }); }],
   [1, () => match("Padankan simpulan bahasa dengan maksudnya.", sample(SIMPULAN, 3))],
 );
 const peribahasa = blend(
-  [3, () => { const [p, m] = pick(PERIBAHASA); return mcq(`Apakah maksud peribahasa <b>"${p}"</b>?`, m, PERIBAHASA.map((x) => x[1])); }],
-  [2, () => { const [p, m] = pick(PERIBAHASA); return mcq(`Peribahasa yang bermaksud <b>"${m}"</b> ialah…`, p, PERIBAHASA.map((x) => x[0])); }],
-  [1, () => { const [p] = pick(PERIBAHASA.filter(([x]) => x.split(" ").length <= 6)); return order("Susun semula peribahasa ini.", p.replace(/,/g, "").split(" ")); }],
+  [3, () => { const [p, m] = pick(PERIBAHASA); return mcq(`Apakah maksud peribahasa <b>"${p}"</b>?`, m, PERIBAHASA.map((x) => x[1]), { explain: `"${p}" — ${m.toLowerCase()}.` }); }],
+  [2, () => { const [p, m] = pick(PERIBAHASA); return mcq(`Peribahasa yang bermaksud <b>"${m}"</b> ialah…`, p, PERIBAHASA.map((x) => x[0]), { explain: `"${p}" — ${m.toLowerCase()}.` }); }],
+  [1, () => { const [p] = pick(PERIBAHASA.filter(([x]) => x.split(" ").length <= 6)); return order("Susun semula peribahasa ini.", p.replace(/,/g, "").split(" "), { explain: `${p} — ${PERIBAHASA.find((x) => x[0] === p)[1].toLowerCase()}.` }); }],
 );
 const pemahaman = (...levels) => () => {
   const [, text, qs] = pick(PETIKAN.filter((p) => levels.includes(p[0])));
   const [q, a, ds] = pick(qs);
-  return mcq(q, a, ds, { visual: `<div class="passage">${text}</div>` });
+  const line = /BUKAN/.test(q) ? null : evidence(text, q, a);
+  return mcq(q, a, ds, { visual: `<div class="passage">${text}</div>`, explain: line ? `Cari dalam petikan: "${line}"` : "Baca semula petikan dan semak setiap pilihan — satu sahaja yang tidak disebut." });
 };
 // ---------------------------------------------------------------- mendengar (dibacakan oleh peranti)
-const dengarPilih = () => { const [e, w] = pick(EMOJI_WORD); return mcq("🎧 Dengar dan pilih gambar yang betul.", e, EMOJI_WORD.map((x) => x[0]), { listen: w, alt: `Pilih gambar <b>${w}</b>.` }); };
+const dengarPilih = () => { const [e, w] = pick(EMOJI_WORD); return mcq("🎧 Dengar dan pilih gambar yang betul.", e, EMOJI_WORD.map((x) => x[0]), { listen: w, alt: `Pilih gambar <b>${w}</b>.`, explain: `Perkataan yang dibacakan: ${w} ${e}` }); };
 const EJA_MUDAH = [["kucing", ["kuching", "kucin"]], ["bunga", ["bungga", "buga"]], ["meja", ["mejah", "meije"]], ["rumah", ["ruma", "rumh"]], ["sayur", ["sayor", "saiur"]], ["kereta", ["kreta", "keretah"]],
   ["pokok", ["poko", "pokuk"]], ["burung", ["burong", "buruung"]], ["ayam", ["aiam", "ayem"]], ["sekolah", ["sekola", "sekulah"]], ["guru", ["gurru", "goru"]], ["pensel", ["pinsel", "pensal"]],
   ["telinga", ["telingga", "talinga"]], ["tingkap", ["tinkap", "tingkab"]], ["jalan", ["jalen", "jallan"]], ["hujan", ["hujen", "ujan"]]];
-const dengarEja = () => { const [w, bad] = pick(EJA_MUDAH); return mcq("🎧 Dengar dan pilih ejaan yang betul.", w, bad, { listen: w, alt: "Pilih ejaan yang <b>betul</b>.", n: 3 }); };
+const dengarEja = () => { const [w, bad] = pick(EJA_MUDAH); return mcq("🎧 Dengar dan pilih ejaan yang betul.", w, bad, { listen: w, alt: "Pilih ejaan yang <b>betul</b>.", n: 3, explain: `Eja ikut suku kata: ${SUKU.find((x) => x[0] === w)?.[1] || w}.` }); };
 const DENGAR_AYAT = [["Adik tidur di atas katil.", ["Adik duduk di atas katil.", "Adik tidur di bawah katil.", "Kakak tidur di atas katil."]],
   ["Ayah membaca surat khabar.", ["Ayah membeli surat khabar.", "Ibu membaca surat khabar.", "Ayah membaca buku cerita."]],
   ["Kucing itu berwarna hitam.", ["Kucing itu berwarna putih.", "Kambing itu berwarna hitam.", "Kucing ini berwarna hitam."]],
@@ -310,16 +318,16 @@ const DENGAR_AYAT = [["Adik tidur di atas katil.", ["Adik duduk di atas katil.",
   ["Datuk menanam pokok rambutan.", ["Datuk menanam pokok durian.", "Datuk memetik buah rambutan.", "Nenek menanam pokok rambutan."]],
   ["Kami ke perpustakaan pada hari Rabu.", ["Kami ke perpustakaan pada hari Selasa.", "Kami ke kantin pada hari Rabu.", "Mereka ke perpustakaan pada hari Rabu."]],
   ["Abang mencuci kereta ayah.", ["Abang memandu kereta ayah.", "Abang mencuci kereta ibu.", "Adik mencuci kereta ayah."]]];
-const dengarAyat = () => { const [a, ds] = pick(DENGAR_AYAT); return mcq("🎧 Dengar. Ayat manakah yang kamu dengar?", a, ds, { listen: a, alt: `Cari ayat yang sama: <b>${a}</b>` }); };
+const dengarAyat = () => { const [a, ds] = pick(DENGAR_AYAT); return mcq("🎧 Dengar. Ayat manakah yang kamu dengar?", a, ds, { listen: a, alt: `Cari ayat yang sama: <b>${a}</b>`, explain: `Ayat yang dibacakan: "${a}" — dengar setiap perkataan dengan teliti.` }); };
 
 const ayatPasif = blend(
   [2, () => { const [s, v, o] = pick(AYAT.filter(([, v]) => MEN.some((x) => x[1] === v))); const b = MEN.find((x) => x[1] === v)?.[0]; if (!b) return mcq("Ayat pasif bagi 'Ali membaca buku' ialah…", "Buku dibaca oleh Ali.", ["Buku membaca Ali.", "Ali dibaca buku.", "Buku baca oleh Ali."]); if (s === "Kami") return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} kami ${b}.`, [`${cap(o)} di${b} oleh kami.`, `${cap(o)} ${v} oleh kami.`, `Kami di${b} ${o}.`], { explain: "Kata ganti nama diri pertama (saya, kami, kita): objek + kata ganti + kata kerja tanpa imbuhan." });
     const by = s === "Mereka" ? "mereka" : /^(Kucing|Murid)/.test(s) ? s.toLowerCase() : s; // "oleh kucing", but "oleh Ibu"
-    return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} di${b} oleh ${by}.`, [`${cap(o)} ${v} oleh ${by}.`, `${s} di${b} ${o}.`, `${cap(o)} di${b} ${by}`]); }],
+    return mcq(`Tukarkan kepada ayat pasif: "${s} ${v} ${o}."`, `${cap(o)} di${b} oleh ${by}.`, [`${cap(o)} ${v} oleh ${by}.`, `${s} di${b} ${o}.`, `${cap(o)} di${b} ${by}`], { explain: `Pasif: objek (${o}) ke hadapan + di${b} + oleh + pelaku. Jangan lupa noktah.` }); }],
   [1, () => fill("Kerja rumah itu sudah ___ siapkan.", "saya", ["disaya", "menyaya", "oleh saya"], { explain: "Ayat pasif dengan kata ganti nama diri pertama: kata ganti + kata kerja tanpa imbuhan." })],
 );
 const pemeri = () => { const [s, a, ds] = pick(PEMERI); return fill(s, a, ds, { explain: "ialah — di hadapan frasa nama; adalah — di hadapan frasa adjektif atau frasa sendi nama." }); };
-const perbandingan = () => { const [s, a, ds] = pick(PERBANDINGAN); return fill(s, a, ds); };
+const perbandingan = () => { const [s, a, ds] = pick(PERBANDINGAN); return fill(s, a, ds, { explain: /daripada/.test(s) ? "Ada \"daripada\" → bandingkan dua benda: lebih …" : /sama|dengan/.test(s) ? "\"sama … dengan\" → dua benda yang serupa." : "Yang paling antara semua → paling … atau ter-." }); };
 
 // ---------------------------------------------------------------- curriculum
 export const BM = {

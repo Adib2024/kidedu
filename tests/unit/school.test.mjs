@@ -28,6 +28,11 @@ function check(q, where) {
     assert.ok(!("listen" in w) && w.prompt && !bad(w.prompt), `${where}: silent version`);
   }
   if (q.type === "fill") assert.match(q.prompt, /___/, `${where}: fill without blank`);
+  if (q.steps != null) {
+    assert.ok(Array.isArray(q.steps) && q.steps.length >= 2, `${where}: steps`);
+    for (const st of q.steps) assert.ok(typeof st === "string" && st.trim() && !bad(st), `${where}: bad step "${st}"`);
+  }
+  if (q.work != null) assert.match(q.work, /^<table class="colwork"[^]*<\/table>$/, `${where}: work layout`);
   if (q.type === "input") {
     assert.ok(Number.isFinite(Number(q.answer)), `${where}: input answer ${q.answer}`);
     assert.equal(K.norm(q, q.answer), K.correctOf(q));
@@ -172,4 +177,74 @@ test("rotation: a round avoids recently seen questions while the topic still has
   assert.equal(r3.length, 10);
   assert.equal(new Set(r3.map(K.qKey)).size, 10, "still distinct inside the round");
   assert.equal(r3.filter((q) => !seen2.has(K.qKey(q))).length, 5, "the last 5 unseen come first, then the oldest repeats");
+});
+
+test("explanations: (almost) every wrong answer gets a reason, Maths often a worked solution", () => {
+  for (const [subj, min] of [["bm", 0.97], ["en", 0.97], ["sai", 0.95], ["mat", 0.8]]) {
+    let n = 0, ok = 0, steps = 0;
+    for (const y of C.YEARS) for (const t of C.topics(subj, y)) for (let i = 0; i < 60; i++) {
+      const q = t.gen();
+      if (q.type === "match") continue;
+      n++; if (q.explain || q.steps) ok++; if (q.steps) steps++;
+    }
+    assert.ok(ok / n >= min, `${subj}: ${Math.round((100 * ok) / n)}% explained`);
+    if (subj === "mat") assert.ok(steps / n >= 0.35, `mat: ${Math.round((100 * steps) / n)}% with steps`);
+  }
+});
+
+test("worked solutions: column addition, subtraction with borrowing, multiplication and long division", async () => {
+  const S = await import("../../js/school/steps.js");
+  const add = S.addSteps(478, 356);
+  assert.equal(add.steps.at(-1), "Jawapan: 834");
+  assert.match(add.steps[0], /8 \+ 6 = 14 → tulis 4, bawa 1/);
+  assert.match(add.work, /colwork/);
+  const sub = S.subSteps(1003, 7);
+  assert.equal(sub.steps.at(-1), "Jawapan: 996");
+  assert.match(sub.steps[0], /pinjam dari ribu/);
+  assert.equal(S.subSteps(5.2, 1.75, 2).steps.at(-1), "Jawapan: 3.45");
+  assert.equal(S.addSteps(3.4, 5.67, 2).steps.at(-1), "Jawapan: 9.07");
+  assert.equal(S.mulSteps(347, 6).steps.at(-1), "Jawapan: 2 082");
+  assert.equal(S.mulSteps(123, 24).steps.at(-1), "Jawapan: 2 952");
+  const div = S.divSteps(1734, 6);
+  assert.ok(div.steps.includes("Jawapan: 289") && div.steps.some((x) => /^Semak: 6 × 289 = 1 734/.test(x)));
+  assert.equal(S.remainderSteps(38, 7).steps.at(-1), "Jawapan: 5 baki 3");
+  // every generated arithmetic question's last step agrees with its answer
+  for (const [subj, y, id] of [["mat", 2, "tambah-tolak-1000"], ["mat", 3, "operasi-10000"], ["mat", 4, "darab-bahagi"], ["mat", 5, "darab-bahagi-besar"]]) {
+    const t = C.topicById(subj, y, id);
+    for (let i = 0; i < 200; i++) {
+      const q = t.gen();
+      const last = q.steps?.findLast((x) => x.startsWith("Jawapan: "));
+      if (q.type === "input" && last) assert.equal(last.slice(9).replace(/ /g, ""), q.answer, `${id}: ${K.plain(q.prompt)}`);
+    }
+  }
+});
+
+test("reading explanations quote the sentence that holds the answer", () => {
+  const text = "Ravi suka membaca. Setiap waktu rehat, dia pergi ke perpustakaan. Dia ingin menjadi angkasawan seperti Datuk Dr. Sheikh Muszaphar.";
+  assert.equal(K.evidence(text, "Bilakah Ravi pergi ke perpustakaan?", "waktu rehat"), "Setiap waktu rehat, dia pergi ke perpustakaan.");
+  assert.equal(K.evidence(text, "Siapakah idola Ravi?", "Sheikh Muszaphar"), "Dia ingin menjadi angkasawan seperti Datuk Dr. Sheikh Muszaphar.");
+  assert.equal(K.evidence("The cat sleeps. Pollution is harmful to fish.", "The word 'harmful' means…", "causing damage"), "Pollution is harmful to fish.");
+});
+
+test("adaptive Latihan: harder after two right answers, easier after a wrong one", async () => {
+  const { makeLadder } = await import("../../js/school/play.js");
+  const easy = { type: "tf", prompt: "1 + 1 = 2", answer: "Betul" }, hard = { type: "input", prompt: "4 567.25 × 38 = ?", answer: "1", decimal: true };
+  assert.ok(K.difficulty(hard) > K.difficulty(easy) + 2);
+  const pool = [...Array(10)].map((_, i) => ({ ...easy, prompt: `${i} + 1 = ?` })).concat([...Array(10)].map((_, i) => ({ type: "mcq", prompt: `${300 + i} + 45 = ?`, answer: "x" })),
+    [...Array(10)].map((_, i) => ({ ...hard, prompt: `${4567 + i}.25 × 38 = ?` })));
+  const L = makeLadder(pool);
+  assert.equal(L.level, 1);
+  assert.equal(L.take().type, "mcq");
+  assert.equal(L.result(true), 0);
+  assert.equal(L.result(true), 1);
+  assert.equal(L.level, 2);
+  assert.equal(L.take().type, "input");
+  assert.equal(L.result(false), -1);
+  assert.equal(L.result(false), -1);
+  assert.equal(L.level, 0);
+  assert.equal(L.take().type, "tf");
+  assert.equal(L.result(false), 0, "cannot go below the easiest level");
+  // the pool runs dry gracefully: nearest band is used, then null
+  let n = 3; while (L.take()) n++;
+  assert.equal(n, 30);
 });

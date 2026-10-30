@@ -631,6 +631,28 @@ await scenario("sekolah: practice round with every question type → stars saved
   assert.equal(await b.eval("import('/js/store.js').then(m => m.store.starsOf('sek:ulang-kaji'))"), 3);
 });
 
+await scenario("sekolah: Latihan adapts its level and explains mistakes step by step", async (b) => {
+  await schoolKid(b, 3);
+  await b.hash("#/sekolah/main/mat/3/operasi-10000/latihan");
+  await b.waitFor(".lvl");
+  assert.match(await b.text(".lvl"), /Tahap:\s*Sederhana/);
+  for (let i = 0; i < 2; i++) { await b.waitFor(".qcard2"); await b.eval(ANSWER(false)); await b.wait(1100); }
+  await b.waitFor(".lvl .lvl-move.up");
+  assert.match(await b.text(".lvl"), /Tahap:\s*Mencabar/);
+  // wrong answers until one comes with a worked solution (column sums carry steps)
+  let steps = false;
+  for (let i = 0; i < 6 && !steps; i++) {
+    await b.waitFor(".qcard2");
+    await b.eval(ANSWER(true));
+    await b.waitFor(".q2-next");
+    assert.ok(await b.exists(".q2-explain, .q2-steps"), "a reason is shown");
+    steps = await b.exists(".q2-steps[open] ol li");
+    if (!(await b.exists(".result"))) await b.click(".q2-next");
+  }
+  assert.ok(steps, "a worked solution was shown");
+  assert.match(await b.text(".lvl"), /Tahap:\s*(Mudah|Sederhana)/);
+});
+
 await scenario("sekolah: other types (order words, match pairs) and the boss battle ends after 3 lost lives", async (b) => {
   await schoolKid(b, 1);
   await b.hash("#/sekolah/main/bm/1/susun-ayat/latihan");
